@@ -2,21 +2,28 @@ import React, { useMemo, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { Map as MapLibreMap } from 'react-map-gl/maplibre';
 import { LineLayer, PolygonLayer } from '@deck.gl/layers';
-import { MapController } from 'deck.gl'; // <-- FIX: Pull directly from the installed package
+import { MapController } from 'deck.gl';
 import * as turf from '@turf/turf';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Compass } from '@/components/map/Compass';
 import { LiveDroneData } from '@/utils/interfaces';
 
-// --- THE EVENT HACK: Remapping Middle Click to Orbit ---
+// --- THE EVENT HACK: Remapping Middle Click & Disabling Right Click ---
 class MiddleClickOrbitController extends MapController {
     handleEvent(event: any) {
-        // Intercept middle click
-        if (event.middleButton || (event.srcEvent && event.srcEvent.buttons === 4)) {
-            event.rightButton = true;   // Force orbit
-            event.middleButton = false; // Kill the middle click
+        // If the user is physically holding the Right Mouse Button, KILL the event
+        if (event.rightButton && !(event.srcEvent && event.srcEvent.buttons === 4)) {
+            event.rightButton = false;
+            event.handled = true; // Tell DeckGL we took care of it (by doing nothing)
+            return true;
         }
-        // FIX: Return the boolean to satisfy TypeScript and Deck.gl
+
+        // Intercept actual middle click and spoof it as a right click for the orbit engine
+        if (event.middleButton || (event.srcEvent && event.srcEvent.buttons === 4)) {
+            event.rightButton = true;   
+            event.middleButton = false; 
+        }
+        
         return super.handleEvent(event);
     }
 }
@@ -94,7 +101,8 @@ export function Map({
         let rayLength = MAX_LASER_LENGTH;
         if (gimbalPitch < 0) {
             const distanceToGround = altitude / Math.abs(Math.sin(pitchRad));
-            rayLength = Math.min(MAX_LASER_LENGTH, distanceToGround);
+            // Add a tiny buffer (0.1) to ensure the target doesn't go below Z=0 due to floating point math
+            rayLength = Math.min(MAX_LASER_LENGTH, Math.max(0, distanceToGround - 0.1));
         }
 
         const deltaZ = rayLength * Math.sin(pitchRad); 
@@ -149,7 +157,6 @@ export function Map({
     return (
         <div 
             style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: '#000' }}
-            // Keep this so the browser menu doesn't pop up if you accidentally right-click
             onContextMenu={e => e.preventDefault()} 
         >
             <DeckGL
@@ -159,11 +166,7 @@ export function Map({
                     type: MiddleClickOrbitController, 
                     dragPan: true, 
                     scrollZoom: true, 
-                    dragRotate: true, 
-                    // FIX: Drop this to 85. Anything higher breaks panning math.
-                    // maxPitch: 85,
-                    // minZoom: 14,
-                    // maxZoom: 22
+                    dragRotate: true
                 }} 
                 layers={layers}
             >

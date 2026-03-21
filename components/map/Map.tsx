@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { Map as MapLibreMap } from 'react-map-gl/maplibre';
-import { LineLayer, PolygonLayer, PathLayer, TextLayer } from '@deck.gl/layers';
+import { LineLayer, PolygonLayer, PathLayer, TextLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { MapController } from 'deck.gl';
 import * as turf from '@turf/turf';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Compass } from '@/components/map/Compass';
-import { LiveDroneData, LiveWaypointData } from '@/utils/interfaces';
+import { LiveDroneData, LiveWaypointData, Annotation } from '@/utils/interfaces';
+import { hexToRgb } from '@/utils/utils';
 
 // --- THE EVENT HACK: Remapping Middle Click & Disabling Right Click ---
 class MiddleClickOrbitController extends MapController {
@@ -14,15 +15,15 @@ class MiddleClickOrbitController extends MapController {
         super({
             ...props,
             maxPitch: 85,
-            minZoom: 14,  
-            maxZoom: 22   
+            minZoom: 14,
+            maxZoom: 22
         });
     }
 
     handleEvent(event: any) {
         if (event.rightButton && !(event.srcEvent && event.srcEvent.buttons === 4)) {
             event.rightButton = false;
-            event.handled = true; 
+            event.handled = true;
             return true;
         }
 
@@ -30,7 +31,7 @@ class MiddleClickOrbitController extends MapController {
             event.rightButton = true;
             event.middleButton = false;
         }
-        
+
         return super.handleEvent(event);
     }
 }
@@ -61,6 +62,7 @@ interface MapProps {
     initialZoom?: number;
     liveDroneData?: LiveDroneData;
     waypoints?: LiveWaypointData[];
+    annotations?: Annotation[];
 }
 
 type ViewState = {
@@ -76,7 +78,8 @@ export function Map({
     initialCenter = [0, 0],
     initialZoom = 17,
     liveDroneData,
-    waypoints = []
+    waypoints = [],
+    annotations = []
 }: MapProps) {
     const [viewState, setViewState] = useState<ViewState>({
         longitude: initialCenter[0],
@@ -87,7 +90,7 @@ export function Map({
     });
 
     const layers = useMemo(() => {
-        if (!liveDroneData && (!waypoints || waypoints.length === 0)) return [];
+        if (!liveDroneData && (!waypoints || waypoints.length === 0) && (!annotations || annotations.length === 0)) return [];
 
         const pitchTransitionAngle = 30;
         const altitudeScale = Math.min(viewState.pitch / pitchTransitionAngle, 1);
@@ -100,7 +103,7 @@ export function Map({
 
         const processDroneGeometry = (data: LiveDroneData, isLive: boolean, index?: number) => {
             const { latitude, longitude, heading, gimbalPitch, altitude } = data;
-            
+
             const visualAltitude = altitude * altitudeScale;
             const droneCoord = [longitude, latitude, visualAltitude];
             const textCoord = [longitude, latitude, visualAltitude + 4];
@@ -148,16 +151,16 @@ export function Map({
                 { units: 'kilometers' }
             ).geometry.coordinates;
 
-            laserData.push({ 
+            laserData.push({
                 isLive,
-                source: droneCoord, 
-                target: [targetCoord2D[0], targetCoord2D[1], targetAlt] 
+                source: droneCoord,
+                target: [targetCoord2D[0], targetCoord2D[1], targetAlt]
             });
 
             // 3. Altitude Stalk
-            stalkData.push({ 
-                source: droneCoord, 
-                target: [longitude, latitude, 0] 
+            stalkData.push({
+                source: droneCoord,
+                target: [longitude, latitude, 0]
             });
 
             // 4. Labels (ONLY FOR WAYPOINTS)
@@ -172,7 +175,7 @@ export function Map({
         };
 
         waypoints.forEach((wp, index) => processDroneGeometry(wp, false, index));
-        
+
         if (liveDroneData) {
             processDroneGeometry(liveDroneData, true);
         }
@@ -183,7 +186,7 @@ export function Map({
                 id: 'flight-path',
                 data: [{ path: flightPathCoords }],
                 getPath: (d: any) => d.path,
-                getColor: [255, 200, 0, 200], 
+                getColor: [255, 200, 0, 200],
                 getWidth: 2,
                 widthUnits: 'pixels'
             }),
@@ -231,9 +234,43 @@ export function Map({
                 getBackgroundColor: [0, 0, 0, 180],
                 background: true,
                 backgroundPadding: [4, 4],
-                pixelOffset: [0, -20], 
-                billboard: true 
+                pixelOffset: [0, -20],
+                billboard: true
+            }),
+
+            // 2. ADD THE ANNOTATION LAYER AT THE BOTTOM OF THE ARRAY
+            new ScatterplotLayer({
+                id: 'annotation-markers',
+                data: annotations,
+                getPosition: (d: Annotation) => [d.longitude, d.latitude, 1], // Z=0 clamps to ground
+                getFillColor: (d: Annotation) => hexToRgb(d.color),
+                // billboard: true,
+                getRadius: 6,
+                radiusUnits: 'pixels', // Stays the same size regardless of zoom
+                stroked: true,
+                getLineColor: [255, 255, 255, 0], // White border makes them pop
+                lineWidthMinPixels: 1,
+                pickable: true, // Useful if you want to add tooltips later
+            }),
+
+            new TextLayer({
+                id: 'annotation-labels',
+                data: annotations,
+                getPosition: (d: Annotation) => [d.longitude, d.latitude, 10],
+                getText: (d: Annotation) => d.name,
+                getSize: 12,
+                // Match the text color to the marker color
+                getColor: (d: Annotation) => hexToRgb(d.color),
+                getBackgroundColor: [0, 0, 0, 160],
+                background: true,
+                backgroundPadding: [4, 2],
+                // Position the text to the RIGHT of the dot
+                pixelOffset: [44, 30], 
+                alignmentBaseline: 'center',
+                getTextAnchor: 'start',
+                billboard: true
             })
+            
         ];
     }, [liveDroneData, waypoints, viewState.pitch]);
 

@@ -6,7 +6,7 @@ import { MapController } from 'deck.gl';
 import * as turf from '@turf/turf';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Compass } from '@/components/map/Compass';
-import { LiveDroneData } from '@/utils/interfaces';
+import { LiveDroneData, LiveWaypointData } from '@/utils/interfaces';
 
 // --- THE EVENT HACK: Remapping Middle Click & Disabling Right Click ---
 class MiddleClickOrbitController extends MapController {
@@ -60,7 +60,7 @@ interface MapProps {
     initialCenter?: [number, number];
     initialZoom?: number;
     liveDroneData?: LiveDroneData;
-    waypoints?: LiveDroneData[];
+    waypoints?: LiveWaypointData[];
 }
 
 type ViewState = {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Map } from '@/components/map/Map';
 import styles from './DashboardView.module.css';
+import { LiveWaypointData } from '@/utils/interfaces';
 
 export function DashboardView() {
 
@@ -13,7 +14,7 @@ export function DashboardView() {
     gimbalPitch: -40
   };
 
-  const sampleWaypoints: LiveDroneData[] = [
+  const sampleWaypoints: LiveWaypointData[] = [
   {
     // 1. South-West corner, looking North-East
     latitude: -38.349800,

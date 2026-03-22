@@ -75,7 +75,7 @@ export default defineBackground(() => {
       // console.log('jsonPayload', jsonPayload)
 
       if (jsonPayload.biz_code === 'device_osd') {
-        console.log('device_osd')
+        // console.log('device_osd')
         // drone
         try {
           const host = jsonPayload.data?.host
@@ -92,6 +92,9 @@ export default defineBackground(() => {
             altitude: host.elevation,
             heading: host.attitude_head,
             gimbalPitch: payload.gimbal_pitch,
+            zoomFactor: payload.zoom_factor,
+            cameraMode: camera.camera_mode,
+            trigger: camera.photo_state,
           }
 
           browser.tabs.sendMessage(dashboardTabId, {

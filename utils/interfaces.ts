@@ -6,6 +6,9 @@ export interface LiveDroneData {
   altitude: number;
   heading: number;
   gimbalPitch: number;
+  zoomFactor: number;
+  cameraMode: number;
+  trigger: boolean;
 }
 
 export interface LiveWaypointData {
@@ -14,6 +17,7 @@ export interface LiveWaypointData {
   altitude: number;
   heading: number;
   gimbalPitch: number;
+  zoomFactor: number;
 }
 
 export interface Annotation {

@@ -4,6 +4,9 @@ import styles from './DashboardView.module.css';
 import { LiveDroneData, LiveWaypointData, Annotation } from '@/utils/interfaces';
 import { useDjiSimulator } from '@/components/simulator/useDjiSimulator';
 
+import { generateWaypointsFromTemplate } from '@/mission/missionGenerator'
+import { AIB } from '@/mission/templates'
+
 export function DashboardView() {
   const params = new URLSearchParams(window.location.search);
   const sourceTabId = parseInt(params.get('sourceTabId') || '0');
@@ -20,17 +23,32 @@ export function DashboardView() {
     longitude: 0,
     altitude: 0,
     heading: 0,
-    gimbalPitch: 0
+    gimbalPitch: 0,
+    cameraMode: 0,
+    zoomFactor: 0,
+    trigger: false
   });
+
+  const [waypoints, setWaypoints] = useState<LiveWaypointData[]>([]);
 
   const { data: simData, isConnected, connect, disconnect } = useDjiSimulator();
   // const activeData = isConnected ? simData : backgroundTelemetry;
 
   useEffect(() => {
     if (simData && simData.sn == '') {
-      console.log("Received sim telemetry update:", simData);
+      // console.log("Received sim telemetry update:", simData);
       lastHeartbeatRef.current = simData.timestamp;
       setLivedroneData(simData);
+
+      if (simData.trigger) {
+        // setWaypoints(prevWaypoints => [...prevWaypoints, simData]);
+
+        const cluster = generateWaypointsFromTemplate(simData, AIB);
+        // setWaypoints(cluster)
+
+        // Add all 3 to the existing waypoints list
+        setWaypoints(prevWaypoints => [...prevWaypoints, ...cluster]);
+      }
     }
   }, [simData]);
 
@@ -100,7 +118,7 @@ export function DashboardView() {
       <Map
         initialCenter={[-68.637840983, -38.348942412]}
         liveDroneData={livedroneData}
-        waypoints={sampleWaypoints} // (Keep your sample data here)
+        waypoints={waypoints}
         annotations={sampleAnnotations}
       />
 
@@ -115,7 +133,7 @@ export function DashboardView() {
         >
           {isDebuggerActive ? '🔴 DISCONNECT DEBUGGER' : '🔌 ATTACH TO FLIGHTHUB'}
         </button>
-<div/>
+        <div />
         <button
           onClick={isConnected ? disconnect : connect}
           className={`${styles.simButton}`}
@@ -151,7 +169,8 @@ const sampleWaypoints: LiveWaypointData[] = [
     longitude: -68.638800,
     altitude: 20,
     heading: 45,
-    gimbalPitch: -30
+    gimbalPitch: -30,
+    zoomFactor: 1
   },
   {
     // 2. North-West corner, looking East
@@ -159,7 +178,8 @@ const sampleWaypoints: LiveWaypointData[] = [
     longitude: -68.638800,
     altitude: 100,
     heading: 80,
-    gimbalPitch: -45
+    gimbalPitch: -45,
+    zoomFactor: 1
   },
   {
     // 3. North-East corner, looking South
@@ -167,7 +187,8 @@ const sampleWaypoints: LiveWaypointData[] = [
     longitude: -68.636800,
     altitude: 120,
     heading: 120,
-    gimbalPitch: -60
+    gimbalPitch: -60,
+    zoomFactor: 1
   },
   {
     // 4. South-East corner, looking West
@@ -175,7 +196,8 @@ const sampleWaypoints: LiveWaypointData[] = [
     longitude: -68.636800,
     altitude: 100,
     heading: 270,
-    gimbalPitch: -40
+    gimbalPitch: -40,
+    zoomFactor: 1
   },
   {
     // 5. Center approach, looking straight down at the target
@@ -183,7 +205,8 @@ const sampleWaypoints: LiveWaypointData[] = [
     longitude: -68.637841,
     altitude: 180,
     heading: 30,
-    gimbalPitch: -80
+    gimbalPitch: -80,
+    zoomFactor: 1
   }
 ];
 

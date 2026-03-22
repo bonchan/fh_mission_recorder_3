@@ -12,6 +12,7 @@
   top: 20px;
   left: 20px;
   padding: 12px;
+  min-width: 200px;
   background: rgba(0, 0, 0, 0.8);
   /* Slightly darker for better contrast */
   color: #00ff00;

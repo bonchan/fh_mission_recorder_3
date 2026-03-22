@@ -174,7 +174,7 @@ export function Map({
             }
         };
 
-        waypoints.forEach((wp, index) => processDroneGeometry(wp, false, index));
+        waypoints.forEach((wp, index) => processDroneGeometry(wp as LiveDroneData, false, index));
 
         if (liveDroneData) {
             processDroneGeometry(liveDroneData, true);

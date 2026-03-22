@@ -4,7 +4,8 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    permissions: ['debugger', 'tabs', 'activeTab'],
-    
+    permissions: ['sidePanel', 'storage', 'tabs', 'activeTab', 'debugger'],
+    host_permissions: ['https://fh.dji.com/*'],
+    action: {},
   },
 });

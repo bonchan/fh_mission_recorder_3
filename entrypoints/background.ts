@@ -1,10 +1,69 @@
-// entrypoints/background/index.ts
+import { DJI_PROJECT_BASE_REGEX, ICONS_ON, ICONS_OFF } from '@/utils/constants'
 
-import { LiveDroneData } from "@/utils/interfaces";
+import { LiveDroneData } from '@/utils/interfaces';
 
 export default defineBackground(() => {
   const registry = new Map<number, number>(); // Key: FH_TabId, Value: Dashboard_TabId
   const activeDebugSessions = new Set<number>(); // Set of FH_TabIds
+
+  const generalListener = async (tabId: number, url: string | undefined) => {
+    if (!url) return;
+
+    // Use .exec() instead of .match() so we can grab the capture groups
+    const match = DJI_PROJECT_BASE_REGEX.exec(url);
+
+    if (match) {
+      // match[1] is the orgId, match[2] is the projectId based on your Regex
+      const orgId = match[1];
+      const projectId = match[2];
+
+      await browser.action.setIcon({ tabId, path: ICONS_ON });
+
+      // Append the extracted IDs to the URL!
+      await browser.sidePanel.setOptions({
+        tabId,
+        path: `sidepanelview.html?orgId=${orgId}&projectId=${projectId}&tabId=${tabId}`,
+        enabled: true
+      });
+    } else {
+      await browser.action.setIcon({ tabId, path: ICONS_OFF });
+      await browser.sidePanel.setOptions({
+        tabId,
+        enabled: false
+      });
+    }
+  };
+
+  browser.action.onClicked.addListener(async (tab) => {
+    if (!tab.id || !tab.url) return;
+
+    // We still have to open it, but the path is already set correctly by generalListener!
+    const isMatch = !!DJI_PROJECT_BASE_REGEX.exec(tab.url);
+
+    if (isMatch) {
+      await browser.sidePanel.open({ tabId: tab.id });
+    }
+  });
+
+  browser.tabs.onActivated.addListener(async (info) => {
+    const tab = await browser.tabs.get(info.tabId);
+    await generalListener(info.tabId, tab.url);
+  });
+
+  browser.tabs.onUpdated.addListener((tabId, info, tab) => {
+    if (info.status === 'complete' || info.url) {
+      generalListener(tabId, tab.url);
+    }
+  });
+
+
+
+
+
+
+
+
+
 
   browser.runtime.onMessage.addListener(async (message, sender) => {
     // 1. Handling Dashboard Creation
@@ -33,8 +92,11 @@ export default defineBackground(() => {
     }
   });
 
-  // --- DEBUGGER CORE LOGIC ---
 
+
+
+
+  // --- DEBUGGER CORE LOGIC ---
   function attachDebugger(fhTabId: number) {
     if (activeDebugSessions.has(fhTabId)) return;
 
@@ -120,6 +182,15 @@ export default defineBackground(() => {
   }
 
   // --- CLEANUP ---
+  chrome.debugger.onDetach.addListener((source) => {
+    if (source.tabId) {
+      activeDebugSessions.delete(source.tabId);
+      const dashboardId = registry.get(source.tabId);
+      if (dashboardId) {
+        browser.tabs.sendMessage(dashboardId, { action: 'DEBUGGER_DETACHED' }).catch(() => { });
+      }
+    }
+  });
 
   browser.tabs.onRemoved.addListener((tabId) => {
     // If FlightHub tab is closed
@@ -136,16 +207,6 @@ export default defineBackground(() => {
         detachDebugger(fhId);
         registry.delete(fhId);
         break;
-      }
-    }
-  });
-
-  chrome.debugger.onDetach.addListener((source) => {
-    if (source.tabId) {
-      activeDebugSessions.delete(source.tabId);
-      const dashboardId = registry.get(source.tabId);
-      if (dashboardId) {
-        browser.tabs.sendMessage(dashboardId, { action: 'DEBUGGER_DETACHED' }).catch(() => { });
       }
     }
   });

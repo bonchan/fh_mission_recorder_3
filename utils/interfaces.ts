@@ -54,7 +54,16 @@ export interface LiveWaypointData {
 export interface Mission {
   id: string;
   name: string;
+  projectId: string;
+  orgId: string;
+  device: Drone | undefined;
+  lastUpdated: number;
+  // author: string | null;
+  // isExpanded: boolean;
+  // waypoints: Waypoint[];
 }
+
+export type MissionMap = Record<string, Mission[]>;
 
 export interface Dock {
   index: number;

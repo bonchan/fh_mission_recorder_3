@@ -17,9 +17,6 @@ const FIVE_MIN_MS = 5 * 60 * 1000;
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 export function ExtensionDataProvider({ children }: { children: React.ReactNode }) {
-
-
-
   // --- TOPOLOGIES ---
   const getTopologies = async (orgId: string, projectId: string, tabId: number) => {
     const key = getProjectTopologiesStorageKey(orgId, projectId)

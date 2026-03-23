@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Map } from '@/components/map/Map';
 import styles from './DashboardView.module.css';
 import { LiveDroneData, LiveWaypointData, Annotation } from '@/utils/interfaces';
-import { useDjiSimulator } from '@/components/simulator/useDjiSimulator';
+import { useDjiSimulator } from '@/hooks/useDjiSimulator';
 
 import { generateWaypointsFromTemplate } from '@/mission/missionGenerator'
 import { AIB } from '@/mission/templates'

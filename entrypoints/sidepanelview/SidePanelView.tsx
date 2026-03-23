@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { useToast } from '@/providers/ToastProvider';
-import { Mission, Drone, Annotation } from '@/utils/interfaces';
+import { useExtensionData } from '@/providers/ExtensionDataProvider';
+import { useLiveMissions } from '@/hooks/useLiveMissions';
+import { Mission, MissionMap, Drone, Annotation } from '@/utils/interfaces';
 
 // import { MissionItem } from '@/components/MissionItem';
 // import { delay } from '@/utils/time';
@@ -22,6 +23,15 @@ export default function SidePanelView() {
   const projectId = urlParams.get('projectId');
   const tabId = parseInt(urlParams.get('tabId') || '0', 10);
 
+  if (orgId == null || projectId == null) {
+    return (
+      <div style={{ padding: '20px', backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+        Loading...
+      </div>
+    )
+  }
+
+  const { missions, isLoadingMissions, saveMissions } = useLiveMissions(orgId, projectId);
 
   // --- EFFECT 1: TOPOLOGIES (Fast, 12h cache) ---
   useEffect(() => {
@@ -62,145 +72,10 @@ export default function SidePanelView() {
     fetchAnnotations();
   }, [orgId, projectId, tabId, getAnnotations]);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // const [tabId, setTabId] = useState(Number);
-
-  // const [projectMissionsMap, setProjectMissionsMap] = useState<MissionMap>({});
-
   // // --- Modal State ---
   const [showModal, setShowModal] = useState(false);
   const [newMissionName, setNewMissionName] = useState('');
   const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0);
-
-  // const [currentUser, setCurrentUser] = useState('');
-
-
-
-
-  // useEffect(() => {
-  //   const init = async () => {
-  //     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  //     if (!tab?.id) return;
-
-  //     if (!currentUser) {
-  //       const currentUserResponse = await browser.tabs.sendMessage(tab.id, { action: "GET_CURRENT_USER" });
-  //       console.log('currentUserResponse', currentUserResponse)
-
-  //       setCurrentUser(currentUserResponse.currentUser.data.nickname)
-
-  //       const pId = currentUserResponse.projectId;
-  //       const oId = currentUserResponse.orgId;
-  //       setProjectId(pId);
-  //       setOrgId(oId);
-
-  //       setTabId(tab.id)
-  //     }
-  //   }
-  //   init();
-  // }, []);
-
-  // useEffect(() => {
-  //   const init = async () => {
-  //     try {
-  //       // const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  //       // if (!tab?.id) return;
-  //       const annotationsResponse = await browser.tabs.sendMessage(tabId, { action: "GET_ANNOTATIONS" });
-  //       const annotationList: Annotation[] = [];
-  //       for (const elementList of annotationsResponse.annotations.data) {
-  //         for (const element of elementList.elements) {
-  //           const annotation = toAnnotation(element);
-  //           if (annotation) {
-  //             annotationList.push(annotation);
-  //           }
-  //         }
-  //       }
-  //       saveAnnotations(orgId, projectId, annotationList)
-  //     } catch (err) {
-  //       console.error("Failed to load annotations", err);
-  //     }
-  //   };
-  //   init();
-
-  // }, [projectId, orgId, tabId]);
-
-  // useEffect(() => {
-
-  //   const init = async () => {
-
-  //     setIsFetching(true);
-  //     try {
-  //       // const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  //       // if (!tab?.id) return;
-  //       const topologiesResponse = await browser.tabs.sendMessage(tabId, { action: "GET_TOPOLOGIES" });
-  //       const topologies = topologiesResponse.topologies.data.list
-  //       const data = await loadMissions(orgId, projectId);
-  //       setProjectMissionsMap(data);
-
-  //       const deviceList: Drone[] = [];
-  //       for (const item of topologies) {
-  //         const drone = toDockDrone(item);
-  //         // Only add to the list if the mapper returned a valid object
-  //         if (drone && drone.deviceSn && drone.parent.deviceSn) {
-  //           deviceList.push(drone);
-  //         }
-  //       }
-  //       const deviceListSorted = [...deviceList].sort((a, b) => {
-  //         const indexA = a.parent?.index ?? 999;
-  //         const indexB = b.parent?.index ?? 999;
-  //         return indexA - indexB;
-  //       });
-
-  //       setDevices(deviceListSorted);
-  //       if (deviceListSorted.length > 0) {
-  //         setSelectedDeviceIndex(0)
-  //       }
-
-  //     } catch (err) {
-  //       console.error("Failed to load docks", err);
-  //       // alert("Please ensure the DJI tab is active and refreshed.");
-  //     } finally {
-  //       setIsFetching(false);
-  //     }
-
-  //   };
-  //   init();
-
-  //   const handleStorageChange = (changes: any, areaName: string) => {
-  //     if (areaName === 'local' && projectId && orgId) {
-  //       const expectedKey = getProjectMissionsStorageKey(orgId, projectId);
-  //       if (changes[expectedKey]) {
-  //         // console.log("Storage updated in another tab! Syncing...", changes[expectedKey]);
-  //         setProjectMissionsMap(changes[expectedKey].newValue || {});
-  //       }
-  //     }
-  //   };
-
-  //   browser.storage.onChanged.addListener(handleStorageChange);
-
-  //   return () => {
-  //     browser.storage.onChanged.removeListener(handleStorageChange);
-  //   };
-
-  // }, [projectId, orgId, tabId]);
 
   // 1. Open Modal and Fetch Docks via Content Script
   const openCreateModal = async () => {
@@ -210,31 +85,33 @@ export default function SidePanelView() {
   // 2. Finalize Mission Creation
   const handleConfirmCreate = async () => {
     // console.log(newMissionName, selectedDeviceIndex)
-    if (!newMissionName) return;
+    if (!newMissionName || !projectId || !orgId) return;
 
-    // const selectedDock = devices[selectedDeviceIndex];
-    // const dockSn = selectedDock?.parent?.deviceSn
+    const selectedDevice = devices[selectedDeviceIndex];
+    const dockSn = selectedDevice?.parent?.deviceSn;
 
-    // if (dockSn == undefined) return;
+    if (dockSn == undefined) return;
 
     const newMission: Mission = {
       id: crypto.randomUUID(),
       name: newMissionName,
       // author: currentUser,
-      // projectId: projectId,
-      // orgId: orgId,
-      // device: devices[selectedDeviceIndex],
-      // lastUpdated: Date.now(),
+      orgId: orgId,
+      projectId: projectId,
+      device: selectedDevice,
+      lastUpdated: Date.now(),
       // isExpanded: true,
       // waypoints: [],
     };
 
-    // const currentDockMissions = projectMissionsMap[dockSn] || [];
-    // const updatedList = [newMission, ...currentDockMissions];
-    // await saveMissions(orgId, projectId, dockSn, updatedList);
-    // setProjectMissionsMap(prev => ({ ...prev, [dockSn]: updatedList }));
+    // 1. Read from the hook's 'missions' object instead of the old local state
+    const currentDockMissions = missions[dockSn] || [];
+    const updatedList = [newMission, ...currentDockMissions];
 
-    // Reset and Close
+    // 2. Call the new hook function (only requires 2 arguments now!)
+    await saveMissions(dockSn, updatedList);
+
+    // 3. Reset and Close
     setNewMissionName('');
     setShowModal(false);
 
@@ -414,6 +291,17 @@ export default function SidePanelView() {
         </div>
       )}
 
+
+      <div>
+        <h3>Live Missions</h3>
+        {isLoadingMissions ? (
+          <p>Loading missions...</p>
+        ) : (
+          <pre>{JSON.stringify(missions, null, 2)}</pre>
+        )}
+      </div>
+
+
       {/*
       <h3 style={{ fontSize: '1rem', marginBottom: '10px' }}>Missions ({displayMissions.length})</h3>
 
@@ -442,7 +330,7 @@ export default function SidePanelView() {
 
 
 
-      
+
     </div>
   );
 }

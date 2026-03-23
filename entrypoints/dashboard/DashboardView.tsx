@@ -1,81 +1,84 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Map } from '@/components/map/Map';
 import styles from './DashboardView.module.css';
 import { LiveDroneData, LiveWaypointData, Annotation } from '@/utils/interfaces';
 import { useDjiSimulator } from '@/hooks/useDjiSimulator';
+import { useLiveMissions } from '@/hooks/useLiveMissions';
+import { useExtensionData } from '@/providers/ExtensionDataProvider';
 
-import { generateWaypointsFromTemplate2 } from '@/components/mission/missionGenerator'
-import { MISSION_TEMPLATES } from '@/components/mission/templates'
+import { generateDJIMission, generateDJIMissionFiles } from '@/utils/wpml-generator';
+
 
 export function DashboardView() {
+  // 1. Get IDs from the URL (You must pass these when opening the dashboard!)
   const params = new URLSearchParams(window.location.search);
   const sourceTabId = parseInt(params.get('sourceTabId') || '0');
+  const orgId = params.get('orgId') || '';
+  const projectId = params.get('projectId') || '';
+  const missionId = params.get('missionId') || '';
 
+  // --- DATA HOOKS ---
+  const { missions } = useLiveMissions(orgId, projectId);
+  const { getAnnotations } = useExtensionData();
+
+  const [liveAnnotations, setLiveAnnotations] = useState<Annotation[]>([]);
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missionId);
+
+  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
+
+  // Flatten missions
+  const allMissions = Object.values(missions || {}).flat();
+  const selectedMission = allMissions.find(m => m.id === selectedMissionId);
+
+  // --- TELEMETRY STATE ---
   const [isDebuggerActive, setIsDebuggerActive] = useState(false);
   const [currentTabId, setCurrentTabId] = useState<number | null>(sourceTabId);
   const [isTelemetryLost, setIsTelemetryLost] = useState(false);
   const lastHeartbeatRef = useRef<number>(0);
+  const activeMissionSnRef = useRef<string | null>(null);
 
   const [livedroneData, setLivedroneData] = useState<LiveDroneData>({
-    timestamp: 0,
-    sn: '',
-    latitude: 0,
-    longitude: 0,
-    altitude: 0,
-    heading: 0,
-    gimbalPitch: 0,
-    cameraMode: 0,
-    zoomFactor: 0,
-    trigger: false
+    timestamp: 0, sn: '', latitude: 0, longitude: 0, altitude: 0,
+    heading: 0, gimbalPitch: 0, cameraMode: 0, zoomFactor: 0, trigger: false
   });
 
-  const [waypoints, setWaypoints] = useState<LiveWaypointData[]>([]);
-
   const { data: simData, isConnected, connect, disconnect } = useDjiSimulator();
-  // const activeData = isConnected ? simData : backgroundTelemetry;
 
+  // --- FETCH ANNOTATIONS ON MOUNT ---
   useEffect(() => {
-    if (simData && simData.sn == '') {
-      // console.log("Received sim telemetry update:", simData);
+    if (orgId && projectId) {
+      getAnnotations(orgId, projectId)
+        .then(setLiveAnnotations)
+        .catch(err => console.error("Failed to load annotations", err));
+    }
+  }, [orgId, projectId, currentTabId]);
+
+  // --- TELEMETRY LISTENERS ---
+  useEffect(() => {
+    if (simData && simData.sn == selectedMission?.device.deviceSn) {
       lastHeartbeatRef.current = simData.timestamp;
+      console.log('simData', simData)
       setLivedroneData(simData);
-
-      if (simData.trigger) {
-        // setWaypoints(prevWaypoints => [...prevWaypoints, simData]);
-
-        const cluster = generateWaypointsFromTemplate2(simData, MISSION_TEMPLATES[0].template);
-        // setWaypoints(cluster)
-
-        // Add all 3 to the existing waypoints list
-        setWaypoints(prevWaypoints => [...prevWaypoints, ...cluster]);
-      }
     }
   }, [simData]);
 
-  // 2. Listen for data coming from the Background Debugger
+  useEffect(() => {
+    activeMissionSnRef.current = selectedMission?.device?.deviceSn || null;
+  }, [selectedMission]);
+
   useEffect(() => {
     const listener = (message: any) => {
-      // Listen for the telemetry processed by the background script
       if (message.action === 'LIVE_TELEMETRY_UPDATE') {
-
-        if (message.liveDroneData.sn == '') {
-          console.log("Received live telemetry update:", message);
+        if (message.liveDroneData.sn == activeMissionSnRef.current) {
           lastHeartbeatRef.current = message.liveDroneData.timestamp;
           setLivedroneData(message.liveDroneData);
+
         }
-
       }
-
-      // Sync UI if debugger is detached (e.g. user clicks "Cancel" on the gray bar)
-      if (message.action === 'DEBUGGER_DETACHED') {
-        setIsDebuggerActive(false);
-      }
+      if (message.action === 'DEBUGGER_DETACHED') setIsDebuggerActive(false);
     };
-
     browser.runtime.onMessage.addListener(listener);
     return () => browser.runtime.onMessage.removeListener(listener);
-
-
   }, []);
 
   useEffect(() => {
@@ -84,160 +87,200 @@ export function DashboardView() {
         setIsTelemetryLost(false);
         return;
       }
-
-      const now = Date.now();
-      const delta = now - lastHeartbeatRef.current;
-
-      // If no data for more than 4 seconds (double our check rate), mark as lost
-      if (delta > 4000) {
-        setIsTelemetryLost(true);
-      } else {
-        setIsTelemetryLost(false);
-      }
+      const delta = Date.now() - lastHeartbeatRef.current;
+      setIsTelemetryLost(delta > 4000);
     }, 2000);
-
     return () => clearInterval(watchdog);
   }, [isDebuggerActive]);
 
+  // --- AUTO-CENTER MAP ON MISSION SELECTION ---
+  useEffect(() => {
+    if (!selectedMission) return;
+
+    console.log('selectedMission', selectedMission)
+
+    const waypoints = selectedMission.waypoints || [];
+
+    if (waypoints.length > 0) {
+      // 1. Mission has waypoints: Grab the very last one
+      const lastWp = waypoints[waypoints.length - 1];
+      console.log('lastWp', lastWp)
+
+      if (lastWp.longitude && lastWp.latitude) {
+        setMapCenter([lastWp.longitude, lastWp.latitude]);
+      }
+    } else {
+      // 2. No waypoints: Fallback to the Dock's (parent) coordinates
+      const dock = selectedMission.device?.parent;
+      console.log('dock', dock)
+
+      if (dock?.longitude && dock?.latitude) {
+        setMapCenter([dock.longitude, dock.latitude]);
+      }
+    }
+  }, [selectedMission]);
+
   const toggleDebugger = async () => {
     if (!currentTabId) return;
-
     const nextState = !isDebuggerActive;
-
-    // We send the message to the BACKGROUND, not the content script
     await browser.runtime.sendMessage({
       action: nextState ? 'ENABLE_WS_DEBUG' : 'DISABLE_WS_DEBUG',
       tabId: currentTabId
     });
-
     setIsDebuggerActive(nextState);
   };
 
-  return (
-    <div className={styles.dashboardContainer}>
-      <Map
-        initialCenter={[-68.637840983, -38.348942412]}
-        liveDroneData={livedroneData}
-        waypoints={waypoints}
-        annotations={sampleAnnotations}
-      />
+  const handleExportMission = async (mission: Mission) => {
+    const blob = await generateDJIMission(mission);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
 
-      <div className={styles.statusOverlay}>
-        <div className={styles.tabInfo}>
-          {currentTabId ? `Connected to Tab: ${currentTabId}` : 'Finding DJI Tab...'}
+    const cleanName = mission.name.replace(/[<>:"/|?*._\\]/g, '');
+    a.download = `P2--${cleanName}.kmz`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Convert mission Waypoints to Map expected format
+  const mappedWaypoints: LiveWaypointData[] = (selectedMission?.waypoints || []).map(wp => ({
+    latitude: wp.latitude,
+    longitude: wp.longitude,
+    altitude: wp.elevation || 0,
+    heading: wp.yaw || 0,
+    gimbalPitch: wp.pitch || 0,
+    zoomFactor: wp.zoom || 1
+  }));
+
+  // --- RENDER ---
+  if (!orgId || !projectId) {
+    return <div style={{ color: 'white', padding: '20px' }}>Missing orgId or projectId in URL!</div>;
+  }
+
+  return (
+    <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#000' }}>
+
+      {/* LEFT SIDEBAR: Missions & Waypoints */}
+      <div style={{ width: '350px', backgroundColor: '#111', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+
+        {/* Missions List */}
+        <div style={{ padding: '15px', borderBottom: '1px solid #333', flex: '0 0 auto' }}>
+          <h2 style={{ color: 'white', fontSize: '16px', margin: '0 0 15px 0' }}>Project Missions</h2>
+          {allMissions.length === 0 ? (
+            <p style={{ color: '#888', fontSize: '12px' }}>No missions found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {allMissions.map(mission => (
+                <div
+                  key={mission.id}
+                  onClick={() => setSelectedMissionId(mission.id === selectedMissionId ? null : mission.id)}
+                  style={{
+                    padding: '10px',
+                    backgroundColor: mission.id === selectedMissionId ? '#0066ff' : '#222',
+                    color: 'white',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    border: '1px solid',
+                    borderColor: mission.id === selectedMissionId ? '#0066ff' : '#444'
+                  }}
+                >
+                  {mission.name}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <button
-          onClick={toggleDebugger}
-          className={`${styles.simButton} ${isDebuggerActive ? styles.active : ''}`}
-        >
-          {isDebuggerActive ? '🔴 DISCONNECT DEBUGGER' : '🔌 ATTACH TO FLIGHTHUB'}
-        </button>
-        <div />
-        <button
-          onClick={isConnected ? disconnect : connect}
-          className={`${styles.simButton}`}
-        >
-          {isConnected ? "🛑 Stop Local Sim" : "🟢 Start Local Sim"}
-        </button>
+        {/* Waypoints List (Only shows if a mission is selected) */}
+        <div style={{ padding: '15px', flex: '1 1 auto', overflowY: 'auto' }}>
+          {selectedMission ? (
+            <>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleExportMission(selectedMission);
+                }}
+                style={{
+                  background: '#333',
+                  border: 'none',
+                  color: '#99b7e2',
+                  padding: '5px 10px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                'Export'
+              </button>
+
+              <h3 style={{ color: '#aaa', fontSize: '12px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>
+                Waypoints: {selectedMission.name}
+              </h3>
+              {(selectedMission.waypoints || []).length === 0 ? (
+                <p style={{ color: '#666', fontSize: '12px' }}>No waypoints recorded yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {selectedMission.waypoints?.map((wp, i) => (
+                    <div key={wp.id} style={{ padding: '8px', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #333', color: '#ccc', fontSize: '11px' }}>
+                      {/* <strong style={{ color: '#fff' }}>WP {i + 1}</strong> • {wp.tag || 'No Tag'} */}
+                      <div style={{ marginTop: '4px', color: '#888' }}>
+                        Lat: {wp.latitude.toFixed(5)} | Lng: {wp.longitude.toFixed(5)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <p style={{ color: '#666', fontSize: '12px', textAlign: 'center', marginTop: '40px' }}>
+              Select a mission to view waypoints on the map.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* RIGHT MAIN AREA: The Map and Overlays */}
+      <div style={{ flex: 1, position: 'relative' }} className={styles.dashboardContainer}>
 
 
-        <pre className={styles.debugInfo}>
-          {JSON.stringify(livedroneData, null, 2)}
-        </pre>
 
-        {isTelemetryLost && (
-          <div className={styles.telemetryError}>
-            🚨 DRONE TELEMETRY LOST! <br />
-            <small>Last seen: {new Date(livedroneData.timestamp).toLocaleTimeString()}</small>
+        <Map
+          initialCenter={mapCenter}
+          liveDroneData={livedroneData}
+          waypoints={mappedWaypoints} // Hand the selected mission's waypoints to the map!
+          annotations={liveAnnotations} // Live annotations!
+        />
+
+        {/* Existing Overlays */}
+        <div className={styles.statusOverlay}>
+          <div className={styles.tabInfo}>
+            {currentTabId ? `Connected to Tab: ${currentTabId}` : 'Finding DJI Tab...'}
           </div>
-        )}
 
+          <button onClick={toggleDebugger} className={`${styles.simButton} ${isDebuggerActive ? styles.active : ''}`}>
+            {isDebuggerActive ? '🔴 DISCONNECT DEBUGGER' : '🔌 ATTACH TO FLIGHTHUB'}
+          </button>
 
+          <button onClick={isConnected ? disconnect : connect} className={`${styles.simButton}`}>
+            {isConnected ? "🛑 Stop Local Sim" : "🟢 Start Local Sim"}
+          </button>
 
+          <pre className={styles.debugInfo}>
+            {JSON.stringify(livedroneData, null, 2)}
+          </pre>
+
+          {isTelemetryLost && (
+            <div className={styles.telemetryError}>
+              🚨 DRONE TELEMETRY LOST! <br />
+              <small>Last seen: {new Date(livedroneData.timestamp).toLocaleTimeString()}</small>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-
-// ... Keep your sampleWaypoints and sampleAnnotations constants below
-
-const sampleWaypoints: LiveWaypointData[] = [
-  {
-    // 1. South-West corner, looking North-East
-    latitude: -38.349800,
-    longitude: -68.638800,
-    altitude: 20,
-    heading: 45,
-    gimbalPitch: -30,
-    zoomFactor: 1
-  },
-  {
-    // 2. North-West corner, looking East
-    latitude: -38.348000,
-    longitude: -68.638800,
-    altitude: 100,
-    heading: 80,
-    gimbalPitch: -45,
-    zoomFactor: 1
-  },
-  {
-    // 3. North-East corner, looking South
-    latitude: -38.348000,
-    longitude: -68.636800,
-    altitude: 120,
-    heading: 120,
-    gimbalPitch: -60,
-    zoomFactor: 1
-  },
-  {
-    // 4. South-East corner, looking West
-    latitude: -38.349800,
-    longitude: -68.636800,
-    altitude: 100,
-    heading: 270,
-    gimbalPitch: -40,
-    zoomFactor: 1
-  },
-  {
-    // 5. Center approach, looking straight down at the target
-    latitude: -38.348942,
-    longitude: -68.637841,
-    altitude: 180,
-    heading: 30,
-    gimbalPitch: -80,
-    zoomFactor: 1
-  }
-];
-
-
-const sampleAnnotations: Annotation[] = [
-  {
-    id: 'anno-1',
-    name: 'Launch / Landing Pad',
-    latitude: -38.349200,
-    longitude: -68.638200,
-    color: '#00ff00' // Green
-  },
-  {
-    id: 'anno-2',
-    name: 'Radio Tower (Obstacle)',
-    latitude: -38.348500,
-    longitude: -68.637200,
-    color: '#ff0000' // Red
-  },
-  {
-    id: 'anno-3',
-    name: 'Inspection Target',
-    latitude: -38.349500,
-    longitude: -68.636800,
-    color: '#0088ff' // Blue
-  },
-  {
-    id: 'anno-4',
-    name: 'Safe Zone / Rally Point',
-    latitude: -38.348200,
-    longitude: -68.638500,
-    color: '#ffaa00' // Orange/Yellow
-  }
-];

@@ -5,7 +5,10 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
     permissions: ['sidePanel', 'storage', 'tabs', 'activeTab', 'debugger'],
-    host_permissions: ['https://fh.dji.com/*'],
+    host_permissions: [
+      'https://fh.dji.com/*',
+      '*://*.google.com/*'
+    ],
     action: {},
   },
 });

@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
 import { Map as MapLibreMap } from 'react-map-gl/maplibre';
 import { LineLayer, PolygonLayer, PathLayer, TextLayer, ScatterplotLayer } from '@deck.gl/layers';
-import { MapController } from 'deck.gl';
+import { MapController, FlyToInterpolator } from 'deck.gl';
 import * as turf from '@turf/turf';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Compass } from '@/components/map/Compass';
@@ -64,6 +64,7 @@ type ViewState = {
   pitch: number;
   bearing: number;
   transitionDuration?: number;
+  transitionInterpolator?: any;
 };
 
 interface MapProps {
@@ -277,7 +278,30 @@ export function Map({
 
   const handleCompassClick = () => {
     setViewState(prev => ({ ...prev, bearing: 0, pitch: 0, transitionDuration: 100 }));
+
+
+    // setViewState(prev => ({ 
+    //   ...prev, 
+    //   bearing: 0, 
+    //   pitch: 0, 
+    //   transitionDuration: 500,
+    //   transitionInterpolator: new FlyToInterpolator() 
+    // }));
   };
+
+  useEffect(() => {
+    // Check if coords are valid and not [0,0]
+    if (initialCenter && initialCenter[0] !== 0 && initialCenter[1] !== 0) {
+      setViewState((prev) => ({
+        ...prev,
+        longitude: initialCenter[0],
+        latitude: initialCenter[1],
+        zoom: 18, 
+        transitionDuration: 1500,
+        transitionInterpolator: new FlyToInterpolator()
+      }));
+    }
+  }, [initialCenter]);
 
   return (
     <div

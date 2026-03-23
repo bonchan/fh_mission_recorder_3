@@ -87,6 +87,8 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
           pitch: currentDroneData.pitch || 0,
           zoom: currentDroneData.zoom || 1,
           // tag: '' // Default to empty string
+          turn: "CW",
+          actionGroup: null
         };
 
         let updatedWaypoints = [...(mission.waypoints || []), newWaypoint];

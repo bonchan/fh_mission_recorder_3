@@ -6,8 +6,8 @@ import { toDockDrone, toAnnotation, toWaypoint } from '@/utils/mapper';
 import { getCachedOrFetch } from '@/utils/storageCache';
 
 interface DataContextType {
-  getTopologies: (orgId: string, projectId: string, tabId: number) => Promise<any[]>;
-  getAnnotations: (orgId: string, projectId: string, tabId: number) => Promise<any[]>;
+  getTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
+  getAnnotations: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
   getDroneTelemetry: (orgId: string, projectId: string, droneDeviceSn: string) => Promise<Waypoint>;
 }
 
@@ -58,12 +58,14 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
   }
 
   // --- TOPOLOGIES ---
-  const getTopologies = async (orgId: string, projectId: string, tabId: number) => {
+  const getTopologies = async (orgId: string, projectId: string, tabId?: number) => {
     const key = getProjectTopologiesStorageKey(orgId, projectId)
+
+    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
 
     return await getCachedOrFetch(key, TWELVE_HOURS_MS, async () => {
       // 1. Fetch fresh from the active tab
-      const res = await browser.tabs.sendMessage(tabId, { action: "GET_TOPOLOGIES", orgId, projectId });
+      const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
       const topologies = res.topologies.data.list
 
       const deviceList: Drone[] = [];
@@ -85,12 +87,14 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
   };
 
   // --- ANNOTATIONS ---
-  const getAnnotations = async (orgId: string, projectId: string, tabId: number) => {
+  const getAnnotations = async (orgId: string, projectId: string, tabId?: number) => {
     const key = getProjectAnnotationsStorageKey(orgId, projectId)
+
+    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
 
     return await getCachedOrFetch(key, FIVE_MIN_MS, async () => {
       // 1. Fetch fresh from the active tab
-      const res = await browser.tabs.sendMessage(tabId, { action: "GET_ANNOTATIONS", orgId, projectId });
+      const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_ANNOTATIONS", orgId, projectId });
       const annotationList: Annotation[] = [];
       for (const elementList of res.annotations.data) {
         for (const element of elementList.elements) {

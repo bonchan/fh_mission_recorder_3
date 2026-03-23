@@ -73,6 +73,8 @@ export interface Waypoint {
   yaw: number;
   pitch: number;
   zoom: number;
+  turn: string;
+  actionGroup: any | null;
 }
 
 export type MissionMap = Record<string, Mission[]>;

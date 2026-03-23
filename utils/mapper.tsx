@@ -1,4 +1,4 @@
-import { Drone, Dock, Annotation } from '@/utils/interfaces';
+import { Drone, Dock, Annotation, Waypoint } from '@/utils/interfaces';
 import { extractNumber } from '@/utils/utils'
 
 export function toDock(djiItem: any): any | null {
@@ -33,6 +33,28 @@ export function toDrone(djiItem: any, dock: Dock | null): any | null {
     };
 
     return drone
+}
+
+export function toWaypoint(djiItem: any, hostSn?: string): any | null {
+    if (!djiItem.host || !djiItem.parents || djiItem.parents.length === 0) return null;
+    const hostRaw = djiItem.host;
+    
+    if(hostSn && hostSn !== hostRaw.device_sn) return null
+
+    const device_state = hostRaw.device_state;
+    const payload_index = device_state.cameras[0].payload_index;
+
+    const waypoint: Waypoint = {
+        id: crypto.randomUUID(),
+        longitude: device_state.longitude,
+        latitude: device_state.latitude,
+        elevation: device_state.elevation,
+        height: device_state.height,
+        yaw: device_state[payload_index].gimbal_yaw,
+        pitch: device_state[payload_index].gimbal_pitch,
+        zoom: device_state.cameras[0].zoom_factor,
+    };
+    return waypoint
 }
 
 export function toDockDrone(djiItem: any): any | null {

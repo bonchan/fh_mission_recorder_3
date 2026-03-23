@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/providers/ToastProvider';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
-import { useLiveMissions } from '@/hooks/useLiveMissions';
 import { Mission, MissionMap, Drone, Annotation } from '@/utils/interfaces';
 
 
@@ -71,32 +70,6 @@ export default function SidePanelView() {
 
     fetchAnnotations();
   }, [orgId, projectId, tabId, getAnnotations]);
-
-  const handleUpdateMission = async (updatedMission: Mission) => {
-    // // 1. Identify which dock this mission belongs to
-    // const dockSn = updatedMission.device?.parent?.deviceSn;
-    // if (!dockSn) {
-    //   console.error("Mission has no associated dock SN");
-    //   return;
-    // }
-
-    // // 2. Get the current list for that specific dock from your local map state
-    // const currentDockMissions = projectMissionsMap[dockSn] || [];
-
-    // // 3. Map through ONLY that dock's missions to update the one that changed
-    // const updatedList = currentDockMissions.map(m =>
-    //   m.id === updatedMission.id ? updatedMission : m
-    // );
-
-    // // 4. Update local UI state (the map)
-    // setProjectMissionsMap(prev => ({
-    //   ...prev,
-    //   [dockSn]: updatedList
-    // }));
-
-    // // 5. Persist to storage using the org/project/dock context
-    // await saveMissions(orgId, projectId, dockSn, updatedList);
-  };
 
   const handleAddWaypoint = async (mission: Mission) => {
     // if (isFetching) return;
@@ -179,37 +152,6 @@ export default function SidePanelView() {
 
 
       <MissionsContainer orgId={orgId} projectId={projectId} devices={devices} isFetching={isFetching}></MissionsContainer>
-
-
-
-      {/*
-      <h3 style={{ fontSize: '1rem', marginBottom: '10px' }}>Missions ({displayMissions.length})</h3>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {displayMissions.length === 0 ? (
-          <div style={{ color: '#555', fontSize: '12px', textAlign: 'center', marginTop: '20px' }}>
-            No missions logged.
-          </div>
-        ) : (
-          displayMissions.map((m) => (
-            <MissionItem
-              key={m.id}
-              mission={m}
-              isFetching={isFetching}
-              viewContext={ViewContext.SIDEPANEL}
-              onSave={handleUpdateMission}
-              onAddWaypoint={handleAddWaypoint}
-              onViewDashboard={handleViewDashboard}
-              onExportMission={() => { }}
-              onDebugMission={() => { }}
-            />
-          ))
-        )}
-      </div>
-      */}
-
-
-
 
     </div>
   );

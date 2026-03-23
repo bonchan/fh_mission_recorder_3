@@ -1,3 +1,7 @@
+export enum ViewContext {
+  SIDEPANEL = 'sidepanel',
+  DASHBOARD = 'dashboard'
+}
 export interface Dock {
   index: number;
   deviceSn: string;
@@ -24,10 +28,6 @@ export interface Annotation {
   latitude: number;
   color: string;
 }
-
-
-
-
 
 export interface LiveDroneData {
   timestamp: number;
@@ -56,7 +56,7 @@ export interface Mission {
   name: string;
   projectId: string;
   orgId: string;
-  device: Drone | undefined;
+  device: Drone;
   createdDate: number;
   updatedDate: number;
   // author: string | null;
@@ -65,29 +65,19 @@ export interface Mission {
 }
 
 export interface Waypoint {
-
+  id: string;
+  longitude: number;
+  latitude: number;
+  elevation: number;
+  height: number;
+  yaw: number;
+  pitch: number;
+  zoom: number;
 }
 
 export type MissionMap = Record<string, Mission[]>;
 
-export interface Dock {
-  index: number;
-  deviceSn: string;
-  deviceModelName: string;
-  deviceOrganizationCallsign: string;
-  longitude: number;
-  latitude: number;
-  height: number;
-}
 
-export interface Drone {
-  deviceSn: string;
-  deviceModelName: string;
-  deviceModelKey: string;
-  deviceOrganizationCallsign: string;
-  payloadIndex: string;
-  parent: Dock | null;
-}
 
 
 

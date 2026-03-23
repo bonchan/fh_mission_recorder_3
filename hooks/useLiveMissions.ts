@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MissionMap, Mission } from '@/utils/interfaces'; // Assuming you have these
+import { MissionMap, Mission } from '@/utils/interfaces';
 import { getProjectMissionsStorageKey } from '@/utils/utils';
 
 export function useLiveMissions(orgId: string, projectId: string) {

@@ -57,10 +57,15 @@ export interface Mission {
   projectId: string;
   orgId: string;
   device: Drone | undefined;
-  lastUpdated: number;
+  createdDate: number;
+  updatedDate: number;
   // author: string | null;
   // isExpanded: boolean;
-  // waypoints: Waypoint[];
+  waypoints: Waypoint[];
+}
+
+export interface Waypoint {
+
 }
 
 export type MissionMap = Record<string, Mission[]>;

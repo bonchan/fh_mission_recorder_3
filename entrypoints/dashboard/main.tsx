@@ -1,14 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { DashboardView } from './DashboardView';
-import { ExtensionStateProvider } from '@/components/ExtensionStateProvider';
+import { ExtensionDataProvider } from '@/providers/ExtensionDataProvider';
 
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-        <ExtensionStateProvider>
+        <ExtensionDataProvider>
             <DashboardView />
-        </ExtensionStateProvider>
+        </ExtensionDataProvider>
     </React.StrictMode>
 );
 

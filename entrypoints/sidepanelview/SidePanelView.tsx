@@ -4,7 +4,8 @@ import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { useLiveMissions } from '@/hooks/useLiveMissions';
 import { Mission, MissionMap, Drone, Annotation } from '@/utils/interfaces';
 
-// import { MissionItem } from '@/components/MissionItem';
+
+import { MissionsContainer } from '@/components/mission/MissionsContainer';
 // import { delay } from '@/utils/time';
 // import { toAnnotation, toDock, toWaypoint, } from '@/utils/mapper'
 // import { getProjectMissionsStorageKey } from '@/utils/utils';
@@ -31,7 +32,6 @@ export default function SidePanelView() {
     )
   }
 
-  const { missions, isLoadingMissions, saveMissions } = useLiveMissions(orgId, projectId);
 
   // --- EFFECT 1: TOPOLOGIES (Fast, 12h cache) ---
   useEffect(() => {
@@ -71,52 +71,6 @@ export default function SidePanelView() {
 
     fetchAnnotations();
   }, [orgId, projectId, tabId, getAnnotations]);
-
-  // // --- Modal State ---
-  const [showModal, setShowModal] = useState(false);
-  const [newMissionName, setNewMissionName] = useState('');
-  const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0);
-
-  // 1. Open Modal and Fetch Docks via Content Script
-  const openCreateModal = async () => {
-    setShowModal(true);
-  };
-
-  // 2. Finalize Mission Creation
-  const handleConfirmCreate = async () => {
-    // console.log(newMissionName, selectedDeviceIndex)
-    if (!newMissionName || !projectId || !orgId) return;
-
-    const selectedDevice = devices[selectedDeviceIndex];
-    const dockSn = selectedDevice?.parent?.deviceSn;
-
-    if (dockSn == undefined) return;
-
-    const newMission: Mission = {
-      id: crypto.randomUUID(),
-      name: newMissionName,
-      // author: currentUser,
-      orgId: orgId,
-      projectId: projectId,
-      device: selectedDevice,
-      lastUpdated: Date.now(),
-      // isExpanded: true,
-      // waypoints: [],
-    };
-
-    // 1. Read from the hook's 'missions' object instead of the old local state
-    const currentDockMissions = missions[dockSn] || [];
-    const updatedList = [newMission, ...currentDockMissions];
-
-    // 2. Call the new hook function (only requires 2 arguments now!)
-    await saveMissions(dockSn, updatedList);
-
-    // 3. Reset and Close
-    setNewMissionName('');
-    setShowModal(false);
-
-    // console.log('newMission', newMission)
-  };
 
   const handleUpdateMission = async (updatedMission: Mission) => {
     // // 1. Identify which dock this mission belongs to
@@ -223,83 +177,9 @@ export default function SidePanelView() {
   return (
     <div style={{ padding: '20px', backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'sans-serif' }}>
 
-      <button
-        onClick={openCreateModal}
-        disabled={isFetching}
-        style={{
-          width: '100%', padding: '10px', background: '#0066ff', color: 'white',
-          border: 'none', borderRadius: '4px', cursor: isFetching ? 'not-allowed' : 'pointer',
-          marginBottom: '20px', fontWeight: 'bold'
-        }}
-      >
-        {isFetching ? 'Wait...' : 'New Mission'}
-      </button>
 
+      <MissionsContainer orgId={orgId} projectId={projectId} devices={devices} isFetching={isFetching}></MissionsContainer>
 
-
-      {/* --- Overlay Modal --- */}
-      {showModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px'
-        }}>
-          <div style={{
-            background: '#1e1e1e', padding: '20px', borderRadius: '8px',
-            width: '100%', maxWidth: '300px', border: '1px solid #333'
-          }}>
-            <h2 style={{ fontSize: '1.1rem', marginTop: 0 }}>Create Mission</h2>
-
-            <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px', color: '#888' }}>Mission Name</label>
-            <input
-              value={newMissionName}
-              onChange={(e) => setNewMissionName(e.target.value)}
-              placeholder="e.g. Morning Patrol"
-              style={{ width: '100%', padding: '8px', marginBottom: '15px', background: '#2c2c2c', border: '1px solid #444', color: 'white', boxSizing: 'border-box' }}
-            />
-
-            <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px', color: '#888' }}>Select Dock</label>
-            <select
-              value={selectedDeviceIndex}
-              onChange={(e) => setSelectedDeviceIndex(Number(e.target.value))}
-              style={{ width: '100%', padding: '8px', marginBottom: '20px', background: '#2c2c2c', border: '1px solid #444', color: 'white' }}
-            >
-              {devices.map((device, index) => {
-                return (
-                  <option key={device.parent?.deviceSn} value={index}>{device.parent?.deviceOrganizationCallsign} - {device.deviceOrganizationCallsign}</option>
-                )
-              }
-              )}
-            </select>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => setShowModal(false)}
-                style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #555', color: 'white', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmCreate}
-                disabled={!newMissionName}
-                style={{ flex: 1, padding: '8px', background: '#0066ff', border: 'none', color: 'white', cursor: 'pointer', opacity: !newMissionName ? 0.5 : 1 }}
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      <div>
-        <h3>Live Missions</h3>
-        {isLoadingMissions ? (
-          <p>Loading missions...</p>
-        ) : (
-          <pre>{JSON.stringify(missions, null, 2)}</pre>
-        )}
-      </div>
 
 
       {/*

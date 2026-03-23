@@ -93,6 +93,52 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
     }
   };
 
+  const handleAddTemplateClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    // Safety check just in case legacy missions don't have these IDs
+    if (!mission.orgId || !mission.projectId) {
+      console.error("Missing Project or Org IDs on this mission!");
+      return;
+    }
+
+    setIsFetchingLocation(true);
+
+    try {
+      // 1. Fetch FRESH topologies (bypassing the 12-hour cache by passing true!)
+      // Signature: (orgId, projectId, tabId?, forceFetch?)
+      const currentDroneData = await getDroneTelemetry(mission.orgId, mission.projectId, mission.device.deviceSn);
+
+      // 3. Extract the live telemetry
+      if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
+
+        const newWaypoint: Waypoint = {
+          id: crypto.randomUUID(),
+          latitude: currentDroneData.latitude,
+          longitude: currentDroneData.longitude,
+          elevation: currentDroneData.elevation || 0,
+          height: currentDroneData.height || 0,
+          yaw: currentDroneData.yaw || 0,
+          pitch: currentDroneData.pitch || 0,
+          zoom: currentDroneData.zoom || 1,
+          // tag: '' // Default to empty string
+        };
+
+        // 4. Update the mission array and send it to the parent!
+        const updatedWaypoints = [...(mission.waypoints || []), newWaypoint];
+        onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
+
+      } else {
+        alert("Could not find active telemetry for this drone. Is it turned on?");
+      }
+    } catch (error) {
+      console.error("Failed to fetch drone location:", error);
+      alert("Error fetching location: " + (error as Error).message);
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
   return (
     <div style={{ background: '#1e1e1e', borderRadius: '8px', marginBottom: '10px', border: '1px solid #333' }}>
 
@@ -144,9 +190,56 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
           </div>
         </div>
 
-        {/* Right Side: Chevron */}
-        <div style={{ fontSize: '18px', color: '#555', userSelect: 'none', padding: '0 8px' }}>
-          {isExpanded ? '▾' : '▸'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+          {viewContext === ViewContext.DASHBOARD &&
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // TODO
+                //onDebugMission(mission);
+              }}
+              style={{
+                background: '#333',
+                border: 'none',
+                color: '#99b7e2',
+                padding: '5px 10px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Debug
+            </button>
+          }
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // TODO
+              // if (viewContext === ViewContext.SIDEPANEL) onViewDashboard(mission);
+              // if (viewContext === ViewContext.DASHBOARD) onExportMission(mission);
+            }}
+            style={{
+              background: '#333',
+              border: 'none',
+              color: '#99b7e2',
+              padding: '5px 10px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            {viewContext === ViewContext.SIDEPANEL ? 'Dashboard' : 'Export'}
+          </button>
+
+          {viewContext === ViewContext.SIDEPANEL && (
+            <div style={{ fontSize: '18px', color: '#555', userSelect: 'none' }}>
+              {isExpanded ? '▾' : '▸'}
+            </div>
+          )}
         </div>
       </div>
 
@@ -185,6 +278,32 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
               "Fetching Drone Location..."
             ) : (
               "+ Add Waypoint at Drone Position"
+            )}
+          </button>
+
+          <button
+            onClick={handleAddTemplateClick}
+            disabled={isFetchingLocation}
+            style={{
+              width: '100%',
+              padding: '10px',
+              background: isFetchingLocation ? '#333' : '#0066ff',
+              color: isFetchingLocation ? '#888' : 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isFetchingLocation ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '10px',
+              fontWeight: 'bold',
+              marginTop: '8px'
+            }}
+          >
+            {isFetchingLocation ? (
+              "Fetching Template..."
+            ) : (
+              "+ Add Template at Drone Position"
             )}
           </button>
         </div>

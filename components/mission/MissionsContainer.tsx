@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import { useLiveMissions } from '@/hooks/useLiveMissions';
 import { CreateMissionModal } from './CreateMissionModal';
 import { MissionList } from './MissionList';
-import { Mission } from '@/utils/interfaces';
+import { Mission, ViewContext } from '@/utils/interfaces';
 
-export function MissionsContainer({ orgId, projectId, devices, isFetching }: { orgId: string; projectId: string; devices: Drone[]; isFetching: boolean }) {
+export function MissionsContainer({ orgId, projectId, devices, isFetching, viewContext }: { orgId: string; projectId: string; devices: Drone[]; isFetching: boolean; viewContext: ViewContext }) {
   const { missions, isLoadingMissions, saveMissions } = useLiveMissions(orgId, projectId);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -70,7 +70,12 @@ export function MissionsContainer({ orgId, projectId, devices, isFetching }: { o
         {isFetching ? 'Wait...' : 'New Mission'}
       </button>
 
-      <MissionList missions={allMissions} isLoading={isLoadingMissions} onUpdate={handleUpdateMission} />
+      <MissionList
+        missions={allMissions}
+        isLoading={isLoadingMissions}
+        viewContext={viewContext}
+        onUpdate={handleUpdateMission}
+      />
 
       {isModalOpen && (
         <CreateMissionModal

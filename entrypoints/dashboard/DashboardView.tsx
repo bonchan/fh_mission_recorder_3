@@ -4,8 +4,8 @@ import styles from './DashboardView.module.css';
 import { LiveDroneData, LiveWaypointData, Annotation } from '@/utils/interfaces';
 import { useDjiSimulator } from '@/hooks/useDjiSimulator';
 
-import { generateWaypointsFromTemplate } from '@/mission/missionGenerator'
-import { AIB } from '@/mission/templates'
+import { generateWaypointsFromTemplate2 } from '@/components/mission/missionGenerator'
+import { MISSION_TEMPLATES } from '@/components/mission/templates'
 
 export function DashboardView() {
   const params = new URLSearchParams(window.location.search);
@@ -43,7 +43,7 @@ export function DashboardView() {
       if (simData.trigger) {
         // setWaypoints(prevWaypoints => [...prevWaypoints, simData]);
 
-        const cluster = generateWaypointsFromTemplate(simData, AIB);
+        const cluster = generateWaypointsFromTemplate2(simData, MISSION_TEMPLATES[0].template);
         // setWaypoints(cluster)
 
         // Add all 3 to the existing waypoints list

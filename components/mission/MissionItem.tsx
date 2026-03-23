@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Mission, Waypoint, ViewContext } from '@/utils/interfaces';
 import { WaypointList } from '@/components/waypoint/WaypointList';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
+
+import { generateWaypointsFromTemplate } from '@/components/mission/missionGenerator'
+import { TemplateSelector } from '@/components/mission/TemplateSelector'
+import { MissionTemplate } from '@/components/mission/templates'
+
+import { useToast } from '@/providers/ToastProvider';
 
 interface MissionItemProps {
   mission: Mission;
@@ -18,6 +24,11 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
 
   const { getDroneTelemetry } = useExtensionData();
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  const [template, setTemplate] = useState<MissionTemplate | null>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+
+  const { showToast } = useToast();
 
   // --- MISSION NAME EDITING ---
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -78,65 +89,52 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
           // tag: '' // Default to empty string
         };
 
+        let updatedWaypoints = [...(mission.waypoints || []), newWaypoint];
+
+        if (template) {
+          const cluster = generateWaypointsFromTemplate(newWaypoint, template);
+          updatedWaypoints = [...(mission.waypoints || []), ...cluster];
+          showToast('Added waypoints from template', template.name, 'warning')
+
+        } else {
+          showToast('Added waypoint', `Total: ${updatedWaypoints.length}`)
+        }
+
         // 4. Update the mission array and send it to the parent!
-        const updatedWaypoints = [...(mission.waypoints || []), newWaypoint];
         onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
+
 
       } else {
         alert("Could not find active telemetry for this drone. Is it turned on?");
       }
     } catch (error) {
       console.error("Failed to fetch drone location:", error);
-      alert("Error fetching location: " + (error as Error).message);
+      showToast('Error adding Waypoint:', (error as Error).message, 'error')
     } finally {
       setIsFetchingLocation(false);
     }
+
+
+
+    setTimeout(() => {
+      addButtonRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 100);
   };
 
-  const handleAddTemplateClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleViewDashboard = async (mission: Mission) => {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
 
-    // Safety check just in case legacy missions don't have these IDs
-    if (!mission.orgId || !mission.projectId) {
-      console.error("Missing Project or Org IDs on this mission!");
-      return;
-    }
-
-    setIsFetchingLocation(true);
-
-    try {
-      // 1. Fetch FRESH topologies (bypassing the 12-hour cache by passing true!)
-      // Signature: (orgId, projectId, tabId?, forceFetch?)
-      const currentDroneData = await getDroneTelemetry(mission.orgId, mission.projectId, mission.device.deviceSn);
-
-      // 3. Extract the live telemetry
-      if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
-
-        const newWaypoint: Waypoint = {
-          id: crypto.randomUUID(),
-          latitude: currentDroneData.latitude,
-          longitude: currentDroneData.longitude,
-          elevation: currentDroneData.elevation || 0,
-          height: currentDroneData.height || 0,
-          yaw: currentDroneData.yaw || 0,
-          pitch: currentDroneData.pitch || 0,
-          zoom: currentDroneData.zoom || 1,
-          // tag: '' // Default to empty string
-        };
-
-        // 4. Update the mission array and send it to the parent!
-        const updatedWaypoints = [...(mission.waypoints || []), newWaypoint];
-        onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
-
-      } else {
-        alert("Could not find active telemetry for this drone. Is it turned on?");
-      }
-    } catch (error) {
-      console.error("Failed to fetch drone location:", error);
-      alert("Error fetching location: " + (error as Error).message);
-    } finally {
-      setIsFetchingLocation(false);
-    }
+    browser.runtime.sendMessage({
+      type: 'OPEN_DASHBOARD',
+      missionId: mission.id,
+      orgId: mission.orgId,
+      projectId: mission.projectId,
+      sourceTabId: tab.id
+    });
   };
 
   return (
@@ -218,7 +216,7 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
             onClick={(e) => {
               e.stopPropagation();
               // TODO
-              // if (viewContext === ViewContext.SIDEPANEL) onViewDashboard(mission);
+              if (viewContext === ViewContext.SIDEPANEL) handleViewDashboard(mission);
               // if (viewContext === ViewContext.DASHBOARD) onExportMission(mission);
             }}
             style={{
@@ -255,8 +253,12 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
           />
 
           {/* Add Waypoint Button (Placeholder) */}
+
+          <TemplateSelector onSelectTemplate={setTemplate} />
+
           <button
             onClick={handleAddWaypointClick}
+            ref={addButtonRef}
             disabled={isFetchingLocation}
             style={{
               width: '100%',
@@ -277,35 +279,13 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
             {isFetchingLocation ? (
               "Fetching Drone Location..."
             ) : (
-              "+ Add Waypoint at Drone Position"
+              template ? "+ Add Template at Drone Position" : "+ Add Waypoint at Drone Position"
             )}
           </button>
 
-          <button
-            onClick={handleAddTemplateClick}
-            disabled={isFetchingLocation}
-            style={{
-              width: '100%',
-              padding: '10px',
-              background: isFetchingLocation ? '#333' : '#0066ff',
-              color: isFetchingLocation ? '#888' : 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: isFetchingLocation ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '10px',
-              fontWeight: 'bold',
-              marginTop: '8px'
-            }}
-          >
-            {isFetchingLocation ? (
-              "Fetching Template..."
-            ) : (
-              "+ Add Template at Drone Position"
-            )}
-          </button>
+
+
+
         </div>
       )}
     </div>

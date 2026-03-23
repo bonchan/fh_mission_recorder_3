@@ -45,17 +45,15 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
 
     const targetTabId = await getTargetTabId(orgId, projectId);
 
-    return await getCachedOrFetch(key, 0, async () => {
-      // 1. Fetch fresh from the active tab
-      const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
-      const topologies = res.topologies.data.list
-      let waypoint = null
-      for (const item of topologies) {
-        waypoint = toWaypoint(item, droneDeviceSn)
-        if (waypoint) break
-      }
-      return waypoint
-    }, true);
+    // 1. Fetch fresh from the active tab
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
+    const topologies = res.topologies.data.list
+    let waypoint = null
+    for (const item of topologies) {
+      waypoint = toWaypoint(item, droneDeviceSn)
+      if (waypoint) break
+    }
+    return waypoint
 
   }
 

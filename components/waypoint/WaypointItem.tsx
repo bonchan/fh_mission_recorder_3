@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Waypoint, ViewContext } from '@/utils/interfaces';
-// Assuming you have TAG_OPTIONS exported somewhere like this:
-// import { TAG_OPTIONS } from '@/utils/constants';
 
 interface WaypointItemProps {
   waypoint: Waypoint;

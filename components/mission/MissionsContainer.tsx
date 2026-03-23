@@ -50,7 +50,6 @@ export function MissionsContainer({ orgId, projectId, devices, isFetching, viewC
     await saveMissions(dockSn, updatedList);
   };
 
-
   const allMissions = Object.values(missions)
     .flat()
     .sort((a, b) => b.createdDate - a.createdDate);
@@ -76,6 +75,12 @@ export function MissionsContainer({ orgId, projectId, devices, isFetching, viewC
         viewContext={viewContext}
         onUpdate={handleUpdateMission}
       />
+
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
 
       {isModalOpen && (
         <CreateMissionModal

@@ -9,6 +9,10 @@ interface DataContextType {
   getTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
   getAnnotations: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
   getDroneTelemetry: (orgId: string, projectId: string, droneDeviceSn: string) => Promise<Waypoint>;
+  getStorageUploadCredentials: (orgId: string, projectId: string, tabId?: number) => Promise<any>;
+  duplicateNameStorageCheck: (orgId: string, projectId: string, missionName: string, tabId?: number) => Promise<any>;
+
+  importCallbackStorage: (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => Promise<any>; // surely something missing
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -41,16 +45,23 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
   }
 
   const getDroneTelemetry = async (orgId: string, projectId: string, droneDeviceSn: string) => {
-    const key = getProjectTopologiesStorageKey(orgId, projectId)
-
     const targetTabId = await getTargetTabId(orgId, projectId);
-
     // 1. Fetch fresh from the active tab
-    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
-    const topologies = res.topologies.data.list
+    // const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
+    // const topologies = res.topologies.data.list
+
+    const res = await fetch('http://localhost:8080/api/osd');
+    const payload = await res.json();
+    const topologies = payload.data.list;
+
+
     let waypoint = null
     for (const item of topologies) {
+      console.log("item", item)
       waypoint = toWaypoint(item, droneDeviceSn)
+
+      console.log("waypoint", waypoint)
+
       if (waypoint) break
     }
     return waypoint
@@ -109,11 +120,43 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
     });
   };
 
+  const getStorageUploadCredentials = async (orgId: string, projectId: string, tabId?: number) => {
+    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
+    // 1. Fetch fresh from the active tab
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_STORAGE_UPLOAD_CREDENTIALS", orgId, projectId });
+    return res;
+  };
+
+  // const notifyStorageUpload = async (orgId: string, projectId: string, tabId?: number) => {
+  //   const targetTabId = await getTargetTabId(orgId, projectId, tabId);
+  //   // 1. Fetch fresh from the active tab
+  //   const res = await browser.tabs.sendMessage(targetTabId, { action: "NOTIFY_STORAGE_UPLOAD", orgId, projectId });
+  //   console.log("getStorageUploadCredentials", res)
+  //   return res;
+  // };
+
+  const duplicateNameStorageCheck = async (orgId: string, projectId: string, missionName: string, tabId?: number) => {
+    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
+    // 1. Fetch fresh from the active tab
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "DUPLICATE_NAME_STORAGE_CHECK", orgId, projectId, duplicateName: missionName });
+    return res;
+  };
+
+  const importCallbackStorage = async (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => {
+    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
+    // 1. Fetch fresh from the active tab
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "IMPORT_CALLBACK_STORAGE", orgId, projectId, fileName: fileName, objectKey: objectKey });
+    return res;
+  };
+
   return (
     <DataContext.Provider value={{
       getTopologies,
       getAnnotations,
       getDroneTelemetry,
+      getStorageUploadCredentials,
+      duplicateNameStorageCheck,
+      importCallbackStorage,
     }}>
       {children}
     </DataContext.Provider>

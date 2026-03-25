@@ -5,7 +5,7 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 /**
  * Base request handler to centralize headers and error handling
  */
-async function request<T>(endpoint: string, method: HttpMethod = 'GET', body?: any): Promise<T> {
+async function request<T>(endpoint: string, method: HttpMethod = 'GET', body?: any, customHeaders?: Record<string, string>): Promise<T> {
     const zoneId = localStorage.getItem("uranus:zone_id");
     const beConfigRaw = localStorage.getItem("uranus:be-config");
 
@@ -27,12 +27,29 @@ async function request<T>(endpoint: string, method: HttpMethod = 'GET', body?: a
 
     const url = `${serverUrl}${endpoint}`;
 
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "X-Language": "en",
+        "x-auth-token": token,
+        "x-request-id": crypto.randomUUID()
+    };
+
+    // 2. Merge custom headers (and allow deletion!)
+    if (customHeaders) {
+        for (const [key, value] of Object.entries(customHeaders)) {
+            if (value === "") {
+                // If you pass an empty string, we strip the header out completely
+                delete headers[key];
+            } else {
+                // Otherwise, add it or overwrite the default
+                headers[key] = value;
+            }
+        }
+    }
+
     const options: RequestInit = {
         method,
-        headers: {
-            "Content-Type": "application/json",
-            "x-auth-token": token,
-        },
+        headers,
     };
 
     if (body) options.body = JSON.stringify(body);
@@ -57,17 +74,17 @@ async function request<T>(endpoint: string, method: HttpMethod = 'GET', body?: a
  */
 export const fhApi = {
     // 1. Add <T> here so the caller can define the expected shape
-    async call<T>(method: HttpMethod, endpoint: string, data?: any): Promise<T> {
+    async call<T>(method: HttpMethod, endpoint: string, data?: any, headers?: Record<string, string>,): Promise<T> {
         switch (method) {
             case 'GET':
                 // 2. Pass <T> into the request function
-                return request<T>(endpoint, 'GET');
+                return request<T>(endpoint, 'GET', undefined, headers);
             case 'POST':
-                return request<T>(endpoint, 'POST', data);
+                return request<T>(endpoint, 'POST', data, headers);
             case 'PUT':
-                return request<T>(endpoint, 'PUT', data);
+                return request<T>(endpoint, 'PUT', data, headers);
             case 'DELETE':
-                return request<T>(endpoint, 'DELETE');
+                return request<T>(endpoint, 'DELETE', undefined, headers);
             default: {
                 const _exhaustiveCheck: never = method;
                 throw new Error(`Unsupported method: ${_exhaustiveCheck}`);
@@ -90,7 +107,36 @@ export const fhApi = {
         return this.call('GET', endpoint);
     },
 
+    async getStorageUploadCredentials(projectUUID: string): Promise<any> {
+        const endpoint = `/storage/api/v1/workspaces/${projectUUID}/sts`;
+        const headers = {
+            "Content-Type": ""
+        }
+        return this.call('POST', endpoint, undefined, headers);
+    },
 
+    async duplicateNameStorageUpload(projectUUID: string, duplicateName: string): Promise<any> {
+        const endpoint = `/wayline/api/v1/workspaces/${projectUUID}/waylines/duplicate-name?name=${duplicateName}`;
+        const headers = {
+            "Content-Type": ""
+        }
+        return this.call('GET', endpoint, undefined);
+    },
 
+    async importCallbackStorageUpload(projectUUID: string, fileName: string, objectKey: string): Promise<any> {
+        const endpoint = `/wayline/api/v1/workspaces/${projectUUID}/import-callback`;
+        const body = {
+          "name": fileName,
+          "object_key": objectKey,
+          "parent_id": '',
+          "request_id": crypto.randomUUID(),
+        }
+
+        console.log("importCallbackStorageUpload", body)
+        const headers = {
+            "Content-Type": ""
+        }
+        return this.call('POST', endpoint, body);
+    },
 
 };

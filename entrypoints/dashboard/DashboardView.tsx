@@ -8,6 +8,9 @@ import { useExtensionData } from '@/providers/ExtensionDataProvider';
 
 import { generateDJIMission, generateDJIMissionFiles } from '@/utils/wpml-generator';
 import { XMLDebugModal } from '@/components/debug/XMLDebugModal';
+import { uploadToCloudStorage } from '@/services/cloudStorage';
+
+import { useToast } from '@/providers/ToastProvider'
 
 export function DashboardView() {
   // 1. Get IDs from the URL (You must pass these when opening the dashboard!)
@@ -19,7 +22,7 @@ export function DashboardView() {
 
   // --- DATA HOOKS ---
   const { missions } = useLiveMissions(orgId, projectId);
-  const { getAnnotations } = useExtensionData();
+  const { getAnnotations, getStorageUploadCredentials, duplicateNameStorageCheck, importCallbackStorage } = useExtensionData();
 
   const [liveAnnotations, setLiveAnnotations] = useState<Annotation[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missionId);
@@ -44,6 +47,10 @@ export function DashboardView() {
 
   const { data: simData, isConnected, connect, disconnect } = useDjiSimulator();
   const [debugXml, setDebugXml] = useState<{ template: string, waylines: string } | null>(null);
+
+  const { showToast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+
 
   // --- FETCH ANNOTATIONS ON MOUNT ---
   useEffect(() => {
@@ -131,6 +138,11 @@ export function DashboardView() {
     setIsDebuggerActive(nextState);
   };
 
+  const handleDebugMission = async (mission: Mission) => {
+    const { template, waylines } = await generateDJIMissionFiles(mission)
+    setDebugXml({ template, waylines });
+  }
+
   const handleExportMission = async (mission: Mission) => {
     const blob = await generateDJIMission(mission);
     const url = window.URL.createObjectURL(blob);
@@ -143,10 +155,61 @@ export function DashboardView() {
     window.URL.revokeObjectURL(url);
   }
 
-  const handleDebugMission = async (mission: Mission) => {
-    const { template, waylines } = await generateDJIMissionFiles(mission)
-    setDebugXml({ template, waylines });
-  }
+
+  // FIXME this needs lots of love
+  const handleUploadMission = async (mission: Mission) => {
+    if (!orgId || !projectId) return;
+
+    try {
+      // 1. Get the STS Credentials
+      setIsUploading(true)
+      const stsResponse = await getStorageUploadCredentials(orgId, projectId); // Assuming this is where it lives
+      // console.log('stsResponse', stsResponse)
+      const { endpoint, bucket, object_key_prefix, credentials, provider } = stsResponse.credentials.data;
+
+      // 2. Generate the Mission Blob
+      const blob = await generateDJIMission(mission);
+      const cleanName = mission.name.replace(/[<>:"/|?*._\\]/g, '');
+      let fileNameKmz = `P3--${cleanName}.kmz`;
+
+      // const nscResponse1 = await duplicateNameStorageCheck(orgId, projectId, fileNameKmz)
+      // fileNameKmz = nscResponse1.dnResponse.data.index_name
+
+      // Convert Blob to File object for easier uploading
+      const file = new File([blob], fileNameKmz, { type: 'application/zip' });
+
+      // 3. Construct the exact path where the file will live in the bucket
+      // const fileUUID = crypto.randomUUID();
+      // const objectKey = `${object_key_prefix}/${fileUUID}.kmz`;
+
+      const objectKey = `${object_key_prefix}/${fileNameKmz}`;
+
+      // 4. Upload the file to AliCloud / AWS (See helper function below)
+      // console.log(`Uploading ${fileNameKmz} to ${provider} as ${objectKey}...`);
+      const csResponse = await uploadToCloudStorage(file, objectKey, stsResponse.credentials.data);
+      // console.log('csResponse', csResponse)
+
+      const nscResponse = await duplicateNameStorageCheck(orgId, projectId, fileNameKmz)
+      // console.log('nscResponse', nscResponse)
+
+      const fileName = nscResponse.dnResponse.data.index_name
+
+      // console.log('fileName', fileName)
+      const icResponse = await importCallbackStorage(orgId, projectId, fileName, objectKey);
+      // console.log('icResponse', icResponse)
+
+      const finalFileName = icResponse.icResponse.data.name
+
+      showToast('Mission uploaded to FlightHub', finalFileName, 'success')
+
+      console.log("Mission successfully uploaded to FlightHub!");
+
+    } catch (err) {
+      console.error("Failed to upload mission sequence:", err);
+    } finally {
+      setIsUploading(false)
+    }
+  };
 
   // Convert mission Waypoints to Map expected format
   const mappedWaypoints: LiveWaypointData[] = (selectedMission?.waypoints || []).map(wp => ({
@@ -187,7 +250,7 @@ export function DashboardView() {
               {allMissions.map(mission => (
                 <div
                   key={mission.id}
-                  onClick={() => setSelectedMissionId(mission.id === selectedMissionId ? null : mission.id)}
+                  onClick={() => { if (!isUploading) setSelectedMissionId(mission.id === selectedMissionId ? null : mission.id) }}
                   style={{
                     padding: '10px',
                     backgroundColor: mission.id === selectedMissionId ? '#0066ff' : '#222',
@@ -209,77 +272,105 @@ export function DashboardView() {
 
         {/* Waypoints List (Only shows if a mission is selected) */}
         <div style={{ padding: '15px', flex: '1 1 auto', overflowY: 'auto' }}>
-          {selectedMission ? (
+
+          {isUploading ? (
             <>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '10px' }}>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDebugMission(selectedMission);
-                  }}
-                  style={{
-                    background: '#333',
-                    border: 'none',
-                    color: '#99b7e2',
-                    padding: '5px 10px',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Debug
-                </button>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleExportMission(selectedMission);
-                  }}
-                  style={{
-                    background: '#333',
-                    border: 'none',
-                    color: '#99b7e2',
-                    padding: '5px 10px',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Export
-                </button>
-              </div>
-
-              <h3 style={{ color: '#aaa', fontSize: '12px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>
-                Waypoints: {selectedMission.name}
-              </h3>
-              {(selectedMission.waypoints || []).length === 0 ? (
-                <p style={{ color: '#666', fontSize: '12px' }}>No waypoints recorded yet.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {selectedMission.waypoints?.map((wp, i) => (
-                    <div key={wp.id} style={{ padding: '8px', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #333', color: '#ccc', fontSize: '11px' }}>
-                      {/* <strong style={{ color: '#fff' }}>WP {i + 1}</strong> • {wp.tag || 'No Tag'} */}
-                      <div style={{ marginTop: '4px', color: '#888' }}>
-                        Lat: {wp.latitude.toFixed(5)} | Lng: {wp.longitude.toFixed(5)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div>uploading mission to fh</div>
             </>
           ) : (
-            <p style={{ color: '#666', fontSize: '12px', textAlign: 'center', marginTop: '40px' }}>
-              Select a mission to view waypoints on the map.
-            </p>
+
+            selectedMission ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '10px' }}>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDebugMission(selectedMission);
+                    }}
+                    style={{
+                      background: '#333',
+                      border: 'none',
+                      color: '#99b7e2',
+                      padding: '5px 10px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    Debug
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExportMission(selectedMission);
+                    }}
+                    style={{
+                      background: '#333',
+                      border: 'none',
+                      color: '#99b7e2',
+                      padding: '5px 10px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    Export
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUploadMission(selectedMission);
+                    }}
+                    style={{
+                      background: '#333',
+                      border: 'none',
+                      color: '#99b7e2',
+                      padding: '5px 10px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    Upload
+                  </button>
+                </div>
+
+                <h3 style={{ color: '#aaa', fontSize: '12px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>
+                  Waypoints: {selectedMission.name}
+                </h3>
+                {(selectedMission.waypoints || []).length === 0 ? (
+                  <p style={{ color: '#666', fontSize: '12px' }}>No waypoints recorded yet.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {selectedMission.waypoints?.map((wp, i) => (
+                      <div key={wp.id} style={{ padding: '8px', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #333', color: '#ccc', fontSize: '11px' }}>
+                        {/* <strong style={{ color: '#fff' }}>WP {i + 1}</strong> • {wp.tag || 'No Tag'} */}
+                        <div style={{ marginTop: '4px', color: '#888' }}>
+                          Lat: {wp.latitude.toFixed(5)} | Lng: {wp.longitude.toFixed(5)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p style={{ color: '#666', fontSize: '12px', textAlign: 'center', marginTop: '40px' }}>
+                Select a mission to view waypoints on the map.
+              </p>
+            )
+
           )}
         </div>
       </div>
 
       {/* RIGHT MAIN AREA: The Map and Overlays */}
-      <div style={{ flex: 1, position: 'relative' }} className={styles.dashboardContainer}>
+      <div style={{ flex: 1, position: 'relative', minWidth: '10px', minHeight: '10px', overflow: 'hidden' }} className={styles.dashboardContainer}>
         <Map
           initialCenter={mapCenter}
           liveDroneData={livedroneData}

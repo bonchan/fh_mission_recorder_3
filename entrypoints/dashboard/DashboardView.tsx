@@ -161,6 +161,9 @@ export function DashboardView() {
   const handleUploadMission = async (mission: Mission) => {
     if (!orgId || !projectId) return;
 
+    showToast("Upload to FH not working", "🤷", "warning")
+    return
+
     try {
       // 1. Get the STS Credentials
       setIsUploading(true)
@@ -207,6 +210,8 @@ export function DashboardView() {
 
     } catch (err) {
       console.error("Failed to upload mission sequence:", err);
+      showToast('Failed to upload mission sequence:', String(err), 'error')
+
     } finally {
       setIsUploading(false)
     }

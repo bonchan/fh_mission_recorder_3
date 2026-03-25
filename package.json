@@ -2,7 +2,7 @@
   "name": "panel-3.0",
   "description": "Panel 3.0",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
     "dev": "wxt",

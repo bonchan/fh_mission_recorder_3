@@ -1,5 +1,5 @@
-// providers/ExtensionDataProvider.tsx
 import React, { createContext, useContext } from 'react';
+import { createLogger } from '@/utils/logger';
 import { Annotation, Drone, Waypoint } from '@/utils/interfaces';
 import { getProjectTopologiesStorageKey } from '@/utils/utils';
 import { toDockDrone, toAnnotation, toWaypoint } from '@/utils/mapper';
@@ -11,7 +11,7 @@ interface DataContextType {
   getDroneTelemetry: (orgId: string, projectId: string, droneDeviceSn: string) => Promise<Waypoint>;
   getStorageUploadCredentials: (orgId: string, projectId: string, tabId?: number) => Promise<any>;
   duplicateNameStorageCheck: (orgId: string, projectId: string, missionName: string, tabId?: number) => Promise<any>;
-
+  
   importCallbackStorage: (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => Promise<any>; // surely something missing
 }
 
@@ -19,6 +19,8 @@ const DataContext = createContext<DataContextType | null>(null);
 
 const FIVE_MIN_MS = 5 * 60 * 1000;
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
+const log = createLogger('ExtensionDataProvider');
 
 export function ExtensionDataProvider({ children }: { children: React.ReactNode }) {
 
@@ -56,11 +58,7 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
 
     let waypoint = null
     for (const item of topologies) {
-      console.log("item", item)
       waypoint = toWaypoint(item, droneDeviceSn)
-
-      console.log("waypoint", waypoint)
-
       if (waypoint) break
     }
     return waypoint
@@ -125,14 +123,6 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
     const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_STORAGE_UPLOAD_CREDENTIALS", orgId, projectId });
     return res;
   };
-
-  // const notifyStorageUpload = async (orgId: string, projectId: string, tabId?: number) => {
-  //   const targetTabId = await getTargetTabId(orgId, projectId, tabId);
-  //   // 1. Fetch fresh from the active tab
-  //   const res = await browser.tabs.sendMessage(targetTabId, { action: "NOTIFY_STORAGE_UPLOAD", orgId, projectId });
-  //   console.log("getStorageUploadCredentials", res)
-  //   return res;
-  // };
 
   const duplicateNameStorageCheck = async (orgId: string, projectId: string, missionName: string, tabId?: number) => {
     const targetTabId = await getTargetTabId(orgId, projectId, tabId);

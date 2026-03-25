@@ -1,3 +1,4 @@
+import { createLogger } from '@/utils/logger';
 
 // Defining valid HTTP methods
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -54,6 +55,8 @@ async function request<T>(endpoint: string, method: HttpMethod = 'GET', body?: a
 
     if (body) options.body = JSON.stringify(body);
 
+    log.info('fetching: ' + url, options)
+
     const response = await fetch(url, options);
 
     // 1. Parse the JSON body FIRST
@@ -72,6 +75,7 @@ async function request<T>(endpoint: string, method: HttpMethod = 'GET', body?: a
 /**
  * The API Wrapper
  */
+const log = createLogger('fhApi');
 export const fhApi = {
     // 1. Add <T> here so the caller can define the expected shape
     async call<T>(method: HttpMethod, endpoint: string, data?: any, headers?: Record<string, string>,): Promise<T> {
@@ -132,7 +136,7 @@ export const fhApi = {
           "request_id": crypto.randomUUID(),
         }
 
-        console.log("importCallbackStorageUpload", body)
+        log.info("importCallbackStorageUpload", body)
         const headers = {
             "Content-Type": ""
         }

@@ -1,8 +1,11 @@
 // utils/DjiSimulatorService.ts
 import { LiveDroneData } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
 
 type StatusCallback = (status: 'CONNECTED' | 'DISCONNECTED' | 'ERROR') => void;
 type DataCallback = (data: LiveDroneData) => void;
+
+const log = createLogger('DjiSimulatorService');
 
 export class DjiSimulatorService {
   private socket: WebSocket | null = null;
@@ -22,7 +25,7 @@ export class DjiSimulatorService {
     this.socket = new WebSocket(this.url);
 
     this.socket.onopen = () => {
-      console.log("%c[DJI SIM] Connected", "color: green; font-weight: bold;");
+      log.info("%c[DJI SIM] Connected", "color: green; font-weight: bold;");
       this.onStatus('CONNECTED');
     };
 
@@ -32,7 +35,6 @@ export class DjiSimulatorService {
         const jsonPayload = JSON.parse(event.data);
 
         if (jsonPayload.biz_code === 'device_osd') {
-          // console.log('device_osd')
           // drone
           try {
             const host = jsonPayload.data?.host
@@ -61,20 +63,20 @@ export class DjiSimulatorService {
         }
 
       } catch (err) {
-        console.error("[DJI SIM] Parse Error", err);
+        log.error("[DJI SIM] Parse Error", err);
       }
     };
 
     this.socket.onclose = (event) => {
       this.onStatus('DISCONNECTED');
       if (!event.wasClean) {
-        console.error("[DJI SIM] Connection died");
+        log.error("[DJI SIM] Connection died");
       }
     };
 
     this.socket.onerror = (error) => {
       this.onStatus('ERROR');
-      console.error("[DJI SIM] Socket Error", error);
+      log.error("[DJI SIM] Socket Error", error);
     };
   }
 

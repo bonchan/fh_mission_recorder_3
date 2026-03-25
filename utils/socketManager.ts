@@ -1,3 +1,4 @@
+import { createLogger } from '@/utils/logger';
 /**
  * Interface representing the DJI OSD Message Structure
  * Add more fields here as needed for your specific dashboard.
@@ -19,6 +20,8 @@ interface DJISocketMessage {
   };
 }
 
+const log = createLogger('DroneSocketManager');
+
 export class DroneSocketManager {
   private url: string;
   private socket: WebSocket | null = null;
@@ -29,7 +32,7 @@ export class DroneSocketManager {
 
   constructor(url: string = "ws://localhost:8765") {
     this.url = url;
-    console.log("%c[Manager] TS Initialized. Run 'sim.enable()'", "color: #00aaff");
+    log.info("%c[Manager] TS Initialized. Run 'sim.enable()'", "color: #00aaff");
   }
 
   /**
@@ -38,7 +41,7 @@ export class DroneSocketManager {
   public enable(): void {
     this.isEnabled = true;
     this.connect();
-    console.log("%c[Manager] Listening Enabled", "color: green; font-weight: bold;");
+    log.info("%c[Manager] Listening Enabled", "color: green; font-weight: bold;");
   }
 
   /**
@@ -53,17 +56,17 @@ export class DroneSocketManager {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    console.log("%c[Manager] Listening Disabled", "color: red; font-weight: bold;");
+    log.info("%c[Manager] Listening Disabled", "color: red; font-weight: bold;");
   }
 
   private connect(): void {
     if (!this.isEnabled) return;
 
-    console.log(`%c[Socket] Connecting to ${this.url}...`, "color: #888");
+    log.info(`%c[Socket] Connecting to ${this.url}...`, "color: #888");
     this.socket = new WebSocket(this.url);
 
     this.socket.onopen = () => {
-      console.log("%c[Socket] Connected to Simulator", "color: green");
+      log.info("%c[Socket] Connected to Simulator", "color: green");
     };
 
     this.socket.onmessage = (event: MessageEvent) => {
@@ -73,14 +76,14 @@ export class DroneSocketManager {
         this.onData(data);
         this.handleData(data);
       } catch (err) {
-        console.error("[Socket] Parse Error:", err);
+        log.error("[Socket] Parse Error:", err);
       }
     };
 
     this.socket.onclose = () => {
       this.socket = null;
       if (this.isEnabled) {
-        console.warn("[Socket] Lost connection. Retrying in 2s...");
+        log.warn("[Socket] Lost connection. Retrying in 2s...");
         this.reconnectTimer = setTimeout(() => this.connect(), 2000);
       }
     };
@@ -95,10 +98,10 @@ export class DroneSocketManager {
     const h = data.data.host;
 
     // This log keeps the console clean while showing live movement
-    console.clear();
-    console.log(`%c--- SIMULATOR OSD [${this.isEnabled ? 'ACTIVE' : 'IDLE'}] ---`, "color: #00aaff");
+    log.clear();
+    log.info(`%c--- SIMULATOR OSD [${this.isEnabled ? 'ACTIVE' : 'IDLE'}] ---`, "color: #00aaff");
 
-    console.table({
+    log.table({
       "Lat": h.latitude.toFixed(7),
       "Lng": h.longitude.toFixed(7),
       "Alt": `${h.height}m`,

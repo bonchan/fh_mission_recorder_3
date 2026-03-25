@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createLogger } from '@/utils/logger';
 import './App.css';
 
 interface Mission {
@@ -8,6 +9,7 @@ interface Mission {
   projectId: string;
 }
 
+const log = createLogger('popup');
 function App() {
   // Mock data for testing the UI
   const [missions] = useState<Mission[]>([
@@ -20,7 +22,7 @@ function App() {
       // 1. Get the current active tab to pass as the source
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) {
-        console.error("No active tab found");
+        log.error("No active tab found");
         return;
       }
 
@@ -33,9 +35,9 @@ function App() {
         sourceTabId: tab.id
       });
       
-      console.log(`Command sent for mission: ${mission.name}`);
+      log.info(`Command sent for mission: ${mission.name}`);
     } catch (error) {
-      console.error("Failed to send message to background:", error);
+      log.error("Failed to send message to background:", error);
     }
   };
 

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { createLogger } from '@/utils/logger';
 import { useToast } from '@/providers/ToastProvider';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { ViewContext, Mission, Drone, Annotation } from '@/utils/interfaces';
 import { MissionsContainer } from '@/components/mission/MissionsContainer';
+
+const log = createLogger('SidePanelView');
 
 export default function SidePanelView() {
   const { getTopologies, getAnnotations } = useExtensionData();
@@ -35,7 +38,7 @@ export default function SidePanelView() {
         const topoData = await getTopologies(orgId, projectId, tabId);
         setDevices(topoData);
       } catch (err) {
-        console.error("Failed to load Topologies", err);
+        log.error("Failed to load Topologies", err);
         showToast('Failed to load Topologies', '', 'error')
       } finally {
         setIsFetching(false);
@@ -53,7 +56,7 @@ export default function SidePanelView() {
         const annoData = await getAnnotations(orgId, projectId, tabId);
         setAnnotations(annoData);
       } catch (err) {
-        console.error("Failed to load Annotations", err);
+        log.error("Failed to load Annotations", err);
         showToast('Failed to load Annotations', '', 'error')
       } finally {
       }

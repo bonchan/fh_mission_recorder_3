@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createLogger } from '@/utils/logger';
 import { Mission, Waypoint, ViewContext } from '@/utils/interfaces';
 import { WaypointList } from '@/components/waypoint/WaypointList';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
@@ -16,6 +17,8 @@ interface MissionItemProps {
   onToggleExpand: () => void;
   onUpdate: (updatedMission: Mission) => void;
 }
+
+const log = createLogger('MissionItem');
 
 export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, onUpdate }: MissionItemProps) {
   // --- UI STATE ---
@@ -63,7 +66,7 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
 
     // Safety check just in case legacy missions don't have these IDs
     if (!mission.orgId || !mission.projectId) {
-      console.error("Missing Project or Org IDs on this mission!");
+      log.error("Missing Project or Org IDs on this mission!");
       return;
     }
 
@@ -110,7 +113,7 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
         alert("Could not find active telemetry for this drone. Is it turned on?");
       }
     } catch (error) {
-      console.error("Failed to fetch drone location:", error);
+      log.error("Failed to fetch drone location:", error);
       showToast('Error adding Waypoint:', (error as Error).message, 'error')
     } finally {
       setIsFetchingLocation(false);

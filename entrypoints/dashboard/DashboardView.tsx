@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createLogger } from '@/utils/logger';
 import { Map } from '@/components/map/Map';
 import styles from './DashboardView.module.css';
 import { LiveDroneData, LiveWaypointData, Annotation } from '@/utils/interfaces';
@@ -11,6 +12,10 @@ import { XMLDebugModal } from '@/components/debug/XMLDebugModal';
 import { uploadToCloudStorage } from '@/services/cloudStorage';
 
 import { useToast } from '@/providers/ToastProvider'
+
+import { delay } from '@/utils/time'
+
+const log = createLogger('DashboardView');
 
 export function DashboardView() {
   // 1. Get IDs from the URL (You must pass these when opening the dashboard!)
@@ -58,7 +63,7 @@ export function DashboardView() {
     if (orgId && projectId) {
       getAnnotations(orgId, projectId)
         .then(setLiveAnnotations)
-        .catch(err => console.error("Failed to load annotations", err));
+        .catch(err => log.error("Failed to load annotations", err));
     }
   }, [orgId, projectId, currentTabId]);
 
@@ -66,7 +71,7 @@ export function DashboardView() {
   useEffect(() => {
     if (simData && simData.sn == selectedMission?.device.deviceSn) {
       lastHeartbeatRef.current = simData.timestamp;
-      console.log('simData', simData)
+      log.info('simData', simData)
       setLivedroneData(simData);
     }
   }, [simData]);
@@ -106,14 +111,14 @@ export function DashboardView() {
   useEffect(() => {
     if (!selectedMission) return;
 
-    console.log('selectedMission', selectedMission)
+    log.info('selectedMission', selectedMission)
 
     const waypoints = selectedMission.waypoints || [];
 
     if (waypoints.length > 0) {
       // 1. Mission has waypoints: Grab the very last one
       const lastWp = waypoints[waypoints.length - 1];
-      console.log('lastWp', lastWp)
+      log.info('lastWp', lastWp)
 
       if (lastWp.longitude && lastWp.latitude) {
         setMapCenter([lastWp.longitude, lastWp.latitude]);
@@ -121,7 +126,7 @@ export function DashboardView() {
     } else {
       // 2. No waypoints: Fallback to the Dock's (parent) coordinates
       const dock = selectedMission.device?.parent;
-      console.log('dock', dock)
+      log.info('dock', dock)
 
       if (dock?.longitude && dock?.latitude) {
         setMapCenter([dock.longitude, dock.latitude]);
@@ -156,61 +161,63 @@ export function DashboardView() {
     window.URL.revokeObjectURL(url);
   }
 
-
-  // FIXME this needs lots of love
   const handleUploadMission = async (mission: Mission) => {
     if (!orgId || !projectId) return;
 
-    showToast("Upload to FH not working", "🤷", "warning")
-    return
+    const toastTTL = 3000
 
     try {
       // 1. Get the STS Credentials
       setIsUploading(true)
+      showToast('Getting storage credentials', '', 'info', toastTTL, true)
+
       const stsResponse = await getStorageUploadCredentials(orgId, projectId); // Assuming this is where it lives
-      // console.log('stsResponse', stsResponse)
+      // log.info('stsResponse', stsResponse)
       const { endpoint, bucket, object_key_prefix, credentials, provider } = stsResponse.credentials.data;
 
       // 2. Generate the Mission Blob
+      showToast('Generating mission file', '', 'info', toastTTL, true)
       const blob = await generateDJIMission(mission);
       const cleanName = mission.name.replace(/[<>:"/|?*._\\]/g, '');
-      let fileNameKmz = `P3--${cleanName}.kmz`;
+      const fileUUID = crypto.randomUUID();
+      const tempFileName = `${fileUUID}.kmz`;
 
-      // const nscResponse1 = await duplicateNameStorageCheck(orgId, projectId, fileNameKmz)
-      // fileNameKmz = nscResponse1.dnResponse.data.index_name
+      // Convert Blob to File object for easier uploading with temp name
+      const file = new File([blob], tempFileName, { type: 'application/zip' });
 
-      // Convert Blob to File object for easier uploading
-      const file = new File([blob], fileNameKmz, { type: 'application/zip' });
+      // 3. Upload with random UUID first
+      const objectKey = `${object_key_prefix}/${tempFileName}`;
 
-      // 3. Construct the exact path where the file will live in the bucket
-      // const fileUUID = crypto.randomUUID();
-      // const objectKey = `${object_key_prefix}/${fileUUID}.kmz`;
-
-      const objectKey = `${object_key_prefix}/${fileNameKmz}`;
-
-      // 4. Upload the file to AliCloud / AWS (See helper function below)
-      // console.log(`Uploading ${fileNameKmz} to ${provider} as ${objectKey}...`);
+      // 4. Upload the file to AliCloud / AWS with temp name
+      // log.info(`Uploading ${tempFileName} to ${provider} as ${objectKey}...`);
+      showToast('Uploading mission to FH', '', 'info', toastTTL, true)
       const csResponse = await uploadToCloudStorage(file, objectKey, stsResponse.credentials.data);
-      // console.log('csResponse', csResponse)
+      log.debug('csResponse', csResponse)
 
-      const nscResponse = await duplicateNameStorageCheck(orgId, projectId, fileNameKmz)
-      // console.log('nscResponse', nscResponse)
+      await delay(500)
 
-      const fileName = nscResponse.dnResponse.data.index_name
+      // 5. Now check the desired name for duplicates
+      let desiredFileName = `P3--${cleanName}.kmz`;
+      showToast('Checking file name', desiredFileName, 'info', toastTTL, true)
+      const nscResponse = await duplicateNameStorageCheck(orgId, projectId, desiredFileName)
+      log.debug('nscResponse.dnResponse', nscResponse.dnResponse)
+      showToast('Final file name', desiredFileName, 'warning', toastTTL, true)
+      desiredFileName = nscResponse.dnResponse.data.index_name
 
-      // console.log('fileName', fileName)
-      const icResponse = await importCallbackStorage(orgId, projectId, fileName, objectKey);
-      // console.log('icResponse', icResponse)
+
+      // 6. Tell FlightHub to associate the proper name with the uploaded temp file
+      const icResponse = await importCallbackStorage(orgId, projectId, desiredFileName, objectKey);
+      log.debug('icResponse.icResponse', icResponse.icResponse)
 
       const finalFileName = icResponse.icResponse.data.name
 
-      showToast('Mission uploaded to FlightHub', finalFileName, 'success')
+      showToast('Mission uploaded to FlightHub', finalFileName, 'success', toastTTL, true)
 
-      console.log("Mission successfully uploaded to FlightHub!");
+      log.info("Mission successfully uploaded to FlightHub!");
 
     } catch (err) {
-      console.error("Failed to upload mission sequence:", err);
-      showToast('Failed to upload mission sequence:', String(err), 'error')
+      log.error("Failed to upload mission sequence:", err);
+      showToast('Failed to upload mission sequence:', String(err), 'error', toastTTL, true)
 
     } finally {
       setIsUploading(false)
@@ -332,6 +339,7 @@ export function DashboardView() {
                       e.stopPropagation();
                       handleUploadMission(selectedMission);
                     }}
+                    disabled={isUploading}
                     style={{
                       background: '#333',
                       border: 'none',
@@ -339,11 +347,12 @@ export function DashboardView() {
                       padding: '5px 10px',
                       borderRadius: '4px',
                       fontSize: '11px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold'
+                      cursor: isUploading ? 'not-allowed' : 'pointer',
+                      fontWeight: 'bold',
+                      opacity: isUploading ? 0.5 : 1
                     }}
                   >
-                    Upload
+                    {isUploading ? 'Uploading...' : 'Upload'}
                   </button>
                 </div>
 

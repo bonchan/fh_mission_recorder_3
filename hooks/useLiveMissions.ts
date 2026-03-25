@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createLogger } from '@/utils/logger';
 import { MissionMap, Mission } from '@/utils/interfaces';
 import { getProjectMissionsStorageKey } from '@/utils/utils';
+
+const log = createLogger('useLiveMissions');
 
 export function useLiveMissions(orgId: string, projectId: string) {
   const [missions, setMissions] = useState<MissionMap>({});
@@ -52,7 +55,7 @@ export function useLiveMissions(orgId: string, projectId: string) {
     // Live sync
     const handleStorageChange = (changes: any, areaName: string) => {
       if (areaName === 'local' && changes[storageKey]) {
-        // console.log(`[Sync] Missions updated across tabs!`);
+        log.debug(`[Sync] Missions updated across tabs!`);
         setMissions(changes[storageKey].newValue || {});
       }
     };

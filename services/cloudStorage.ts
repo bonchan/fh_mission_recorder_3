@@ -1,10 +1,13 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { createLogger } from '@/utils/logger';
 // import OSS from 'ali-oss'; // Uncomment if/when you add AliCloud
+
+const log = createLogger('cloudStorage');
 
 export async function uploadToCloudStorage(file: File, objectKey: string, storageData: any) {
   const { provider, endpoint, bucket, credentials } = storageData;
 
-  console.log(`Routing upload to provider: ${provider}`);
+  log.info(`Routing upload to provider: ${provider}`);
 
   if (provider === 'aws') {
     return await uploadToAWS(file, objectKey, endpoint, bucket, credentials);
@@ -50,10 +53,10 @@ async function uploadToAWS(file: File, objectKey: string, endpoint: string, buck
   // 4. Execute the upload
   try {
     const response = await s3Client.send(command);
-    console.log("AWS S3 Upload successful:", response);
+    log.info("AWS S3 Upload successful:", response);
     return response;
   } catch (error) {
-    console.error("AWS S3 Upload failed:", error);
+    log.error("AWS S3 Upload failed:", error);
     throw error;
   }
 }

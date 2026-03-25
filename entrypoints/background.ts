@@ -1,6 +1,8 @@
 import { DJI_PROJECT_BASE_REGEX, ICONS_ON, ICONS_OFF } from '@/utils/constants'
-
 import { LiveDroneData } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('background');
 
 export default defineBackground(() => {
   const registry = new Map<number, number>(); // Key: FH_TabId, Value: Dashboard_TabId
@@ -103,14 +105,14 @@ export default defineBackground(() => {
     chrome.debugger.attach({ tabId: fhTabId }, "1.3", () => {
       chrome.debugger.sendCommand({ tabId: fhTabId }, "Network.enable");
       activeDebugSessions.add(fhTabId);
-      console.log(`Debugger attached to FlightHub Tab: ${fhTabId}`);
+      log.info(`Debugger attached to FlightHub Tab: ${fhTabId}`);
     });
   }
 
   function detachDebugger(fhTabId: number) {
     chrome.debugger.detach({ tabId: fhTabId }, () => {
       activeDebugSessions.delete(fhTabId);
-      console.log(`Debugger detached from FlightHub Tab: ${fhTabId}`);
+      log.info(`Debugger detached from FlightHub Tab: ${fhTabId}`);
     });
   }
 
@@ -134,10 +136,7 @@ export default defineBackground(() => {
       // Decode and parse DJI Telemetry (simplified example)
       const jsonPayload = JSON.parse(rawPayload);
 
-      // console.log('jsonPayload', jsonPayload)
-
       if (jsonPayload.biz_code === 'device_osd') {
-        // console.log('device_osd')
         // drone
         try {
           const host = jsonPayload.data?.host

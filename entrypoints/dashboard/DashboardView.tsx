@@ -201,9 +201,8 @@ export function DashboardView() {
       showToast('Checking file name', desiredFileName, 'info', toastTTL, true)
       const nscResponse = await duplicateNameStorageCheck(orgId, projectId, desiredFileName)
       log.debug('nscResponse.dnResponse', nscResponse.dnResponse)
-      showToast('Final file name', desiredFileName, 'warning', toastTTL, true)
       desiredFileName = nscResponse.dnResponse.data.index_name
-
+      showToast('Final file name', desiredFileName, 'warning', toastTTL, true)
 
       // 6. Tell FlightHub to associate the proper name with the uploaded temp file
       const icResponse = await importCallbackStorage(orgId, projectId, desiredFileName, objectKey);

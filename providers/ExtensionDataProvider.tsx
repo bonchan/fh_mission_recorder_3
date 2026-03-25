@@ -47,13 +47,12 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
   const getDroneTelemetry = async (orgId: string, projectId: string, droneDeviceSn: string) => {
     const targetTabId = await getTargetTabId(orgId, projectId);
     // 1. Fetch fresh from the active tab
-    // const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
-    // const topologies = res.topologies.data.list
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
+    const topologies = res.topologies.data.list
 
-    const res = await fetch('http://localhost:8080/api/osd');
-    const payload = await res.json();
-    const topologies = payload.data.list;
-
+    // const res = await fetch('http://localhost:8080/api/osd');
+    // const payload = await res.json();
+    // const topologies = payload.data.list;
 
     let waypoint = null
     for (const item of topologies) {

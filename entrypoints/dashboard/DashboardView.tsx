@@ -7,7 +7,7 @@ import { useLiveMissions } from '@/hooks/useLiveMissions';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 
 import { generateDJIMission, generateDJIMissionFiles } from '@/utils/wpml-generator';
-
+import { XMLDebugModal } from '@/components/debug/XMLDebugModal';
 
 export function DashboardView() {
   // 1. Get IDs from the URL (You must pass these when opening the dashboard!)
@@ -43,6 +43,7 @@ export function DashboardView() {
   });
 
   const { data: simData, isConnected, connect, disconnect } = useDjiSimulator();
+  const [debugXml, setDebugXml] = useState<{ template: string, waylines: string } | null>(null);
 
   // --- FETCH ANNOTATIONS ON MOUNT ---
   useEffect(() => {
@@ -137,9 +138,14 @@ export function DashboardView() {
     a.href = url;
 
     const cleanName = mission.name.replace(/[<>:"/|?*._\\]/g, '');
-    a.download = `P2--${cleanName}.kmz`;
+    a.download = `P3--${cleanName}.kmz`;
     a.click();
     window.URL.revokeObjectURL(url);
+  }
+
+  const handleDebugMission = async (mission: Mission) => {
+    const { template, waylines } = await generateDJIMissionFiles(mission)
+    setDebugXml({ template, waylines });
   }
 
   // Convert mission Waypoints to Map expected format
@@ -159,6 +165,14 @@ export function DashboardView() {
 
   return (
     <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#000' }}>
+
+      {debugXml && (
+        <XMLDebugModal
+          templateKml={debugXml.template}
+          waylinesWpml={debugXml.waylines}
+          onClose={() => setDebugXml(null)}
+        />
+      )}
 
       {/* LEFT SIDEBAR: Missions & Waypoints */}
       <div style={{ width: '350px', backgroundColor: '#111', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
@@ -197,25 +211,46 @@ export function DashboardView() {
         <div style={{ padding: '15px', flex: '1 1 auto', overflowY: 'auto' }}>
           {selectedMission ? (
             <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '10px' }}>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleExportMission(selectedMission);
-                }}
-                style={{
-                  background: '#333',
-                  border: 'none',
-                  color: '#99b7e2',
-                  padding: '5px 10px',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                'Export'
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDebugMission(selectedMission);
+                  }}
+                  style={{
+                    background: '#333',
+                    border: 'none',
+                    color: '#99b7e2',
+                    padding: '5px 10px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Debug
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExportMission(selectedMission);
+                  }}
+                  style={{
+                    background: '#333',
+                    border: 'none',
+                    color: '#99b7e2',
+                    padding: '5px 10px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Export
+                </button>
+              </div>
 
               <h3 style={{ color: '#aaa', fontSize: '12px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>
                 Waypoints: {selectedMission.name}

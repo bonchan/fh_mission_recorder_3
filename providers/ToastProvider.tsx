@@ -8,19 +8,26 @@ interface ToastMessage {
   text: string;
   type: ToastType;
   duration: number;
+  isSwarm?: boolean;
 }
 
 interface ToastContextType {
-  showToast: (title: string, text: string, type?: ToastType, duration?: number) => void;
+  showToast: (title: string, text: string, type?: ToastType, duration?: number, isSwarm?: boolean) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
 // --- THE INDIVIDUAL TOAST COMPONENT ---
-function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: string) => void }) {
+function ToastItem({ toast, onRemove, swarmResetKey }: { toast: ToastMessage; onRemove: (id: string) => void; swarmResetKey: number }) {
   const [isLeaving, setIsLeaving] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [timerKey, setTimerKey] = useState(0); // Used to force the CSS animation to restart
+
+  useEffect(() => {
+    if (toast.isSwarm && swarmResetKey > 0 && !isLeaving) {
+      setTimerKey(prev => prev + 1);
+    }
+  }, [swarmResetKey, toast.isSwarm]);
 
   useEffect(() => {
     if (isHovered || isLeaving) return;
@@ -30,7 +37,7 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: st
     }, toast.duration);
 
     return () => clearTimeout(leaveTimer);
-  }, [toast.duration, isHovered, isLeaving, timerKey]); // Added timerKey to dependencies
+  }, [toast.duration, isHovered, isLeaving, timerKey]);
 
   useEffect(() => {
     if (isLeaving) {
@@ -132,15 +139,22 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: st
 // --- THE PROVIDER & CONTAINER ---
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [swarmResetKey, setSwarmResetKey] = useState(0);
 
-  const showToast = useCallback((title: string, text: string, type: ToastType = 'info', duration = 3000) => {
+  const showToast = useCallback((title: string, text: string, type: ToastType = 'info', duration = 3000, isSwarm = false) => {
     const newToast: ToastMessage = {
       id: Math.random().toString(36).substring(2, 9), // Quick unique ID
       title,
       text,
       type,
       duration,
+      isSwarm,
     };
+
+    if (isSwarm) {
+      setSwarmResetKey(Date.now());
+    }
+
     // Add new toasts to the END of the array
     setToasts((prev) => [...prev, newToast]);
   }, []);
@@ -169,7 +183,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         }}
       >
         {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onRemove={removeToast} />
+          <ToastItem key={toast.id} toast={toast} onRemove={removeToast} swarmResetKey={swarmResetKey}/>
         ))}
       </div>
 

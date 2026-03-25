@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-// import { Drone } from '@/utils/interfaces'; // Adjust path if needed
+import { Drone } from '@/utils/interfaces';
 
 interface CreateMissionModalProps {
-  devices: any[]; // Replace 'any' with 'Drone'
+  devices: Drone[];
   onClose: () => void;
-  onSubmit: (missionName: string, selectedDevice: any) => void; // Passes the raw form data up!
+  onSubmit: (missionName: string, selectedDevice: Drone) => void;
 }
 
 export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMissionModalProps) {

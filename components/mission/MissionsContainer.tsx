@@ -10,7 +10,7 @@ export function MissionsContainer({ orgId, projectId, devices, isFetching, viewC
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // This is where your old `handleConfirmCreate` logic lives now!
-  const handleMissionSubmit = async (missionName: string, selectedDevice: any) => {
+  const handleMissionSubmit = async (missionName: string, selectedDevice: Drone) => {
     const dockSn = selectedDevice?.parent?.deviceSn;
     if (!dockSn) return;
 

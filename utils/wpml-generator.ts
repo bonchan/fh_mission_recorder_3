@@ -244,7 +244,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
   const templateKml = `${headerXml}
 <Document>
   <wpml:author></wpml:author>
-  <wpml:panelVersion>${pkg.version}</wpml:panelVersion>
+  <wpml:extension>${pkg.name} ${pkg.version}</wpml:extension>
   <wpml:createTime>${mission.createdDate}</wpml:createTime>
   <wpml:updateTime>${mission.updatedDate}</wpml:updateTime>
   ${missionConfigXml}

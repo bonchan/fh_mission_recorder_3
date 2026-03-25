@@ -275,9 +275,9 @@ export function DashboardView() {
         <div style={{ padding: '15px', flex: '1 1 auto', overflowY: 'auto' }}>
 
           {isUploading ? (
-            <>
-              <div>uploading mission to fh</div>
-            </>
+            <div style={{ color: '#a1b7da', fontSize: '12px', fontWeight: 'bold', padding: '5px' }}>
+              Uploading mission to FH... ⏳
+            </div>
           ) : (
 
             selectedMission ? (

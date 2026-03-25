@@ -16,7 +16,9 @@ export interface MissionTemplate {
   template: TemplateWaypoint[];
 }
 
-export const MISSION_TEMPLATES: MissionTemplate[] = [
+export const MISSION_TEMPLATES: MissionTemplate[] = []
+
+export const MISSION_TEMPLATES_BKP: MissionTemplate[] = [
   {
     name: "AIB",
     template: [

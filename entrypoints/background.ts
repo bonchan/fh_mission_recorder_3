@@ -68,9 +68,9 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener(async (message, sender) => {
     // 1. Handling Dashboard Creation
     if (message.type === 'OPEN_DASHBOARD') {
-      const { missionId, orgId, projectId, sourceTabId } = message;
+      const { missionId, orgId, projectId, sourceTabId, statusOverlay } = message;
       const url = browser.runtime.getURL(
-        `/dashboard.html?missionId=${missionId}&orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}`
+        `/dashboard.html?missionId=${missionId}&orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&statusOverlay=${statusOverlay}`
       );
 
       const dashboardTab = await browser.tabs.create({ url });

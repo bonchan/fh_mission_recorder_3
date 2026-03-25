@@ -135,7 +135,8 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
       missionId: mission.id,
       orgId: mission.orgId,
       projectId: mission.projectId,
-      sourceTabId: tab.id
+      sourceTabId: tab.id,
+      statusOverlay: false
     });
   };
 

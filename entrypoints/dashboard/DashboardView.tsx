@@ -19,6 +19,7 @@ export function DashboardView() {
   const orgId = params.get('orgId') || '';
   const projectId = params.get('projectId') || '';
   const missionId = params.get('missionId') || '';
+  const showStatusOverlay = params.get('statusOverlay') === 'true';
 
   // --- DATA HOOKS ---
   const { missions } = useLiveMissions(orgId, projectId);
@@ -379,30 +380,33 @@ export function DashboardView() {
         />
 
         {/* Existing Overlays */}
-        <div className={styles.statusOverlay}>
-          <div className={styles.tabInfo}>
-            {currentTabId ? `Connected to Tab: ${currentTabId}` : 'Finding DJI Tab...'}
-          </div>
 
-          <button onClick={toggleDebugger} className={`${styles.simButton} ${isDebuggerActive ? styles.active : ''}`}>
-            {isDebuggerActive ? '🔴 DISCONNECT DEBUGGER' : '🔌 ATTACH TO FLIGHTHUB'}
-          </button>
-
-          <button onClick={isConnected ? disconnect : connect} className={`${styles.simButton}`}>
-            {isConnected ? "🛑 Stop Local Sim" : "🟢 Start Local Sim"}
-          </button>
-
-          <pre className={styles.debugInfo}>
-            {JSON.stringify(livedroneData, null, 2)}
-          </pre>
-
-          {isTelemetryLost && (
-            <div className={styles.telemetryError}>
-              🚨 DRONE TELEMETRY LOST! <br />
-              <small>Last seen: {new Date(livedroneData.timestamp).toLocaleTimeString()}</small>
+        {showStatusOverlay &&
+          <div className={styles.statusOverlay}>
+            <div className={styles.tabInfo}>
+              {currentTabId ? `Connected to Tab: ${currentTabId}` : 'Finding DJI Tab...'}
             </div>
-          )}
-        </div>
+
+            <button onClick={toggleDebugger} className={`${styles.simButton} ${isDebuggerActive ? styles.active : ''}`}>
+              {isDebuggerActive ? '🔴 DISCONNECT DEBUGGER' : '🔌 ATTACH TO FLIGHTHUB'}
+            </button>
+
+            <button onClick={isConnected ? disconnect : connect} className={`${styles.simButton}`}>
+              {isConnected ? "🛑 Stop Local Sim" : "🟢 Start Local Sim"}
+            </button>
+
+            <pre className={styles.debugInfo}>
+              {JSON.stringify(livedroneData, null, 2)}
+            </pre>
+
+            {isTelemetryLost && (
+              <div className={styles.telemetryError}>
+                🚨 DRONE TELEMETRY LOST! <br />
+                <small>Last seen: {new Date(livedroneData.timestamp).toLocaleTimeString()}</small>
+              </div>
+            )}
+          </div>
+        }
       </div>
     </div>
   );

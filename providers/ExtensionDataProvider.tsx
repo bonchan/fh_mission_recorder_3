@@ -1,8 +1,8 @@
 import React, { createContext, useContext } from 'react';
 import { createLogger } from '@/utils/logger';
-import { Annotation, Drone, Waypoint } from '@/utils/interfaces';
+import { Annotation, Drone, Waypoint, FlatDevice } from '@/utils/interfaces';
 import { getProjectTopologiesStorageKey } from '@/utils/utils';
-import { toDockDrone, toAnnotation, toWaypoint } from '@/utils/mapper';
+import { toDockDrone, toAnnotation, toWaypoint, toFlatDevice } from '@/utils/mapper';
 import { getCachedOrFetch } from '@/utils/storageCache';
 
 interface DataContextType {
@@ -11,8 +11,10 @@ interface DataContextType {
   getDroneTelemetry: (orgId: string, projectId: string, droneDeviceSn: string) => Promise<Waypoint>;
   getStorageUploadCredentials: (orgId: string, projectId: string, tabId?: number) => Promise<any>;
   duplicateNameStorageCheck: (orgId: string, projectId: string, missionName: string, tabId?: number) => Promise<any>;
-  
-  importCallbackStorage: (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => Promise<any>; // surely something missing
+  importCallbackStorage: (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => Promise<any>;
+
+  getFreshTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
+
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -94,6 +96,32 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
     });
   };
 
+  const getFreshTopologies = async (orgId: string, projectId: string, tabId?: number) => {
+    const key = getProjectTopologiesStorageKey(orgId, projectId)
+
+    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
+
+    // 1. Fetch fresh from the active tab
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
+    const topologies = res.topologies.data.list
+
+    const deviceList: FlatDevice[] = [];
+    for (const item of topologies) {
+      const flatDevice = toFlatDevice(item);
+      // Only add to the list if the mapper returned a valid object
+      if (flatDevice) {
+        deviceList.push(flatDevice);
+      }
+    }
+    // const deviceListSorted = [...deviceList].sort((a, b) => {
+    //   const indexA = a.parentIndex ?? 999;
+    //   const indexB = b.parentIndex ?? 999;
+    //   return indexA - indexB;
+    // });
+
+    return deviceList
+  };
+
   // --- ANNOTATIONS ---
   const getAnnotations = async (orgId: string, projectId: string, tabId?: number) => {
     const key = getProjectAnnotationsStorageKey(orgId, projectId)
@@ -146,6 +174,7 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
       getStorageUploadCredentials,
       duplicateNameStorageCheck,
       importCallbackStorage,
+      getFreshTopologies,
     }}>
       {children}
     </DataContext.Provider>

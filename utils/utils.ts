@@ -96,3 +96,21 @@ export function getShortestTurn(prevYaw: number, nextYaw: number): 'CW' | 'CCW' 
   // 3. If the normalized difference is positive, it's Clockwise
   return normalizedDiff >= 0 ? 'CW' : 'CCW';
 }
+
+export function prefixKeys(obj: Record<string, any> | undefined, prefix: string) {
+  if (!obj) return {};
+
+  return Object.keys(obj).reduce((acc: Record<string, any>, key: string) => {
+    // 1. Convert snake_case to PascalCase (e.g., 'device_sn' -> 'DeviceSn')
+    const pascalCaseKey = key
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('');
+
+    // 2. Combine them (e.g., 'host' + 'DeviceSn' -> 'hostDeviceSn')
+    const newKey = `${prefix}${pascalCaseKey}`;
+    acc[newKey] = obj[key];
+
+    return acc;
+  }, {});
+}

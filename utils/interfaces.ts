@@ -21,6 +21,34 @@ export interface Drone {
   parent: Dock | null;
 }
 
+export interface FlatDevice {
+  hostDeviceSn: string
+  hostDeviceModelName: string
+  hostDeviceOnlineStatus: boolean
+  hostDeviceDeviceProjectCallsign: string
+  hostDeviceOrganizationCallsign: string
+  hostBatteryCapacityPercent: number
+  hostBatteryFirmwareVersion: string
+  hostBatteryHighVoltageStorageDays: number
+  hostBatteryLoopTimes: number
+  hostBatterySn: string
+  hostDeviceStateFirmwareUpgradeStatus: number
+  hostDeviceStateFirmwareVersion: string
+  hostDeviceStateFlysafeDatabaseVersion: string
+  hostDeviceStateTrackId: string
+  hostDeviceStateWpmzVersion: string
+  parentDeviceModelName: string
+  parentDeviceOnlineStatus: boolean
+  parentDeviceProjectCallsign: string
+  parentDeviceOrganizationCallsign: string
+  parentDeviceStateDroneChargeStateState:number
+  parentDeviceStateDroneInDock:number
+
+  parentIndex: number
+  parentDeviceSn: string
+
+}
+
 export interface Annotation {
   id: string;
   name: string;

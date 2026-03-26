@@ -65,24 +65,27 @@ export default function SidePanelView() {
     fetchAnnotations();
   }, [orgId, projectId, tabId, getAnnotations]);
 
-  const handleViewDashboard = async (mission: Mission) => {
-    // const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    // if (!tab?.id) return;
-
-    // browser.runtime.sendMessage({
-    //   type: 'OPEN_DASHBOARD',
-    //   missionId: mission.id,
-    //   orgId: mission.orgId,
-    //   projectId: mission.projectId,
-    //   sourceTabId: tab.id
-    // });
+  const handleViewAdminDashboard = async () => {
+    browser.runtime.sendMessage({
+      type: 'OPEN_ADMIN_DASHBOARD',
+      orgId: orgId,
+      projectId: projectId,
+      sourceTabId: tabId
+    });
   };
-
-
-  // const displayMissions = Object.values(projectMissionsMap).flat();
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      <button
+        onClick={() => handleViewAdminDashboard()}
+        style={{
+          width: '100%', padding: '10px', background: '#dce655', color: '#000000',
+          border: 'none', borderRadius: '4px', cursor: isFetching ? 'not-allowed' : 'pointer',
+          marginBottom: '20px', fontWeight: 'bold'
+        }}
+      >
+        {'Open Admin Dashboard'}
+      </button>
       <MissionsContainer orgId={orgId} projectId={projectId} devices={devices} isFetching={isFetching} viewContext={ViewContext.SIDEPANEL}></MissionsContainer>
     </div>
   );

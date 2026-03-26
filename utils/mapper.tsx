@@ -1,5 +1,5 @@
-import { Drone, Dock, Annotation, Waypoint } from '@/utils/interfaces';
-import { extractNumber } from '@/utils/utils'
+import { Drone, Dock, Annotation, Waypoint, FlatDevice } from '@/utils/interfaces';
+import { extractNumber, prefixKeys } from '@/utils/utils'
 
 export function toDock(djiItem: any): any | null {
     if (!djiItem.host || !djiItem.parents || djiItem.parents.length === 0) return null;
@@ -38,8 +38,8 @@ export function toDrone(djiItem: any, dock: Dock | null): any | null {
 export function toWaypoint(djiItem: any, hostSn?: string): any | null {
     if (!djiItem.host || !djiItem.parents || djiItem.parents.length === 0) return null;
     const hostRaw = djiItem.host;
-    
-    if(hostSn && hostSn !== hostRaw.device_sn) return null
+
+    if (hostSn && hostSn !== hostRaw.device_sn) return null
 
     const device_state = hostRaw.device_state;
     const payload_index = device_state.cameras[0].payload_index;
@@ -64,6 +64,31 @@ export function toDockDrone(djiItem: any): any | null {
     const dock: Dock = toDock(djiItem)
     const drone: Drone = toDrone(djiItem, dock)
     return drone;
+}
+
+export function toFlatDevice(djiItem: any): FlatDevice | null {
+    if (!djiItem.host) return null
+    const hostRaw = djiItem.host;
+    const hostDeviceModel = hostRaw.device_model
+    const hostDeviceState = hostRaw.device_state
+    const hostBattery = hostDeviceState.battery.batteries[0]
+
+    let parent = {}
+    if (djiItem.parents && djiItem.parents.length > 0) {
+        const parentRaw = djiItem.parents[0];
+        parent = prefixKeys(parentRaw, 'parent')
+
+    }
+
+    const flatDevice: FlatDevice = {
+        ...prefixKeys(hostRaw, 'host'),               // Handles hostDeviceSn, hostDeviceOnlineStatus, etc.
+        ...prefixKeys(hostDeviceModel, 'hostDeviceModel'), // Handles hostDeviceModelName
+        ...prefixKeys(hostBattery, 'hostBattery'),         // Handles hostBatteryCapacityPercent, etc.
+        ...prefixKeys(hostDeviceState, 'hostDeviceState'), // Handles hostDeviceStateFirmwareVersion, etc.
+        ...parent
+    } as FlatDevice;
+
+    return flatDevice
 }
 
 export function toAnnotation(djiItem: any): any | null {

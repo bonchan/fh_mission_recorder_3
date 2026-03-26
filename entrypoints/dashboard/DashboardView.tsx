@@ -18,11 +18,11 @@ import { delay } from '@/utils/time'
 const log = createLogger('DashboardView');
 
 export function DashboardView() {
-  // 1. Get IDs from the URL (You must pass these when opening the dashboard!)
+  // 1. Get IDs from the URL
   const params = new URLSearchParams(window.location.search);
-  const sourceTabId = parseInt(params.get('sourceTabId') || '0');
   const orgId = params.get('orgId') || '';
   const projectId = params.get('projectId') || '';
+  const sourceTabId = parseInt(params.get('sourceTabId') || '0');
   const missionId = params.get('missionId') || '';
   const showStatusOverlay = params.get('statusOverlay') === 'true';
 

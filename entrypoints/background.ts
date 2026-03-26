@@ -80,6 +80,15 @@ export default defineBackground(() => {
       return;
     }
 
+    if (message.type === 'OPEN_ADMIN_DASHBOARD') {
+      const { orgId, projectId, sourceTabId } = message;
+      const url = browser.runtime.getURL(`/adminview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}`);
+
+      const adminDashboardTab = await browser.tabs.create({ url });
+      registry.set(sourceTabId, adminDashboardTab.id!);
+      return;
+    }
+
     // 2. Handling Debugger Toggles
     // Note: message.tabId here should be the sourceTabId (FlightHub) 
     // passed from your Dashboard's URL parameters

@@ -33,6 +33,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   const baseStyle: React.CSSProperties = {
     width,
     padding: '10px',
+    marginBottom: '6px',
     border: 'none',
     borderRadius: '4px',
     fontWeight: 'bold',

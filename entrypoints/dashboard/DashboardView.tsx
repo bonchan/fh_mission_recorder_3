@@ -250,7 +250,7 @@ export function DashboardView() {
       )}
 
       {/* LEFT SIDEBAR: Missions & Waypoints */}
-      <div style={{ width: '350px', backgroundColor: '#111', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+      <div style={{ width: '500px', backgroundColor: '#111', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
 
         {/* Missions List */}
         <div style={{ padding: '15px', borderBottom: '1px solid #333', flex: '0 0 auto' }}>
@@ -275,7 +275,7 @@ export function DashboardView() {
                     borderColor: mission.id === selectedMissionId ? '#0066ff' : '#444'
                   }}
                 >
-                  {mission.name}
+                  {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} - ${(mission.waypoints || []).length} Waypoints`}
                 </div>
               ))}
             </div>
@@ -362,11 +362,29 @@ export function DashboardView() {
                   <p style={{ color: '#666', fontSize: '12px' }}>No waypoints recorded yet.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {selectedMission.waypoints?.map((wp, i) => (
-                      <div key={wp.id} style={{ padding: '8px', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #333', color: '#ccc', fontSize: '11px' }}>
+                    {selectedMission.waypoints?.map((waypoint, index) => (
+                      <div key={waypoint.id} style={{ padding: '8px', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #333', color: '#ccc', fontSize: '11px' }}>
                         {/* <strong style={{ color: '#fff' }}>WP {i + 1}</strong> • {wp.tag || 'No Tag'} */}
-                        <div style={{ marginTop: '4px', color: '#888' }}>
-                          Lat: {wp.latitude.toFixed(5)} | Lng: {wp.longitude.toFixed(5)}
+                        {/* <div style={{ marginTop: '4px', color: '#888' }}> */}
+                        {/* Lat: {wp.latitude.toFixed(5)} | Lng: {wp.longitude.toFixed(5)} */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '4px 12px',
+                          color: '#aaa',
+                          marginBottom: '10px'
+                        }}>
+                          <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '12px' }}>
+                            WP {index}
+                          </div>
+                          <div></div>
+                          <div><span style={{ color: '#666' }}>Lon:</span> {waypoint.longitude?.toFixed(6)}</div>
+                          <div><span style={{ color: '#666' }}>Lat:</span> {waypoint.latitude?.toFixed(6)}</div>
+                          <div><span style={{ color: '#666' }}>Elev:</span> {waypoint.elevation}m</div>
+                          <div><span style={{ color: '#666' }}>Height:</span> {waypoint.height}m</div>
+                          <div><span style={{ color: '#666' }}>Yaw:</span> {waypoint.yaw}°</div>
+                          <div><span style={{ color: '#666' }}>Pitch:</span> {waypoint.pitch}°</div>
+                          <div><span style={{ color: '#666' }}>Zoom:</span> {waypoint.zoom}x</div>
                         </div>
                       </div>
                     ))}

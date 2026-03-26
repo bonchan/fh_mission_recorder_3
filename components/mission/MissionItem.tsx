@@ -108,9 +108,8 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
         // 4. Update the mission array and send it to the parent!
         onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
 
-
       } else {
-        alert("Could not find active telemetry for this drone. Is it turned on?");
+        showToast("Could not find active telemetry for this drone.", "Is it turned on?", 'warning');
       }
     } catch (error) {
       log.error("Failed to fetch drone location:", error);
@@ -118,8 +117,6 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
     } finally {
       setIsFetchingLocation(false);
     }
-
-
 
     setTimeout(() => {
       addButtonRef.current?.scrollIntoView({
@@ -185,12 +182,12 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
               title="Double click to edit"
               style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '2px', cursor: 'text' }}
             >
-              {mission.name}
+              {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign}`}
             </div>
           )}
 
           <div style={{ fontSize: '10px', color: '#888' }}>
-            Dock: {mission.device?.parent?.deviceSn} • {(mission.waypoints || []).length} Waypoints
+            {(mission.waypoints || []).length} Waypoints
           </div>
         </div>
 

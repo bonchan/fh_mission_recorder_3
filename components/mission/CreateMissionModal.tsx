@@ -1,19 +1,30 @@
 import React, { useState } from 'react';
-import { Drone } from '@/utils/interfaces';
+import { Drone, MissionType } from '@/utils/interfaces';
+import { enumToOptions } from '@/utils/utils';
 import { StorageBackupControls } from '@/components/storage/StorageBackupControls'
 import godMode from '@/assets/GgsQO4YX0AAyEFG.jpg';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 
 interface CreateMissionModalProps {
   devices: Drone[];
   onClose: () => void;
-  onSubmit: (missionName: string, selectedDevice: Drone) => void;
+  onSubmit: (missionName: string, selectedDevice: Drone, missionType: MissionType) => void;
 }
 
 export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMissionModalProps) {
   // 1. Local state strictly for the form inputs
   const [newMissionName, setNewMissionName] = useState('');
   const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0);
+  const [selectedType, setSelectedType] = useState<MissionType>(MissionType.WAYPOINT);
+
+
+  const missionOptions = enumToOptions(MissionType)
+
+  const dockOptions = devices.map((device, index) => ({
+    label: `${device.parent?.deviceOrganizationCallsign} - ${device.deviceOrganizationCallsign}`,
+    value: index,
+  }));
 
   // 2. Validate and pass the data UP to the parent
   const handleConfirmCreate = () => {
@@ -23,7 +34,7 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
     if (!selectedDevice) return;
 
     // Tell the parent component to handle the actual creation!
-    onSubmit(newMissionName, selectedDevice);
+    onSubmit(newMissionName, selectedDevice, selectedType);
   };
 
   return (
@@ -44,7 +55,7 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
             </div>
             <StorageBackupControls />
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <Button onClick={onClose} variant='outline'>Close</Button>
+              <Button onClick={onClose} variant='outline'>Close</Button>
             </div>
           </>
           : (
@@ -60,18 +71,19 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
                 style={{ width: '100%', padding: '8px', marginBottom: '15px', background: '#2c2c2c', border: '1px solid #444', color: 'white', boxSizing: 'border-box' }}
               />
 
-              <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px', color: '#888' }}>Select Dock</label>
-              <select
+              <Select
+                label="Select Dock"
                 value={selectedDeviceIndex}
-                onChange={(e) => setSelectedDeviceIndex(Number(e.target.value))}
-                style={{ width: '100%', padding: '8px', marginBottom: '20px', background: '#2c2c2c', border: '1px solid #444', color: 'white' }}
-              >
-                {devices.map((device, index) => (
-                  <option key={device.parent?.deviceSn || index} value={index}>
-                    {device.parent?.deviceOrganizationCallsign} - {device.deviceOrganizationCallsign}
-                  </option>
-                ))}
-              </select>
+                options={dockOptions}
+                onChange={(val) => setSelectedDeviceIndex(Number(val))}
+              />
+
+              <Select
+                label="Mission Type"
+                value={selectedType}
+                options={missionOptions}
+                onChange={(val) => setSelectedType(val)}
+              />
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 <Button onClick={onClose} variant='outline'>Cancel</Button>
@@ -80,9 +92,6 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
             </>
           )
         }
-
-
-
 
       </div>
     </div>

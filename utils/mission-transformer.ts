@@ -1,6 +1,6 @@
 // utils/mission-transformer.ts
 import { getFocalLengthFromZoom, normalizeHeading360, getShortestTurn } from '@/utils/utils'
-import { Waypoint } from './interfaces';
+import { Waypoint, MissionType } from './interfaces';
 
 export function recalculateWaypointTurns(waypoints: Waypoint[]): Waypoint[] {
     if (!waypoints || waypoints.length === 0) return [];
@@ -23,7 +23,7 @@ export function recalculateWaypointTurns(waypoints: Waypoint[]): Waypoint[] {
     return updated;
 }
 
-export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositionIndex: number) => {
+export const transformWaypointsForExport = (waypoints: Waypoint[], missionType: MissionType, payloadPositionIndex: number) => {
     return waypoints.map((wp, index) => {
 
         // 1. Start with the base coordinate data
@@ -80,44 +80,54 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
         //     }
         // });
 
-        actions.push({
-            actionId: actionId++,
-            actionActuatorFunc: "orientedShoot",
-            actionActuatorFuncParam: {
-                gimbalPitchRotateAngle: wp.pitch,               // From recorded data
-                gimbalRollRotateAngle: 0,
-                gimbalYawRotateAngle: normalizeHeading360(wp.yaw),                   // Align with aircraftHeading for M3E
-                focusX: 0,                                    // Center (960/2)
-                focusY: 0,                                    // Center (720/2)
-                focusRegionWidth: 0,
-                focusRegionHeight: 0,
-                focalLength: getFocalLengthFromZoom(wp.zoom),   // Example focal length
-                aircraftHeading: normalizeHeading360(wp.yaw),                        // True north relative
-                accurateFrameValid: 0,                          // 1: AI Spot-check ON
-                payloadPositionIndex: payloadPositionIndex,
-                // payloadLensIndex: "zoom,ir",                    // "wide", "zoom", or "wide,ir"
-                useGlobalPayloadLensIndex: 1,
-                targetAngle: 0,
-                actionUuid: crypto.randomUUID(),                // Unique ID for image association
-                imageWidth: 0,
-                imageHeight: 0,
-                afPos: 0,
-                gimbalPort: 0,
-                // orientedCameraType: 53,                         // 52: M30 Dual, 53: M30T Triple
-                orientedPhotoMode: "normalPhoto"                // "normalPhoto" or "lowLightSmartShooting"
-            }
-        });
+        if (missionType == MissionType.WAYPOINT || missionType == MissionType.ZENITHAL) {
+            actions.push({
+                actionId: actionId++,
+                actionActuatorFunc: "orientedShoot",
+                actionActuatorFuncParam: {
+                    gimbalPitchRotateAngle: wp.pitch,               // From recorded data
+                    gimbalRollRotateAngle: 0,
+                    gimbalYawRotateAngle: normalizeHeading360(wp.yaw),                   // Align with aircraftHeading for M3E
+                    focusX: 0,                                    // Center (960/2)
+                    focusY: 0,                                    // Center (720/2)
+                    focusRegionWidth: 0,
+                    focusRegionHeight: 0,
+                    focalLength: getFocalLengthFromZoom(wp.zoom),   // Example focal length
+                    aircraftHeading: normalizeHeading360(wp.yaw),                        // True north relative
+                    accurateFrameValid: 0,                          // 1: AI Spot-check ON
+                    payloadPositionIndex: payloadPositionIndex,
+                    // payloadLensIndex: "zoom,ir",                    // "wide", "zoom", or "wide,ir"
+                    useGlobalPayloadLensIndex: 1,
+                    targetAngle: 0,
+                    actionUuid: crypto.randomUUID(),                // Unique ID for image association
+                    imageWidth: 0,
+                    imageHeight: 0,
+                    afPos: 0,
+                    gimbalPort: 0,
+                    // orientedCameraType: 53,                         // 52: M30 Dual, 53: M30T Triple
+                    orientedPhotoMode: "normalPhoto"                // "normalPhoto" or "lowLightSmartShooting"
+                }
+            });
 
-        actions.push({
-            actionId: actionId++,
-            actionActuatorFunc: "zoom",
-            actionActuatorFuncParam: {
-                payloadPositionIndex: payloadPositionIndex,
-                focalLength: getFocalLengthFromZoom(1),
-            }
-        });
+            actions.push({
+                actionId: actionId++,
+                actionActuatorFunc: "zoom",
+                actionActuatorFuncParam: {
+                    payloadPositionIndex: payloadPositionIndex,
+                    focalLength: getFocalLengthFromZoom(1),
+                }
+            });
+        }
 
-
+        if (missionType == MissionType.CLAMP) {
+            actions.push({
+                actionId: actionId++,
+                actionActuatorFunc: "hover",
+                actionActuatorFuncParam: {
+                    hoverTime: 10,
+                }
+            });
+        }
 
         // 3. Wrap into an Action Group if actions exist
         if (actions.length > 0) {

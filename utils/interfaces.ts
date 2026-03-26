@@ -2,6 +2,13 @@ export enum ViewContext {
   SIDEPANEL = 'sidepanel',
   DASHBOARD = 'dashboard'
 }
+
+export enum MissionType {
+  WAYPOINT = 'waypoint',
+  ZENITHAL = 'zenithal',
+  CLAMP = 'clamp',
+}
+
 export interface Dock {
   index: number;
   deviceSn: string;
@@ -89,6 +96,7 @@ export interface Mission {
   updatedDate: number;
   // author: string | null;
   // isExpanded: boolean;
+  missionType: MissionType;
   waypoints: Waypoint[];
 }
 

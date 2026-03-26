@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { createLogger } from '@/utils/logger';
-import { Mission, Waypoint, ViewContext } from '@/utils/interfaces';
+import { Mission, Waypoint, ViewContext, MissionType, Annotation } from '@/utils/interfaces';
 import { WaypointList } from '@/components/waypoint/WaypointList';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 
@@ -11,9 +11,11 @@ import { MissionTemplate } from '@/components/mission/templates'
 import { useToast } from '@/providers/ToastProvider';
 
 import Button from '@/components/ui/Button';
+import SearchInput from '@/components/ui/SearchInput';
 
 interface MissionItemProps {
   mission: Mission;
+  annotations: Annotation[];
   isExpanded: boolean;
   viewContext?: ViewContext;
   onToggleExpand: () => void;
@@ -22,7 +24,7 @@ interface MissionItemProps {
 
 const log = createLogger('MissionItem');
 
-export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, onUpdate }: MissionItemProps) {
+export function MissionItem({ mission, annotations, isExpanded, viewContext, onToggleExpand, onUpdate }: MissionItemProps) {
   // --- UI STATE ---
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(mission.name);
@@ -33,7 +35,11 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
   const [template, setTemplate] = useState<MissionTemplate | null>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
+
+
+
 
   // --- MISSION NAME EDITING ---
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -128,6 +134,8 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
     }, 100);
   };
 
+
+
   const handleViewDashboard = async (mission: Mission) => {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return;
@@ -141,6 +149,47 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
       statusOverlay: false
     });
   };
+
+
+
+  const handleAnnotationClick = (annotation: Annotation) => {
+    const newWaypoint: Waypoint = {
+      id: crypto.randomUUID(),
+      latitude: annotation.latitude,
+      longitude: annotation.longitude,
+      elevation: 50,
+      height: 50,
+      yaw: 0,
+      pitch: -90,
+      zoom: 1,
+      turn: 'CW',
+      actionGroup: null
+    };
+
+    let updatedWaypoints = [...(mission.waypoints || []), newWaypoint];
+    onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
+    showToast(`Added waypoint at annotation: ${annotation.name}`, `Total: ${updatedWaypoints.length}`)
+
+
+    // TODO change this ref to be something else that is below all in MissionItem
+    // setTimeout(() => {
+    //   addButtonRef.current?.scrollIntoView({
+    //     behavior: 'smooth',
+    //     block: 'center'
+    //   });
+    // }, 100);
+
+
+    setSearchQuery(''); // Close the dropdown
+  };
+
+  const filteredAnnotations = useMemo(() => {
+    if (searchQuery.length < 2) return [];
+    const lowerQuery = searchQuery.toLowerCase();
+    return annotations.filter(ann =>
+      ann.name?.toLowerCase().includes(lowerQuery)
+    );
+  }, [annotations, searchQuery]);
 
   return (
     <div style={{ background: '#1e1e1e', borderRadius: '8px', marginBottom: '10px', border: '1px solid #333' }}>
@@ -188,8 +237,8 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
             </div>
           )}
 
-          <div style={{ fontSize: '10px', color: '#888' }}>
-            {(mission.waypoints || []).length} Waypoints
+          <div style={{ fontSize: '10px', color: '#888' , paddingTop:'5px'}}>
+            Mission Type: {mission.missionType.toUpperCase()} | {(mission.waypoints || []).length} Waypoints
           </div>
         </div>
 
@@ -219,14 +268,51 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
             onDelete={handleDeleteWaypoint}
             viewContext={viewContext as any}
           />
-          <TemplateSelector onSelectTemplate={setTemplate} />
-          <Button
-            onClick={handleAddWaypointClick}
-            ref={addButtonRef}
-            disabled={isFetchingLocation}
-          >
-            {isFetchingLocation ? "Fetching Drone Location..." : template ? "+ Add Template at Drone Position" : "+ Add Waypoint at Drone Position"}
-          </Button>
+          {mission.missionType == MissionType.WAYPOINT && <>
+            <TemplateSelector onSelectTemplate={setTemplate} />
+            <Button
+              onClick={handleAddWaypointClick}
+              ref={addButtonRef}
+              disabled={isFetchingLocation}
+            >
+              {isFetchingLocation ? "Fetching Drone Location..." : template ? "+ Add Template at Drone Position" : "+ Add Waypoint at Drone Position"}
+            </Button>
+          </>
+          }
+
+          {mission.missionType == MissionType.ZENITHAL && <>
+            ZENITHAL NOT IMPLEMENTED
+          </>
+          }
+
+          {mission.missionType == MissionType.CLAMP && <>
+
+            <SearchInput
+              width="100%"
+              placeholder="Search annotations to add waypoint..."
+              initialValue={searchQuery}
+              onSearch={setSearchQuery} // Updates the parent state whenever the user types or clears
+            />
+
+            {filteredAnnotations.length > 0 && (
+              <div style={{ position: 'relative', top: '100%', left: 0, right: 0, background: '#111', zIndex: 10, border: '1px solid #444', maxHeight: '150px', overflowY: 'auto' }}>
+                {filteredAnnotations.map(ann => (
+                  <div
+                    key={ann.id}
+                    onClick={() => handleAnnotationClick(ann)}
+                    style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #333', fontSize: '12px' }}
+                  >
+                    <strong style={{ color: '#fff' }}>{ann.name}</strong>
+                    <div style={{ color: '#888' }}>Lat: {ann.latitude?.toFixed(5)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </>
+          }
+
+
         </div>
       )}
     </div>

@@ -3,15 +3,16 @@ import React, { useState } from 'react';
 import { useLiveMissions } from '@/hooks/useLiveMissions';
 import { CreateMissionModal } from './CreateMissionModal';
 import { MissionList } from './MissionList';
-import { Mission, ViewContext } from '@/utils/interfaces';
+import { Mission, MissionType, ViewContext, Drone, Annotation } from '@/utils/interfaces';
 import Button from '@/components/ui/Button';
 
-export function MissionsContainer({ orgId, projectId, devices, isFetching, viewContext }: { orgId: string; projectId: string; devices: Drone[]; isFetching: boolean; viewContext: ViewContext }) {
+export function MissionsContainer({ orgId, projectId, devices, annotations, isFetching, viewContext }: 
+  { orgId: string; projectId: string; devices: Drone[]; annotations: Annotation[]; isFetching: boolean; viewContext: ViewContext }) {
   const { missions, isLoadingMissions, saveMissions } = useLiveMissions(orgId, projectId);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // This is where your old `handleConfirmCreate` logic lives now!
-  const handleMissionSubmit = async (missionName: string, selectedDevice: Drone) => {
+  const handleMissionSubmit = async (missionName: string, selectedDevice: Drone, missionType: MissionType) => {
     const dockSn = selectedDevice?.parent?.deviceSn;
     if (!dockSn) return;
 
@@ -24,6 +25,7 @@ export function MissionsContainer({ orgId, projectId, devices, isFetching, viewC
       device: selectedDevice,
       createdDate: Date.now(),
       updatedDate: Date.now(),
+      missionType: missionType,
       waypoints: []
     };
 
@@ -64,6 +66,7 @@ export function MissionsContainer({ orgId, projectId, devices, isFetching, viewC
 
       <MissionList
         missions={allMissions}
+        annotations={annotations}
         isLoading={isLoadingMissions}
         viewContext={viewContext}
         onUpdate={handleUpdateMission}

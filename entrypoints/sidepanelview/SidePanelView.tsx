@@ -78,7 +78,7 @@ export default function SidePanelView() {
   return (
     <div style={{ padding: '20px', backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       <Button onClick={handleViewAdminDashboard} variant={'warning'} isLoading={isFetching}>Open Admin Dashboard</Button>
-      <MissionsContainer orgId={orgId} projectId={projectId} devices={devices} isFetching={isFetching} viewContext={ViewContext.SIDEPANEL}></MissionsContainer>
+      <MissionsContainer orgId={orgId} projectId={projectId} devices={devices} annotations={annotations} isFetching={isFetching} viewContext={ViewContext.SIDEPANEL} ></MissionsContainer>
     </div>
   );
 }

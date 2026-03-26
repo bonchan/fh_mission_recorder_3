@@ -41,7 +41,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
     payloadPositionIndex: payloadGimbalindex,
   }
 
-  const readyWaypoints = transformWaypointsForExport(mission.waypoints, payloadGimbalindex);
+  const readyWaypoints = transformWaypointsForExport(mission.waypoints, mission.missionType, payloadGimbalindex);
 
   const missionConfigXml = `
     <wpml:missionConfig>
@@ -105,22 +105,29 @@ export async function generateDJIMissionFiles(mission: Mission) {
         <wpml:gimbalPitchRotateEnable>${action.actionActuatorFuncParam.gimbalPitchRotateEnable}</wpml:gimbalPitchRotateEnable>
         <wpml:gimbalPitchRotateAngle>${action.actionActuatorFuncParam.gimbalPitchRotateAngle}</wpml:gimbalPitchRotateAngle>`
 
-        : action.actionActuatorFunc === "rotateYaw"
-          ? `
+      : action.actionActuatorFunc === "rotateYaw"
+        ? `
         <wpml:aircraftHeading>${action.actionActuatorFuncParam.aircraftHeading}</wpml:aircraftHeading>
         <wpml:aircraftPathMode>${action.actionActuatorFuncParam.aircraftPathMode}</wpml:aircraftPathMode>`
 
-          : action.actionActuatorFunc === "takePhoto"
-            ? `
+      : action.actionActuatorFunc === "takePhoto"
+        ? `
         <wpml:payloadPositionIndex>${action.actionActuatorFuncParam.payloadPositionIndex}</wpml:payloadPositionIndex>
         <wpml:payloadLensIndex>${action.actionActuatorFuncParam.payloadLensIndex}</wpml:payloadLensIndex>
         <wpml:useGlobalPayloadLensIndex>${action.actionActuatorFuncParam.useGlobalPayloadLensIndex}</wpml:useGlobalPayloadLensIndex>`
 
-            : action.actionActuatorFunc === "zoom"
-              ? `
+      : action.actionActuatorFunc === "zoom"
+        ? `
         <wpml:payloadPositionIndex>${action.actionActuatorFuncParam.payloadPositionIndex}</wpml:payloadPositionIndex>
         <wpml:focalLength>${action.actionActuatorFuncParam.focalLength}</wpml:focalLength>`
-              : ""
+
+      : action.actionActuatorFunc === "hover"
+        ? `
+        <wpml:hoverTime>${action.actionActuatorFuncParam.hoverTime}</wpml:hoverTime>`
+
+      : ""
+
+            
     }
       </wpml:actionActuatorFuncParam>
     </wpml:action>

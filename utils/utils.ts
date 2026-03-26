@@ -114,3 +114,14 @@ export function prefixKeys(obj: Record<string, any> | undefined, prefix: string)
     return acc;
   }, {});
 }
+
+export const enumToOptions = <T extends string | number>(enumObj: Record<string, T>) => {
+  return Object.values(enumObj).map((value) => ({
+    // Format label: Replace underscores with spaces and capitalize words
+    label: String(value)
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase()),
+    value: value,
+  }));
+};

@@ -153,12 +153,21 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
 
 
   const handleAnnotationClick = (annotation: Annotation) => {
+
+    let elevation = 100
+    if (mission.missionType==MissionType.ZENITHAL){
+      elevation = 70
+    }
+    if (mission.missionType==MissionType.CLAMP){
+      elevation = 50
+    }
+
     const newWaypoint: Waypoint = {
       id: crypto.randomUUID(),
       latitude: annotation.latitude,
       longitude: annotation.longitude,
-      elevation: 50,
-      height: 50,
+      elevation: elevation,
+      height: elevation,
       yaw: 0,
       pitch: -90,
       zoom: 1,
@@ -280,12 +289,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
           </>
           }
 
-          {mission.missionType == MissionType.ZENITHAL && <>
-            ZENITHAL NOT IMPLEMENTED
-          </>
-          }
-
-          {mission.missionType == MissionType.CLAMP && <>
+          {(mission.missionType == MissionType.ZENITHAL || mission.missionType == MissionType.CLAMP) && <>
 
             <SearchInput
               width="100%"

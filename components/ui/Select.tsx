@@ -34,6 +34,7 @@ const Select = <T extends string | number>({
         style={{
           width: '100%',
           padding: '8px 10px',
+          marginBottom: '6px',
           borderRadius: '4px',
           border: '1px solid #444',
           backgroundColor: '#222',

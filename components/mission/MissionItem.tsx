@@ -33,7 +33,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   const [template, setTemplate] = useState<MissionTemplate | null>(null);
-  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
@@ -127,7 +127,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
     }
 
     setTimeout(() => {
-      addButtonRef.current?.scrollIntoView({
+      scrollRef.current?.scrollIntoView({
         behavior: 'smooth',
         block: 'center'
       });
@@ -155,10 +155,10 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   const handleAnnotationClick = (annotation: Annotation) => {
 
     let elevation = 100
-    if (mission.missionType==MissionType.ZENITHAL){
+    if (mission.missionType == MissionType.ZENITHAL) {
       elevation = 70
     }
-    if (mission.missionType==MissionType.CLAMP){
+    if (mission.missionType == MissionType.CLAMP) {
       elevation = 50
     }
 
@@ -179,15 +179,12 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
     onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
     showToast(`Added waypoint at annotation: ${annotation.name}`, `Total: ${updatedWaypoints.length}`)
 
-
-    // TODO change this ref to be something else that is below all in MissionItem
-    // setTimeout(() => {
-    //   addButtonRef.current?.scrollIntoView({
-    //     behavior: 'smooth',
-    //     block: 'center'
-    //   });
-    // }, 100);
-
+    setTimeout(() => {
+      scrollRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 100);
 
     setSearchQuery(''); // Close the dropdown
   };
@@ -246,7 +243,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
             </div>
           )}
 
-          <div style={{ fontSize: '10px', color: '#888' , paddingTop:'5px'}}>
+          <div style={{ fontSize: '10px', color: '#888', paddingTop: '5px' }}>
             Mission Type: {mission.missionType.toUpperCase()} | {(mission.waypoints || []).length} Waypoints
           </div>
         </div>
@@ -277,11 +274,11 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
             onDelete={handleDeleteWaypoint}
             viewContext={viewContext as any}
           />
+          <div ref={scrollRef}></div>
           {mission.missionType == MissionType.WAYPOINT && <>
             <TemplateSelector onSelectTemplate={setTemplate} />
             <Button
               onClick={handleAddWaypointClick}
-              ref={addButtonRef}
               disabled={isFetchingLocation}
             >
               {isFetchingLocation ? "Fetching Drone Location..." : template ? "+ Add Template at Drone Position" : "+ Add Waypoint at Drone Position"}

@@ -39,6 +39,8 @@ export function DashboardView() {
   const allMissions = Object.values(missions || {}).flat();
   const selectedMission = allMissions.find(m => m.id === selectedMissionId);
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   // --- TELEMETRY STATE ---
   const [isDebuggerActive, setIsDebuggerActive] = useState(false);
   const [currentTabId, setCurrentTabId] = useState<number | null>(sourceTabId);
@@ -134,6 +136,22 @@ export function DashboardView() {
     }
   }, [selectedMission]);
 
+  const displayedMissions = useMemo(() => {
+    if (searchQuery.length > 2) {
+      const lowerQuery = searchQuery.toLowerCase();
+      return allMissions.filter(mission => {
+        return (
+          mission.name.toLowerCase().includes(lowerQuery) ||
+          mission.device.deviceOrganizationCallsign.toLowerCase().includes(lowerQuery) ||
+          mission.device.parent?.deviceOrganizationCallsign.toLowerCase().includes(lowerQuery)
+        )
+      }
+      );
+    }
+    // If search is empty or 1-2 chars, just show everything
+    return allMissions;
+  }, [allMissions, searchQuery]);
+
   const toggleDebugger = async () => {
     if (!currentTabId) return;
     const nextState = !isDebuggerActive;
@@ -142,6 +160,11 @@ export function DashboardView() {
       tabId: currentTabId
     });
     setIsDebuggerActive(nextState);
+  };
+
+  const handleMissionSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
   };
 
   const handleDebugMission = async (mission: Mission) => {
@@ -249,38 +272,92 @@ export function DashboardView() {
         />
       )}
 
-      {/* LEFT SIDEBAR: Missions & Waypoints */}
-      <div style={{ width: '500px', backgroundColor: '#111', borderRight: '1px solid #333', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
-
-        {/* Missions List */}
-        <div style={{ padding: '15px', borderBottom: '1px solid #333', flex: '0 0 auto' }}>
-          <h2 style={{ color: 'white', fontSize: '16px', margin: '0 0 15px 0' }}>Project Missions</h2>
-          {allMissions.length === 0 ? (
-            <p style={{ color: '#888', fontSize: '12px' }}>No missions found.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {allMissions.map(mission => (
-                <div
-                  key={mission.id}
-                  onClick={() => { if (!isUploading) setSelectedMissionId(mission.id === selectedMissionId ? null : mission.id) }}
-                  style={{
-                    padding: '10px',
-                    backgroundColor: mission.id === selectedMissionId ? '#0066ff' : '#222',
-                    color: 'white',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    border: '1px solid',
-                    borderColor: mission.id === selectedMissionId ? '#0066ff' : '#444'
-                  }}
-                >
-                  {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} - ${(mission.waypoints || []).length} Waypoints`}
-                </div>
-              ))}
-            </div>
-          )}
+      <div style={{ width: '500px', backgroundColor: '#111', borderRight: '1px solid #333', flex: '0 0 auto', padding: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+          <h2 style={{ color: 'white', fontSize: '16px', margin: 0 }}>Project Missions</h2>
+          <div style={{ position: 'relative', width: '300px' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleMissionSearch}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setSearchQuery('');
+                }
+              }}
+              placeholder="Search..."
+              style={{
+                width: '100%',
+                padding: '6px 28px 6px 10px',
+                borderRadius: '4px',
+                border: '1px solid #444',
+                backgroundColor: '#222',
+                color: '#fff',
+                boxSizing: 'border-box',
+                outline: 'none',
+                fontSize: '13px'
+              }}
+            />
+            {/* Search Icon (SVG) */}
+            {searchQuery.length > 0 ? (
+              <svg
+                onClick={() => setSearchQuery('')} // Clears the input!
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  cursor: 'pointer', // Changes cursor so users know they can click it
+                  color: '#aaa',
+                }}
+                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            ) : (
+              <svg
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  pointerEvents: 'none'
+                }}
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            )}
+          </div>
         </div>
+        {/* Missions List */}
+        {displayedMissions.length === 0 ? (
+          <p style={{ color: '#888', fontSize: '12px' }}>No missions found.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px',minHeight: '200px', overflowY: 'auto' }}>
+            {displayedMissions.map(mission => (
+              <div
+                key={mission.id}
+                onClick={() => { if (!isUploading) setSelectedMissionId(mission.id === selectedMissionId ? null : mission.id) }}
+                style={{
+                  padding: '10px',
+                  backgroundColor: mission.id === selectedMissionId ? '#0066ff' : '#222',
+                  color: 'white',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 'bold',
+                  border: '1px solid',
+                  borderColor: mission.id === selectedMissionId ? '#0066ff' : '#444'
+                }}
+              >
+                {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} - ${(mission.waypoints || []).length} Waypoints`}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Waypoints List (Only shows if a mission is selected) */}
         <div style={{ padding: '15px', flex: '1 1 auto', overflowY: 'auto' }}>

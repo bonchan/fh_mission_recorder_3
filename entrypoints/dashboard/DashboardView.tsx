@@ -38,7 +38,10 @@ export function DashboardView() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
 
   // Flatten missions
-  const allMissions = Object.values(missions || {}).flat();
+  const allMissions = Object.values(missions)
+    .flat()
+    .sort((a, b) => b.createdDate - a.createdDate);
+
   const selectedMission = allMissions.find(m => m.id === selectedMissionId);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -367,7 +370,7 @@ export function DashboardView() {
                           marginBottom: '10px'
                         }}>
                           <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '12px' }}>
-                            WP {index}
+                            WP {index + 1}
                           </div>
                           <div></div>
                           <div><span style={{ color: '#666' }}>Lon:</span> {waypoint.longitude?.toFixed(6)}</div>

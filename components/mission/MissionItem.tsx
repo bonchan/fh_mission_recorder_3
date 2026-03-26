@@ -198,8 +198,14 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   }, [annotations, searchQuery]);
 
   return (
-    <div style={{ background: '#1e1e1e', borderRadius: '8px', marginBottom: '10px', border: '1px solid #333' }}>
-
+    <div
+      style={{
+        background: '#1e1e1e',
+        borderRadius: '8px',
+        marginBottom: '10px',
+        border: `1px solid ${isExpanded ? '#dd9611' : '#333'}`
+      }}
+    >
       {/* HEADER SECTION (Clickable to expand) */}
       <div
         onClick={() => !isEditing && onToggleExpand()}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Drone } from '@/utils/interfaces';
 import { StorageBackupControls } from '@/components/storage/StorageBackupControls'
 import godMode from '@/assets/GgsQO4YX0AAyEFG.jpg';
+import Button from '@/components/ui/Button';
 
 interface CreateMissionModalProps {
   devices: Drone[];
@@ -43,12 +44,7 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
             </div>
             <StorageBackupControls />
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button
-                onClick={onClose} // Cleanly uses the prop
-                style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #555', color: 'white', cursor: 'pointer' }}
-              >
-                Close
-              </button>
+                <Button onClick={onClose} variant='outline'>Close</Button>
             </div>
           </>
           : (
@@ -78,19 +74,8 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
               </select>
 
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={onClose} // Cleanly uses the prop
-                  style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #555', color: 'white', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirmCreate}
-                  disabled={!newMissionName}
-                  style={{ flex: 1, padding: '8px', background: '#0066ff', border: 'none', color: 'white', cursor: 'pointer', opacity: !newMissionName ? 0.5 : 1 }}
-                >
-                  Create
-                </button>
+                <Button onClick={onClose} variant='outline'>Cancel</Button>
+                <Button onClick={handleConfirmCreate} disabled={!newMissionName}>Create</Button>
               </div>
             </>
           )

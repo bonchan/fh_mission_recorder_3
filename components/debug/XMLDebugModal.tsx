@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
+import Button from '@/components/ui/Button';
 
 export const XMLDebugModal = ({
     templateKml,
@@ -26,33 +27,13 @@ export const XMLDebugModal = ({
             {/* Header & Tabs */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <div>
-                    <button
-                        onClick={() => setActiveTab('template')}
-                        style={{ padding: '8px 16px', background: activeTab === 'template' ? '#0066ff' : '#333', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: '4px 0 0 4px' }}
-                    >
-                        template.kml
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('waylines')}
-                        style={{ padding: '8px 16px', background: activeTab === 'waylines' ? '#0066ff' : '#333', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: '0 4px 4px 0' }}
-                    >
-                        waylines.wpml
-                    </button>
+                    <Button onClick={() => setActiveTab('template')} variant={activeTab === 'template' ? 'primary' : 'sad'}>template.kml</Button>
+                    <Button onClick={() => setActiveTab('waylines')} variant={activeTab === 'template' ? 'sad' : 'primary'}>waylines.wpml</Button>
                 </div>
 
                 <div>
-                    <button
-                        onClick={() => navigator.clipboard.writeText(activeXml)}
-                        style={{ padding: '8px 16px', background: '#28a745', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: '4px', marginRight: '10px' }}
-                    >
-                        Copy XML
-                    </button>
-                    <button
-                        onClick={onClose}
-                        style={{ padding: '8px 16px', background: '#dc3545', color: '#fff', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
-                    >
-                        Close
-                    </button>
+                    <Button onClick={() => navigator.clipboard.writeText(activeXml)} variant='success'>Copy XML</Button>
+                    <Button onClick={onClose} variant='danger'>Close</Button>
                 </div>
             </div>
 

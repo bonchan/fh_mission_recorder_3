@@ -4,6 +4,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { ViewContext, Mission, Drone, Annotation } from '@/utils/interfaces';
 import { MissionsContainer } from '@/components/mission/MissionsContainer';
+import Button from '@/components/ui/Button';
 
 const log = createLogger('SidePanelView');
 
@@ -76,16 +77,7 @@ export default function SidePanelView() {
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      <button
-        onClick={() => handleViewAdminDashboard()}
-        style={{
-          width: '100%', padding: '10px', background: '#dce655', color: '#000000',
-          border: 'none', borderRadius: '4px', cursor: isFetching ? 'not-allowed' : 'pointer',
-          marginBottom: '20px', fontWeight: 'bold'
-        }}
-      >
-        {'Open Admin Dashboard'}
-      </button>
+      <Button onClick={handleViewAdminDashboard} variant={'warning'} isLoading={isFetching}>Open Admin Dashboard</Button>
       <MissionsContainer orgId={orgId} projectId={projectId} devices={devices} isFetching={isFetching} viewContext={ViewContext.SIDEPANEL}></MissionsContainer>
     </div>
   );

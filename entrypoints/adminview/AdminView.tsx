@@ -5,6 +5,8 @@ import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { toFlatDevice } from '@/utils/mapper';
 import { FlatDevice } from '@/utils/interfaces';
 
+import SearchInput from '@/components/ui/SearchInput';
+
 const log = createLogger('AdminView');
 
 type SortDirection = 'asc' | 'desc';
@@ -127,16 +129,12 @@ export function AdminView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ margin: 0, fontSize: '24px' }}>Device Administration</h1>
 
-        <input
-          type="text"
+        <SearchInput
+          onSearch={setSearchQuery}
+          initialValue={searchQuery}
           placeholder="Search devices..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            padding: '10px 16px', borderRadius: '6px', border: '1px solid #333',
-            backgroundColor: '#1a1a1a', color: '#fff', width: '300px', outline: 'none'
-          }}
         />
+
       </div>
 
       {/* The Data Table */}

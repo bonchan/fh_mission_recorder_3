@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Waypoint, ViewContext } from '@/utils/interfaces';
+import Button from '@/components/ui/Button';
 
 interface WaypointItemProps {
   waypoint: Waypoint;
@@ -58,22 +59,19 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
         </div>
         
         <div style={{ textAlign: 'right' }}>
-          <button
+          <Button
             onClick={handleDeleteClick}
+            variant={isConfirming ? 'danger' : 'sad'}
             style={{
-              background: isConfirming ? '#EF4444' : '#333',
-              color: 'white',
-              border: 'none',
-              borderRadius: '3px',
               padding: '2px 8px',
-              cursor: 'pointer',
+              display: 'inline',
               fontSize: '10px',
+              maxWidth: '80px',
               transition: 'background 0.2s ease',
-              fontWeight: isConfirming ? 'bold' : 'normal'
             }}
           >
             {isConfirming ? 'CONFIRM?' : 'DELETE'}
-          </button>
+          </Button>
         </div>
         
         {/* Telemetry Data */}

@@ -10,6 +10,8 @@ import { MissionTemplate } from '@/components/mission/templates'
 
 import { useToast } from '@/providers/ToastProvider';
 
+import Button from '@/components/ui/Button';
+
 interface MissionItemProps {
   mission: Mission;
   isExpanded: boolean;
@@ -173,8 +175,8 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
                   fontSize: '14px', fontWeight: 'bold'
                 }}
               />
-              <button onClick={(e) => { e.stopPropagation(); handleConfirmName(); }} style={{ background: 'transparent', border: 'none', color: '#10B981', cursor: 'pointer', fontSize: '16px' }}>✓</button>
-              <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+              <Button onClick={(e) => { e.stopPropagation(); handleConfirmName(); }} style={{ background: 'transparent', border: 'none', color: '#10B981', cursor: 'pointer', fontSize: '16px', maxWidth: '20px' }}>✓</Button>
+              <Button onClick={(e) => { e.stopPropagation(); setIsEditing(false); }} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', maxWidth: '20px' }}>✕</Button>
             </div>
           ) : (
             <div
@@ -192,49 +194,13 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-
-          {viewContext === ViewContext.DASHBOARD &&
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // TODO
-                //onDebugMission(mission);
-              }}
-              style={{
-                background: '#333',
-                border: 'none',
-                color: '#99b7e2',
-                padding: '5px 10px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              Debug
-            </button>
-          }
-
-          <button
+          <Button
             onClick={(e) => {
               e.stopPropagation();
-              // TODO
-              if (viewContext === ViewContext.SIDEPANEL) handleViewDashboard(mission);
-              // if (viewContext === ViewContext.DASHBOARD) onExportMission(mission);
+              handleViewDashboard(mission);
             }}
-            style={{
-              background: '#333',
-              border: 'none',
-              color: '#99b7e2',
-              padding: '5px 10px',
-              borderRadius: '4px',
-              fontSize: '11px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            {viewContext === ViewContext.SIDEPANEL ? 'Dashboard' : 'Export'}
-          </button>
+            variant='sad'
+            style={{ padding: '5px 10px' }}>Dashboard</Button>
 
           {viewContext === ViewContext.SIDEPANEL && (
             <div style={{ fontSize: '18px', color: '#555', userSelect: 'none' }}>
@@ -247,48 +213,20 @@ export function MissionItem({ mission, isExpanded, viewContext, onToggleExpand, 
       {/* EXPANDED SECTION (Waypoints List) */}
       {isExpanded && (
         <div style={{ padding: '12px', borderTop: '1px solid #333', background: '#181818', borderRadius: '0 0 8px 8px' }}>
-
           <WaypointList
             waypoints={mission.waypoints}
             onUpdate={handleUpdateWaypoint}
             onDelete={handleDeleteWaypoint}
             viewContext={viewContext as any}
           />
-
-          {/* Add Waypoint Button (Placeholder) */}
-
           <TemplateSelector onSelectTemplate={setTemplate} />
-
-          <button
+          <Button
             onClick={handleAddWaypointClick}
             ref={addButtonRef}
             disabled={isFetchingLocation}
-            style={{
-              width: '100%',
-              padding: '10px',
-              background: isFetchingLocation ? '#333' : '#0066ff',
-              color: isFetchingLocation ? '#888' : 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: isFetchingLocation ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '10px',
-              fontWeight: 'bold',
-              marginTop: '8px'
-            }}
           >
-            {isFetchingLocation ? (
-              "Fetching Drone Location..."
-            ) : (
-              template ? "+ Add Template at Drone Position" : "+ Add Waypoint at Drone Position"
-            )}
-          </button>
-
-
-
-
+            {isFetchingLocation ? "Fetching Drone Location..." : template ? "+ Add Template at Drone Position" : "+ Add Waypoint at Drone Position"}
+          </Button>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { createLogger } from '@/utils/logger';
 import { useToast } from '@/providers/ToastProvider';
-
+import Button from '@/components/ui/Button'
 
 const log = createLogger('StorageBackupControls');
 
@@ -70,19 +70,9 @@ export function StorageBackupControls() {
   // --- 3. RENDER BUTTONS ---
   return (
     <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-      <button
-        onClick={handleBackup}
-        style={{ padding: '8px 16px', backgroundColor: '#10B981', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-      >
-        Backup
-      </button>
 
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        style={{ padding: '8px 16px', backgroundColor: '#3B82F6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-      >
-        Restore
-      </button>
+      <Button onClick={handleBackup} variant='success'>Backup</Button>
+      <Button onClick={() => fileInputRef.current?.click()}>Restore</Button>
 
       <input
         type="file"

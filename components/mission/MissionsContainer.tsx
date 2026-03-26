@@ -4,6 +4,7 @@ import { useLiveMissions } from '@/hooks/useLiveMissions';
 import { CreateMissionModal } from './CreateMissionModal';
 import { MissionList } from './MissionList';
 import { Mission, ViewContext } from '@/utils/interfaces';
+import Button from '@/components/ui/Button';
 
 export function MissionsContainer({ orgId, projectId, devices, isFetching, viewContext }: { orgId: string; projectId: string; devices: Drone[]; isFetching: boolean; viewContext: ViewContext }) {
   const { missions, isLoadingMissions, saveMissions } = useLiveMissions(orgId, projectId);
@@ -57,17 +58,9 @@ export function MissionsContainer({ orgId, projectId, devices, isFetching, viewC
   return (
 
     <div>
-      <button
-        onClick={() => setIsModalOpen(true)}
-        disabled={isFetching}
-        style={{
-          width: '100%', padding: '10px', background: '#0066ff', color: 'white',
-          border: 'none', borderRadius: '4px', cursor: isFetching ? 'not-allowed' : 'pointer',
-          marginBottom: '20px', fontWeight: 'bold'
-        }}
-      >
-        {isFetching ? 'Wait...' : 'New Mission'}
-      </button>
+
+      <Button onClick={() => setIsModalOpen(true)} variant={'primary'} isLoading={isFetching}>New Mission</Button>
+
 
       <MissionList
         missions={allMissions}

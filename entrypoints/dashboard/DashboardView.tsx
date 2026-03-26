@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createLogger } from '@/utils/logger';
 import { Map } from '@/components/map/Map';
 import styles from './DashboardView.module.css';
+import Button from '@/components/ui/Button';
+import SearchInput from '@/components/ui/SearchInput'
 import { LiveDroneData, LiveWaypointData, Annotation } from '@/utils/interfaces';
 import { useDjiSimulator } from '@/hooks/useDjiSimulator';
 import { useLiveMissions } from '@/hooks/useLiveMissions';
@@ -99,7 +101,7 @@ export function DashboardView() {
 
   useEffect(() => {
     const watchdog = setInterval(() => {
-      if (!isDebuggerActive || lastHeartbeatRef.current === 0) {
+      if (lastHeartbeatRef.current === 0) {
         setIsTelemetryLost(false);
         return;
       }
@@ -162,10 +164,10 @@ export function DashboardView() {
     setIsDebuggerActive(nextState);
   };
 
-  const handleMissionSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-  };
+  // const handleMissionSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const query = e.target.value;
+  //   setSearchQuery(query);
+  // };
 
   const handleDebugMission = async (mission: Mission) => {
     const { template, waylines } = await generateDJIMissionFiles(mission)
@@ -272,71 +274,21 @@ export function DashboardView() {
         />
       )}
 
-      <div style={{ width: '500px', backgroundColor: '#111', borderRight: '1px solid #333', flex: '0 0 auto', padding: '15px' }}>
+      <div style={{ width: '500px', backgroundColor: '#111', borderRight: '1px solid #333', flex: '0 0 auto', padding: '15px', height: '100vh' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ color: 'white', fontSize: '16px', margin: 0 }}>Project Missions</h2>
-          <div style={{ position: 'relative', width: '300px' }}>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={handleMissionSearch}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  setSearchQuery('');
-                }
-              }}
-              placeholder="Search..."
-              style={{
-                width: '100%',
-                padding: '6px 28px 6px 10px',
-                borderRadius: '4px',
-                border: '1px solid #444',
-                backgroundColor: '#222',
-                color: '#fff',
-                boxSizing: 'border-box',
-                outline: 'none',
-                fontSize: '13px'
-              }}
-            />
-            {/* Search Icon (SVG) */}
-            {searchQuery.length > 0 ? (
-              <svg
-                onClick={() => setSearchQuery('')} // Clears the input!
-                style={{
-                  position: 'absolute',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  cursor: 'pointer', // Changes cursor so users know they can click it
-                  color: '#aaa',
-                }}
-                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            ) : (
-              <svg
-                style={{
-                  position: 'absolute',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  pointerEvents: 'none'
-                }}
-                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            )}
-          </div>
+
+          <SearchInput
+            onSearch={setSearchQuery}
+            initialValue={searchQuery}
+          />
+
         </div>
         {/* Missions List */}
         {displayedMissions.length === 0 ? (
           <p style={{ color: '#888', fontSize: '12px' }}>No missions found.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px',minHeight: '200px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', minHeight: '200px', overflowY: 'auto' }}>
             {displayedMissions.map(mission => (
               <div
                 key={mission.id}
@@ -372,64 +324,27 @@ export function DashboardView() {
               <>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '10px' }}>
 
-                  <button
+                  <Button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDebugMission(selectedMission);
                     }}
-                    style={{
-                      background: '#333',
-                      border: 'none',
-                      color: '#99b7e2',
-                      padding: '5px 10px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    Debug
-                  </button>
+                    variant='sad'>Debug</Button>
 
-                  <button
+                  <Button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleExportMission(selectedMission);
                     }}
-                    style={{
-                      background: '#333',
-                      border: 'none',
-                      color: '#99b7e2',
-                      padding: '5px 10px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    Export
-                  </button>
+                    variant='sad'>Export</Button>
 
-                  <button
+                  <Button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleUploadMission(selectedMission);
                     }}
                     disabled={isUploading}
-                    style={{
-                      background: '#333',
-                      border: 'none',
-                      color: '#99b7e2',
-                      padding: '5px 10px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      cursor: isUploading ? 'not-allowed' : 'pointer',
-                      fontWeight: 'bold',
-                      opacity: isUploading ? 0.5 : 1
-                    }}
-                  >
-                    {isUploading ? 'Uploading...' : 'Upload'}
-                  </button>
+                    variant='sad'>{isUploading ? 'Uploading...' : 'Upload'}</Button>
                 </div>
 
                 <h3 style={{ color: '#aaa', fontSize: '12px', margin: '0 0 10px 0', textTransform: 'uppercase' }}>
@@ -438,7 +353,7 @@ export function DashboardView() {
                 {(selectedMission.waypoints || []).length === 0 ? (
                   <p style={{ color: '#666', fontSize: '12px' }}>No waypoints recorded yet.</p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minHeight: '200px', overflowY: 'auto' }}>
                     {selectedMission.waypoints?.map((waypoint, index) => (
                       <div key={waypoint.id} style={{ padding: '8px', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #333', color: '#ccc', fontSize: '11px' }}>
                         {/* <strong style={{ color: '#fff' }}>WP {i + 1}</strong> • {wp.tag || 'No Tag'} */}

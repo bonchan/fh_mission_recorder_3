@@ -12,10 +12,11 @@ interface WaypointItemProps {
   viewContext?: ViewContext;
   onUpdate: ((id: string, updates: Partial<Waypoint>) => void) | undefined;
   onDelete: ((id: string) => void) | undefined;
+  children?: React.ReactNode;
 }
 const log = createLogger('WaypointItem');
 
-export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete }: WaypointItemProps) {
+export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete, children }: WaypointItemProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -89,15 +90,7 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
         <div><span className={styles.telemetryLabel}>Hover Time:</span> {waypoint.hoverTime || 0}s</div>
       </div>
 
-      {/* 2. WAYPOINT TAGS */}
-      {waypoint.type == 'picture' &&
-        <WaypointTags
-          selectedTagIds={waypoint.tagIds || []}
-          onChange={(newTags) => {
-            if (onUpdate) onUpdate(waypoint.id, { tagIds: newTags });
-          }}
-        />
-      }
+      {children}
 
     </div>
   );

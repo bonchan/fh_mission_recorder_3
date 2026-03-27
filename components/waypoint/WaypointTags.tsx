@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { TagCategory, TagOption, TAG_OPTIONS } from '@/utils/interfaces';
+import { WaypointType, TagCategory, TagOption, TAG_OPTIONS } from '@/utils/interfaces';
 
 interface WaypointTagsProps {
+  waypointType: WaypointType;
   selectedTagIds: string[];
   onChange: (newTagIds: string[]) => void;
 }
@@ -23,7 +24,9 @@ const CATEGORY_COLORS: Record<TagCategory, string> = {
   intention: '#c2410c'
 };
 
-export function WaypointTags({ selectedTagIds = [], onChange }: WaypointTagsProps) {
+export function WaypointTags({ waypointType, selectedTagIds = [], onChange }: WaypointTagsProps) {
+  if (waypointType != 'picture') return <></>
+
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleToggleTag = (tagId: string) => {
@@ -48,10 +51,10 @@ export function WaypointTags({ selectedTagIds = [], onChange }: WaypointTagsProp
   // 2. Group ALL available tags by category for the multi-selectors
   const tagsByCategory = useMemo(() => {
     const grouped = {} as Record<TagCategory, TagOption[]>;
-    
+
     // Initialize empty arrays to maintain order
     CATEGORY_ORDER.forEach(cat => grouped[cat] = []);
-    
+
     TAG_OPTIONS.forEach(tag => {
       if (grouped[tag.category]) {
         grouped[tag.category].push(tag);
@@ -62,13 +65,13 @@ export function WaypointTags({ selectedTagIds = [], onChange }: WaypointTagsProp
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      
+
       {/* SECTION 1: The General Summary Row */}
       <div style={{ padding: '10px', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #333' }}>
         <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>
           Selected Tags
         </div>
-        
+
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {sortedSelectedTags.length === 0 ? (
             <span style={{ fontSize: '12px', color: '#555' }}>No tags selected.</span>
@@ -76,25 +79,26 @@ export function WaypointTags({ selectedTagIds = [], onChange }: WaypointTagsProp
             sortedSelectedTags.map(tag => {
               const tagColor = CATEGORY_COLORS[tag.category] || '#0066ff';
               return (
-              <span 
-                key={`selected-${tag.id}`} 
-                style={{ 
-                  padding: '2px 8px', 
-                  backgroundColor: tagColor, 
-                  color: 'white', 
-                  borderRadius: '12px', 
-                  fontSize: '11px',
-                  fontWeight: 'bold'
-                }}
-              >
-                {tag.name}
-              </span>
-            )})
+                <span
+                  key={`selected-${tag.id}`}
+                  style={{
+                    padding: '2px 8px',
+                    backgroundColor: tagColor,
+                    color: 'white',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {tag.name}
+                </span>
+              )
+            })
           )}
         </div>
       </div>
 
-      <div 
+      <div
         onClick={(e) => {
           e.stopPropagation();
           setIsExpanded(!isExpanded);
@@ -111,10 +115,10 @@ export function WaypointTags({ selectedTagIds = [], onChange }: WaypointTagsProp
           padding: '2px 0'
         }}
       >
-        <span style={{ 
-          display: 'inline-block', 
-          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', 
-          transition: 'transform 0.2s ease' 
+        <span style={{
+          display: 'inline-block',
+          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.2s ease'
         }}>
           ▼
         </span>
@@ -133,7 +137,7 @@ export function WaypointTags({ selectedTagIds = [], onChange }: WaypointTagsProp
                 <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '6px', fontWeight: 'bold' }}>
                   {CATEGORY_LABELS[category]}
                 </div>
-                
+
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {options.map(tag => {
                     const isSelected = selectedTagIds.includes(tag.id);
@@ -142,7 +146,7 @@ export function WaypointTags({ selectedTagIds = [], onChange }: WaypointTagsProp
                       <button
                         key={`option-${tag.id}`}
                         onClick={(e) => {
-                          e.stopPropagation(); 
+                          e.stopPropagation();
                           handleToggleTag(tag.id);
                         }}
                         style={{

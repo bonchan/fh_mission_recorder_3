@@ -1,18 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { WaypointItem } from './WaypointItem';
+import { WaypointTags } from './WaypointTags';
 import { Waypoint, ViewContext } from '@/utils/interfaces';
 import Button from '@/components/ui/Button'
+import { WaypointOffset } from './WaypointOffset';
 
 interface WaypointListProps {
   waypoints: Waypoint[];
   viewContext?: ViewContext;
   isEditing?: boolean;
+  showOffset?: boolean | false;
   onCreate: ((waypoint: Waypoint, index?: number) => void) | undefined;
   onUpdate: ((id: string, updates: Partial<Waypoint>) => void) | undefined;
   onDelete: ((id: string) => void) | undefined;
 }
 
-export function WaypointList({ waypoints, viewContext, isEditing, onCreate, onUpdate, onDelete }: WaypointListProps) {
+export function WaypointList({ waypoints, viewContext, isEditing, showOffset, onCreate, onUpdate, onDelete }: WaypointListProps) {
+  const [offsetWaypointIndex, setOffsetWaypointIndex] = useState(0)
 
   if (!waypoints || waypoints.length === 0) return <p style={{ fontSize: '12px', color: '#888' }}>No waypoints added yet.</p>;
 
@@ -32,14 +36,25 @@ export function WaypointList({ waypoints, viewContext, isEditing, onCreate, onUp
 
         // 1. SECURITY POINTS (Render naked)
         return (
-          <WaypointItem
-            key={wp.id}
-            waypoint={wp}
-            index={index}
-            viewContext={viewContext}
-            onUpdate={onUpdate}
-            onDelete={onDelete}
-          />
+          <React.Fragment key={wp.id}>
+            <WaypointItem waypoint={wp} index={index} viewContext={viewContext} onUpdate={onUpdate} onDelete={onDelete}>
+              <WaypointTags
+                waypointType={wp.type}
+                selectedTagIds={wp.tagIds || []}
+                onChange={(newTags) => {
+                  if (onUpdate) onUpdate(wp.id, { tagIds: newTags });
+                }}
+              />
+              <WaypointOffset
+                onClick={() => { setOffsetWaypointIndex(index) }}
+                originWp={waypoints[offsetWaypointIndex]}
+                currentWp={wp}
+                showOffset={showOffset}
+                isOrigin={offsetWaypointIndex == index}
+              />
+            </WaypointItem>
+
+          </React.Fragment>
         );
 
       })}

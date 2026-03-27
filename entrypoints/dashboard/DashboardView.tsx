@@ -4,8 +4,7 @@ import { Map } from '@/components/map/Map';
 import styles from './DashboardView.module.css';
 import Button from '@/components/ui/Button';
 import SearchInput from '@/components/ui/SearchInput';
-import { LiveDroneData, LiveWaypointData, Annotation, WaypointType, ViewContext, Waypoint } from '@/utils/interfaces';
-import { useDjiSimulator } from '@/hooks/useDjiSimulator';
+import { LiveDroneData, LiveWaypointData, Annotation, WaypointType, ViewContext, Waypoint, SimulatorConnectParams } from '@/utils/interfaces';
 import { useLiveMissions } from '@/hooks/useLiveMissions';
 import { useMissionActions } from '@/hooks/useMissionActions';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
@@ -28,7 +27,7 @@ export function DashboardView() {
   const viewContext = ViewContext.DASHBOARD
 
   const { missions, updateMission, createWaypoints, updateWaypoint, deleteWaypoint } = useLiveMissions(orgId, projectId);
-  const { getAnnotations } = useExtensionData();
+  const { getDroneTelemetry, getAnnotations, simData, isSimConnected, connectSim, disconnectSim, } = useExtensionData();
 
   const [liveAnnotations, setLiveAnnotations] = useState<Annotation[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missionId);
@@ -43,6 +42,7 @@ export function DashboardView() {
 
   const [isDebuggerActive, setIsDebuggerActive] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isShowOffset, setIsShowOffset] = useState(false);
   const [currentTabId, setCurrentTabId] = useState<number | null>(sourceTabId);
   const [isTelemetryLost, setIsTelemetryLost] = useState(false);
   const lastHeartbeatRef = useRef<number>(0);
@@ -53,7 +53,6 @@ export function DashboardView() {
     heading: 0, gimbalPitch: 0, cameraMode: 0, zoomFactor: 0, trigger: false
   });
 
-  const { data: simData, isConnected, connect, disconnect } = useDjiSimulator();
   const [debugXml, setDebugXml] = useState<{ template: string, waylines: string } | null>(null);
 
   const { showToast } = useToast();
@@ -117,6 +116,13 @@ export function DashboardView() {
     }
   }, [selectedMission]);
 
+  useEffect(() => {
+    if (!simData) return;
+    if (simData.trigger) {
+      handleAddSimWaypoint()
+    }
+  }, [simData]);
+
   const displayedMissions = useMemo(() => {
     if (searchQuery.length > 2) {
       const lowerQuery = searchQuery.toLowerCase();
@@ -137,9 +143,87 @@ export function DashboardView() {
     setIsDebuggerActive(nextState);
   };
 
+  const toggleSimulator = async () => {
+    if (isSimConnected) {
+      disconnectSim()
+    } else {
+      const connectParams: SimulatorConnectParams = {
+        dockSn: selectedMission?.device.parent?.deviceSn,
+        droneSn: selectedMission?.device.deviceSn,
+        startLon: selectedMission?.waypoints?.[selectedMission?.waypoints.length - 1]?.longitude ?? selectedMission?.device?.parent?.longitude,
+        startLat: selectedMission?.waypoints?.[selectedMission?.waypoints.length - 1]?.latitude ?? selectedMission?.device?.parent?.latitude,
+      }
+      connectSim(connectParams)
+    }
+  };
+
   const toggleIsEditing = async () => {
     const nextState = !isEditing;
     setIsEditing(nextState);
+  };
+
+  const toggleOffset = async () => {
+    const nextState = !isShowOffset;
+    setIsShowOffset(nextState);
+  };
+
+  const handleSelectMission = (missionId: string) => {
+    if (!isUploading) {
+      setSelectedMissionId(missionId === selectedMissionId ? null : missionId);
+      setIsEditing(false)
+      disconnectSim()
+    }
+  }
+
+  const handleAddSimWaypoint = async () => {
+
+    // Safety check just in case legacy missions don't have these IDs
+    if (!selectedMission || !selectedMission.orgId || !selectedMission.projectId) {
+      log.error("Missing Project or Org IDs on this mission!");
+      return;
+    }
+
+    if (!isSimConnected) {
+      log.error("Sim is disconected!");
+      return;
+    }
+
+    try {
+      // 1. Fetch FRESH topologies (bypassing the 12-hour cache by passing true!)
+      // Signature: (orgId, projectId, tabId?, forceFetch?)
+      const currentDroneData = await getDroneTelemetry(selectedMission.orgId, selectedMission.projectId, selectedMission.device.deviceSn);
+
+      // 3. Extract the live telemetry
+      if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
+
+        const newWaypoint: Waypoint = {
+          id: crypto.randomUUID(),
+          latitude: currentDroneData.latitude,
+          longitude: currentDroneData.longitude,
+          elevation: currentDroneData.elevation || 0,
+          height: currentDroneData.height || 0,
+          yaw: currentDroneData.yaw || 0,
+          pitch: currentDroneData.pitch || 0,
+          zoom: currentDroneData.zoom || 1,
+          hoverTime: 0,
+          // tag: '' // Default to empty string
+          turn: "CW",
+          type: 'picture',
+          actionGroup: null,
+        };
+
+        await createWaypoints(selectedMission, newWaypoint)
+        showToast('Added waypoint', ``)
+
+      } else {
+        showToast("Could not find active telemetry for this sim drone.", "Is it turned on?", 'warning');
+      }
+    } catch (error) {
+      log.error("Failed to fetch drone location:", error);
+      showToast('Error adding Waypoint:', (error as Error).message, 'error')
+    }
+
+
   };
 
   const handleCreateSecurityWaypoint = (waypoint: Waypoint, index?: number) => {
@@ -209,7 +293,7 @@ export function DashboardView() {
             {displayedMissions.map(mission => (
               <div
                 key={mission.id}
-                onClick={() => { if (!isUploading) { setSelectedMissionId(mission.id === selectedMissionId ? null : mission.id); setIsEditing(false) } }}
+                onClick={() => { handleSelectMission(mission.id) }}
                 className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''}`}
               >
                 {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} - ${(mission.waypoints || []).length} WP`}
@@ -225,7 +309,7 @@ export function DashboardView() {
           <>
             <div className={styles.actionButtons}>
               <Button onClick={(e) => { e.stopPropagation(); toggleIsEditing() }} variant={isEditing ? 'danger' : 'primary'}>{isEditing ? 'Done' : 'Security'}</Button>
-              <Button disabled onClick={(e) => { e.stopPropagation(); handleOptimizeMission() }} variant='warning'>Optimize</Button>
+              <Button onClick={(e) => { e.stopPropagation(); handleOptimizeMission() }} variant='warning'>Optimize</Button>
               <Button onClick={(e) => { e.stopPropagation(); debugMission(selectedMission, setDebugXml); }} variant='sad'>Debug</Button>
               <Button onClick={(e) => { e.stopPropagation(); exportMission(selectedMission); }} variant='sad'>Export</Button>
               <Button
@@ -252,6 +336,7 @@ export function DashboardView() {
                   onDelete={handleDeleteWaypoint}
                   viewContext={viewContext}
                   isEditing={isEditing}
+                  showOffset={isShowOffset}
                 />
               )
             )}
@@ -278,8 +363,11 @@ export function DashboardView() {
             <button onClick={toggleDebugger} className={`${styles.simButton} ${isDebuggerActive ? styles.active : ''}`}>
               {isDebuggerActive ? '🔴 DISCONNECT DEBUGGER' : '🔌 ATTACH TO FLIGHTHUB'}
             </button>
-            <button onClick={isConnected ? disconnect : connect} className={styles.simButton}>
-              {isConnected ? "🛑 Stop Local Sim" : "🟢 Start Local Sim"}
+            <button onClick={toggleSimulator} className={styles.simButton}>
+              {isSimConnected ? "🛑 Stop Local Sim" : "🟢 Start Local Sim"}
+            </button>
+            <button onClick={toggleOffset} className={styles.simButton}>
+              {isShowOffset ? "Hide offset" : "Show offset"}
             </button>
             <pre className={styles.debugInfo}>{JSON.stringify(livedroneData, null, 2)}</pre>
             {isTelemetryLost && (

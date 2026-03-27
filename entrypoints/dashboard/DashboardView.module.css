@@ -137,7 +137,7 @@
   top: 20px;
   left: 20px;
   padding: 12px;
-  min-width: 200px;
+  width: 200px;
   background: rgba(0, 0, 0, 0.8);
   color: #00ff00;
   font-family: monospace;
@@ -147,7 +147,7 @@
   pointer-events: none;
 }
 .tabInfo { margin-bottom: 10px; }
-.debugInfo { margin-top: 10px; font-size: 10px; overflow-x: auto; }
+.debugInfo { margin-top: 10px; font-size: 10px; overflow-x: hidden; }
 .telemetryError { margin-top: 10px; color: red; font-weight: bold; }
 
 .simButton {

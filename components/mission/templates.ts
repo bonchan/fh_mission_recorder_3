@@ -46,8 +46,8 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
     ],
     template: [
       { x: 0, y: 0, z: 0, yaw: 0, pitch: -30, zoomFactor: 1, type: 'security', tagIds: [] },
-      { x: 0, y: 0, z: 0, yaw: 0, pitch: -45, zoomFactor: 7, type: 'picture', tagIds: ['0852f4d4-7c34-48ae-9f59-c78280e8189e'] }, // ORIGIN, rgb,
-      { x: 0, y: 10, z: -10, yaw: 0, pitch: -45, zoomFactor: 3, type: 'picture', tagIds: ['6c9177e5-7c34-421d-b78c-b78b1266fe45'] }, // thermal,
+      { x: 0, y: 0, z: 0, yaw: 0, pitch: -45, zoomFactor: 3, type: 'picture', tagIds: ['6c9177e5-7c34-421d-b78c-b78b1266fe45'] }, // ORIGIN, thermal,
+      { x: 0, y: -10, z: 10, yaw: 0, pitch: -45, zoomFactor: 7, type: 'picture', tagIds: ['0852f4d4-7c34-48ae-9f59-c78280e8189e'] }, //  rgb,
       { x: 0, y: 0, z: 0, yaw: 0, pitch: -30, zoomFactor: 1, type: 'security', tagIds: [] },
     ]
   },
@@ -59,11 +59,12 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
     ],
     template: [
       { x: 0, y: 0, z: 0, yaw: 0, pitch: -30, zoomFactor: 1, type: 'security', tagIds: [] },
-      { x: 0, y: 0, z: 0, yaw: 0, pitch: -42, zoomFactor: 3, type: 'picture', tagIds: ['54086d6f-0bba-44da-ada4-22cb09a1cad1', '6c9177e5-7c34-421d-b78c-b78b1266fe45',] }, //ORIGIN, kit_pump, thermal,
-      { x: -40, y: 40, z: 0, yaw: 90, pitch: -42, zoomFactor: 3, type: 'picture', tagIds: ['de9d1c49-dc89-4be0-8e5e-ca36e234d7a0', '0852f4d4-7c34-48ae-9f59-c78280e8189e',] }, //kit_side, rgb,
-      { x: 0, y: 80, z: 0, yaw: 180, pitch: -42, zoomFactor: 3, type: 'picture', tagIds: ['de9d1c49-dc89-4be0-8e5e-ca36e234d7a0', '0852f4d4-7c34-48ae-9f59-c78280e8189e',] }, //kit_side, rgb,
-      { x: 40, y: 40, z: 0, yaw: 270, pitch: -42, zoomFactor: 3, type: 'picture', tagIds: ['de9d1c49-dc89-4be0-8e5e-ca36e234d7a0', '0852f4d4-7c34-48ae-9f59-c78280e8189e',] }, //kit_side, rgb,
-      { x: 40, y: 40, z: 0, yaw: 270, pitch: -30, zoomFactor: 1, type: 'security', tagIds: [] },
+      { x: 0, y: 0, z: 0, yaw: 0, pitch: -50, zoomFactor: 3, type: 'picture', tagIds: ['54086d6f-0bba-44da-ada4-22cb09a1cad1', '6c9177e5-7c34-421d-b78c-b78b1266fe45',] }, //ORIGIN, kit_pump, thermal,
+      { x: 0, y: -20, z: 27.4, yaw: 0, pitch: -33.3, zoomFactor: 14, type: 'picture', tagIds: ['de9d1c49-dc89-4be0-8e5e-ca36e234d7a0', '0852f4d4-7c34-48ae-9f59-c78280e8189e',] }, //kit_side, rgb,
+      { x: -70, y: 40, z: 27.4, yaw: 90, pitch: -33.3, zoomFactor: 14, type: 'picture', tagIds: ['de9d1c49-dc89-4be0-8e5e-ca36e234d7a0', '0852f4d4-7c34-48ae-9f59-c78280e8189e',] }, //kit_side, rgb,
+      { x: 0, y: 100, z: 27.4, yaw: 180, pitch: -33.3, zoomFactor: 14, type: 'picture', tagIds: ['de9d1c49-dc89-4be0-8e5e-ca36e234d7a0', '0852f4d4-7c34-48ae-9f59-c78280e8189e',] }, //kit_side, rgb,
+      { x: 70, y: 40, z: 27.4, yaw: 270, pitch: -33.3, zoomFactor: 14, type: 'picture', tagIds: ['de9d1c49-dc89-4be0-8e5e-ca36e234d7a0', '0852f4d4-7c34-48ae-9f59-c78280e8189e',] }, //kit_side, rgb,
+      { x: 70, y: 40, z: 0, yaw: 270, pitch: -30, zoomFactor: 1, type: 'security', tagIds: [] },
     ]
   }
 ];

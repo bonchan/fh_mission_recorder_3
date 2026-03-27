@@ -13,6 +13,8 @@ import { WaypointList } from '@/components/waypoint/WaypointList';
 import { XMLDebugModal } from '@/components/debug/XMLDebugModal';
 import { useToast } from '@/providers/ToastProvider';
 
+import { optimizeMissionPath } from '@/utils/geo'
+
 const log = createLogger('DashboardView');
 
 export function DashboardView() {
@@ -25,8 +27,8 @@ export function DashboardView() {
 
   const viewContext = ViewContext.DASHBOARD
 
-  const { missions, createWaypoints, updateWaypoint, deleteWaypoint } = useLiveMissions(orgId, projectId);
-  const { getAnnotations, getStorageUploadCredentials, duplicateNameStorageCheck, importCallbackStorage } = useExtensionData();
+  const { missions, updateMission, createWaypoints, updateWaypoint, deleteWaypoint } = useLiveMissions(orgId, projectId);
+  const { getAnnotations } = useExtensionData();
 
   const [liveAnnotations, setLiveAnnotations] = useState<Annotation[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missionId);
@@ -40,6 +42,7 @@ export function DashboardView() {
   const selectedMission = allMissions.find(m => m.id === selectedMissionId);
 
   const [isDebuggerActive, setIsDebuggerActive] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [currentTabId, setCurrentTabId] = useState<number | null>(sourceTabId);
   const [isTelemetryLost, setIsTelemetryLost] = useState(false);
   const lastHeartbeatRef = useRef<number>(0);
@@ -134,6 +137,11 @@ export function DashboardView() {
     setIsDebuggerActive(nextState);
   };
 
+  const toggleIsEditing = async () => {
+    const nextState = !isEditing;
+    setIsEditing(nextState);
+  };
+
   const handleCreateSecurityWaypoint = (waypoint: Waypoint, index?: number) => {
     if (!selectedMission) return
 
@@ -150,16 +158,23 @@ export function DashboardView() {
     }
     createWaypoints(selectedMission, securityWaypoint, index)
   };
-  
-    const handleUpdateWaypoint = (wpId: string, updates: Partial<Waypoint>) => {
-      if (!selectedMission) return
-      updateWaypoint(selectedMission, wpId, updates)
-    };
+
+  const handleUpdateWaypoint = (wpId: string, updates: Partial<Waypoint>) => {
+    if (!selectedMission) return
+    updateWaypoint(selectedMission, wpId, updates)
+  };
 
   const handleDeleteWaypoint = (wpId: string) => {
     if (!selectedMission) return
     deleteWaypoint(selectedMission, wpId)
   };
+
+  const handleOptimizeMission = () => {
+    const updatedMission = optimizeMissionPath(selectedMission);
+    if (updatedMission) {
+      updateMission(updatedMission)
+    }
+  }
 
   const mappedWaypoints: LiveWaypointData[] = (selectedMission?.waypoints || []).map(wp => ({
     latitude: wp.latitude, longitude: wp.longitude, altitude: wp.elevation || 0,
@@ -194,7 +209,7 @@ export function DashboardView() {
             {displayedMissions.map(mission => (
               <div
                 key={mission.id}
-                onClick={() => { if (!isUploading) setSelectedMissionId(mission.id === selectedMissionId ? null : mission.id) }}
+                onClick={() => { if (!isUploading) { setSelectedMissionId(mission.id === selectedMissionId ? null : mission.id); setIsEditing(false) } }}
                 className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''}`}
               >
                 {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} - ${(mission.waypoints || []).length} WP`}
@@ -209,6 +224,8 @@ export function DashboardView() {
         {selectedMission ? (
           <>
             <div className={styles.actionButtons}>
+              <Button onClick={(e) => { e.stopPropagation(); toggleIsEditing() }} variant={isEditing ? 'danger' : 'primary'}>{isEditing ? 'Done' : 'Security'}</Button>
+              <Button disabled onClick={(e) => { e.stopPropagation(); handleOptimizeMission() }} variant='warning'>Optimize</Button>
               <Button onClick={(e) => { e.stopPropagation(); debugMission(selectedMission, setDebugXml); }} variant='sad'>Debug</Button>
               <Button onClick={(e) => { e.stopPropagation(); exportMission(selectedMission); }} variant='sad'>Export</Button>
               <Button
@@ -234,6 +251,7 @@ export function DashboardView() {
                   onUpdate={handleUpdateWaypoint}
                   onDelete={handleDeleteWaypoint}
                   viewContext={viewContext}
+                  isEditing={isEditing}
                 />
               )
             )}

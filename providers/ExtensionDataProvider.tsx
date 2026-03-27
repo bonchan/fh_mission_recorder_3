@@ -52,11 +52,13 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
     const targetTabId = await getTargetTabId(orgId, projectId);
     // 1. Fetch fresh from the active tab
     const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
-    const topologies = res.topologies.data.list
+    let topologies = res.topologies.data.list
 
-    // const res = await fetch('http://localhost:8080/api/osd');
-    // const payload = await res.json();
-    // const topologies = payload.data.list;
+    if (false) {
+      const simRes = await fetch('http://localhost:8080/api/osd');
+      const simPayload = await simRes.json();
+      topologies = simPayload.data.list;
+    }
 
     let waypoint = null
     for (const item of topologies) {

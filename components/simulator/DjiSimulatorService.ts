@@ -1,5 +1,5 @@
 // utils/DjiSimulatorService.ts
-import { LiveDroneData } from '@/utils/interfaces';
+import { LiveDroneData, SimulatorConnectParams } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 
 type StatusCallback = (status: 'CONNECTED' | 'DISCONNECTED' | 'ERROR') => void;
@@ -19,10 +19,15 @@ export class DjiSimulatorService {
     this.onStatus = onStatus;
   }
 
-  connect() {
+  connect(params?: SimulatorConnectParams) {
     if (this.socket?.readyState === WebSocket.OPEN) return;
 
-    this.socket = new WebSocket(this.url);
+    const dockSn = params?.dockSn || 'default-dock-sn';
+    const droneSn = params?.droneSn || 'default-drone-sn';
+    const startLon = params?.startLon || 'start-lon';
+    const startLat = params?.startLat || 'start-lat';
+
+    this.socket = new WebSocket(`${this.url}?dock_sn=${dockSn}&drone_sn=${droneSn}&start_lon=${startLon}&start_lat=${startLat}&`);
 
     this.socket.onopen = () => {
       log.info("%c[DJI SIM] Connected", "color: green; font-weight: bold;");

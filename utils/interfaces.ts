@@ -120,6 +120,13 @@ export interface Waypoint {
 
 export type MissionMap = Record<string, Mission[]>;
 
+export interface SimulatorConnectParams {
+  dockSn?: string;
+  droneSn?: string;
+  startLat?: number;
+  startLon?: number;
+}
+
 export type TagCategory = 'flight_route' | 'location' | 'asset' | 'intention';
 
 export interface TagOption {

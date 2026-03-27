@@ -1,9 +1,11 @@
 import React, { createContext, useContext } from 'react';
 import { createLogger } from '@/utils/logger';
-import { Annotation, Drone, Waypoint, FlatDevice } from '@/utils/interfaces';
+import { Annotation, Drone, Waypoint, FlatDevice, SimulatorConnectParams } from '@/utils/interfaces';
 import { getProjectTopologiesStorageKey } from '@/utils/utils';
 import { toDockDrone, toAnnotation, toWaypoint, toFlatDevice } from '@/utils/mapper';
 import { getCachedOrFetch } from '@/utils/storageCache';
+import { useDjiSimulator } from '@/hooks/useDjiSimulator'
+
 
 interface DataContextType {
   getTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
@@ -12,9 +14,12 @@ interface DataContextType {
   getStorageUploadCredentials: (orgId: string, projectId: string, tabId?: number) => Promise<any>;
   duplicateNameStorageCheck: (orgId: string, projectId: string, missionName: string, tabId?: number) => Promise<any>;
   importCallbackStorage: (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => Promise<any>;
-
   getFreshTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
 
+  simData: LiveDroneData | null;
+  isSimConnected: boolean;
+  connectSim: (params?: SimulatorConnectParams) => void;
+  disconnectSim: () => void;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -25,6 +30,8 @@ const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 const log = createLogger('ExtensionDataProvider');
 
 export function ExtensionDataProvider({ children }: { children: React.ReactNode }) {
+
+  const { data: simData, isConnected: isSimConnected, connect: connectSim, disconnect: disconnectSim } = useDjiSimulator();
 
   const getTargetTabId = async (orgId: string, projectId: string, tabId?: number): Promise<number> => {
     if (tabId) return tabId;
@@ -54,7 +61,7 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
     const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_TOPOLOGIES", orgId, projectId });
     let topologies = res.topologies.data.list
 
-    if (false) {
+    if (isSimConnected) {
       const simRes = await fetch('http://localhost:8080/api/osd');
       const simPayload = await simRes.json();
       topologies = simPayload.data.list;
@@ -115,12 +122,6 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
         deviceList.push(flatDevice);
       }
     }
-    // const deviceListSorted = [...deviceList].sort((a, b) => {
-    //   const indexA = a.parentIndex ?? 999;
-    //   const indexB = b.parentIndex ?? 999;
-    //   return indexA - indexB;
-    // });
-
     return deviceList
   };
 
@@ -177,6 +178,11 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
       duplicateNameStorageCheck,
       importCallbackStorage,
       getFreshTopologies,
+
+      simData,
+      isSimConnected,
+      connectSim,
+      disconnectSim,
     }}>
       {children}
     </DataContext.Provider>

@@ -1,7 +1,7 @@
 // hooks/useDjiSimulator.ts
 import { useState, useEffect, useRef } from 'react';
 import { DjiSimulatorService } from '@/components/simulator/DjiSimulatorService';
-import { LiveDroneData } from '@/utils/interfaces';
+import { LiveDroneData, SimulatorConnectParams } from '@/utils/interfaces';
 
 export function useDjiSimulator(url: string = "ws://localhost:8765") {
   const [data, setData] = useState<LiveDroneData | null>(null);
@@ -19,7 +19,7 @@ export function useDjiSimulator(url: string = "ws://localhost:8765") {
   }, [url]);
 
   return {
-    connect: () => serviceRef.current?.connect(),
+    connect: (params?: SimulatorConnectParams) => serviceRef.current?.connect(params),
     disconnect: () => serviceRef.current?.disconnect(),
     data,
     status,

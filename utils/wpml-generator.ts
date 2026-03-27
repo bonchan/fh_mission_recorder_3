@@ -106,29 +106,29 @@ export async function generateDJIMissionFiles(mission: Mission) {
         <wpml:gimbalPitchRotateEnable>${action.actionActuatorFuncParam.gimbalPitchRotateEnable}</wpml:gimbalPitchRotateEnable>
         <wpml:gimbalPitchRotateAngle>${action.actionActuatorFuncParam.gimbalPitchRotateAngle}</wpml:gimbalPitchRotateAngle>`
 
-      : action.actionActuatorFunc === "rotateYaw"
-        ? `
+        : action.actionActuatorFunc === "rotateYaw"
+          ? `
         <wpml:aircraftHeading>${action.actionActuatorFuncParam.aircraftHeading}</wpml:aircraftHeading>
         <wpml:aircraftPathMode>${action.actionActuatorFuncParam.aircraftPathMode}</wpml:aircraftPathMode>`
 
-      : action.actionActuatorFunc === "takePhoto"
-        ? `
+          : action.actionActuatorFunc === "takePhoto"
+            ? `
         <wpml:payloadPositionIndex>${action.actionActuatorFuncParam.payloadPositionIndex}</wpml:payloadPositionIndex>
         <wpml:payloadLensIndex>${action.actionActuatorFuncParam.payloadLensIndex}</wpml:payloadLensIndex>
         <wpml:useGlobalPayloadLensIndex>${action.actionActuatorFuncParam.useGlobalPayloadLensIndex}</wpml:useGlobalPayloadLensIndex>`
 
-      : action.actionActuatorFunc === "zoom"
-        ? `
+            : action.actionActuatorFunc === "zoom"
+              ? `
         <wpml:payloadPositionIndex>${action.actionActuatorFuncParam.payloadPositionIndex}</wpml:payloadPositionIndex>
         <wpml:focalLength>${action.actionActuatorFuncParam.focalLength}</wpml:focalLength>`
 
-      : action.actionActuatorFunc === "hover"
-        ? `
+              : action.actionActuatorFunc === "hover"
+                ? `
         <wpml:hoverTime>${action.actionActuatorFuncParam.hoverTime}</wpml:hoverTime>`
 
-      : ""
+                : ""
 
-            
+
     }
       </wpml:actionActuatorFuncParam>
     </wpml:action>
@@ -164,7 +164,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
     </Placemark>
   `
 
-   const renderPlacemarkWaylines = (wp: any, index: number) => `
+  const renderPlacemarkWaylines = (wp: any, index: number) => `
     <Placemark>
       <Point>
         <coordinates>${wp.longitude},${wp.latitude}</coordinates>
@@ -195,6 +195,12 @@ export async function generateDJIMissionFiles(mission: Mission) {
     }
     </Placemark>
   `
+
+  const renderImageFormat = (mission: Mission) => {
+    let imageFormat = 'visable,ir'
+    if (mission.missionType == 'zenithal') imageFormat = 'visable'
+    return imageFormat
+  }
 
   const templateFolderXml = `
     <Folder>
@@ -227,7 +233,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
         <wpml:returnMode>singleReturnStrongest</wpml:returnMode>
         <wpml:samplingRate>240000</wpml:samplingRate>
         <wpml:scanningMode>repetitive</wpml:scanningMode>
-        <wpml:imageFormat>visable,ir</wpml:imageFormat>
+        <wpml:imageFormat>${renderImageFormat(mission)}</wpml:imageFormat>
         <wpml:photoSize>default_l</wpml:photoSize>
       </wpml:payloadParam>
 

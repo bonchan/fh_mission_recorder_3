@@ -119,12 +119,12 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], missionType: 
             });
         }
 
-        if (missionType == MissionType.CLAMP) {
+        if (wp.hoverTime > 0) {
             actions.push({
                 actionId: actionId++,
                 actionActuatorFunc: "hover",
                 actionActuatorFuncParam: {
-                    hoverTime: 10,
+                    hoverTime: wp.hoverTime,
                 }
             });
         }

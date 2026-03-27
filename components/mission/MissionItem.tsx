@@ -3,6 +3,8 @@ import { createLogger } from '@/utils/logger';
 import { Mission, Waypoint, ViewContext, MissionType, Annotation } from '@/utils/interfaces';
 import { WaypointList } from '@/components/waypoint/WaypointList';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
+import { useLiveMissions } from '@/hooks/useLiveMissions';
+
 
 import { generateWaypointsFromTemplate } from '@/components/mission/missionGenerator'
 import { TemplateSelector } from '@/components/mission/TemplateSelector'
@@ -19,12 +21,11 @@ interface MissionItemProps {
   isExpanded: boolean;
   viewContext?: ViewContext;
   onToggleExpand: () => void;
-  onUpdate: (updatedMission: Mission) => void;
 }
 
 const log = createLogger('MissionItem');
 
-export function MissionItem({ mission, annotations, isExpanded, viewContext, onToggleExpand, onUpdate }: MissionItemProps) {
+export function MissionItem({ mission, annotations, isExpanded, viewContext, onToggleExpand }: MissionItemProps) {
   // --- UI STATE ---
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(mission.name);
@@ -38,7 +39,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
 
-
+  const { updateMission, addWaypoints, updateWaypoint, deleteWaypoint } = useLiveMissions(mission.orgId, mission.projectId);
 
 
   // --- MISSION NAME EDITING ---
@@ -51,22 +52,18 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   const handleConfirmName = () => {
     const trimmed = editName.trim();
     if (trimmed && trimmed !== mission.name) {
-      onUpdate({ ...mission, name: trimmed, updatedDate: Date.now() });
+      updateMission({ ...mission, name: trimmed, updatedDate: Date.now() });
     }
     setIsEditing(false);
   };
 
   // --- WAYPOINT LOGIC ---
   const handleUpdateWaypoint = (wpId: string, updates: Partial<Waypoint>) => {
-    const updatedWaypoints = (mission.waypoints || []).map(wp =>
-      wp.id === wpId ? { ...wp, ...updates } : wp
-    );
-    onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
+    updateWaypoint(mission, wpId, updates)
   };
 
   const handleDeleteWaypoint = (wpId: string) => {
-    const updatedWaypoints = (mission.waypoints || []).filter(wp => wp.id !== wpId);
-    onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
+    deleteWaypoint(mission, wpId)
   };
 
   const handleAddWaypointClick = async (e: React.MouseEvent) => {
@@ -97,24 +94,22 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
           yaw: currentDroneData.yaw || 0,
           pitch: currentDroneData.pitch || 0,
           zoom: currentDroneData.zoom || 1,
+          hoverTime: 0,
           // tag: '' // Default to empty string
           turn: "CW",
           actionGroup: null
         };
 
-        let updatedWaypoints = [...(mission.waypoints || []), newWaypoint];
 
         if (template) {
           const cluster = generateWaypointsFromTemplate(newWaypoint, template);
-          updatedWaypoints = [...(mission.waypoints || []), ...cluster];
-          showToast('Added waypoints from template', template.name, 'warning')
+          await addWaypoints(mission, cluster)
+          showToast(`Added (${cluster.length}) waypoints from template`, template.name, 'warning')
 
         } else {
-          showToast('Added waypoint', `Total: ${updatedWaypoints.length}`)
+          await addWaypoints(mission, newWaypoint)
+          showToast('Added waypoint', ``)
         }
-
-        // 4. Update the mission array and send it to the parent!
-        onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
 
       } else {
         showToast("Could not find active telemetry for this drone.", "Is it turned on?", 'warning');
@@ -152,14 +147,21 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
 
 
 
-  const handleAnnotationClick = (annotation: Annotation) => {
+  const handleAnnotationClick = async (annotation: Annotation) => {
 
     let elevation = 100
+    let hoverTime = 0
+    let yaw = 0
+    let pitch = -90
+    let zoom = 1
+
+
     if (mission.missionType == MissionType.ZENITHAL) {
       elevation = 70
     }
     if (mission.missionType == MissionType.CLAMP) {
       elevation = 50
+      hoverTime = 10
     }
 
     const newWaypoint: Waypoint = {
@@ -168,16 +170,16 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
       longitude: annotation.longitude,
       elevation: elevation,
       height: elevation,
-      yaw: 0,
-      pitch: -90,
-      zoom: 1,
+      yaw: yaw,
+      pitch: pitch,
+      zoom: zoom,
+      hoverTime: hoverTime,
       turn: 'CW',
       actionGroup: null
     };
 
-    let updatedWaypoints = [...(mission.waypoints || []), newWaypoint];
-    onUpdate({ ...mission, waypoints: updatedWaypoints, updatedDate: Date.now() });
-    showToast(`Added waypoint at annotation: ${annotation.name}`, `Total: ${updatedWaypoints.length}`)
+    await addWaypoints(mission, newWaypoint)
+    showToast(`Added waypoint at annotation: ${annotation.name}`, ``)
 
     setTimeout(() => {
       scrollRef.current?.scrollIntoView({

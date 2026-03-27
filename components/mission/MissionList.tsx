@@ -8,10 +8,9 @@ interface MissionItemListProps {
   annotations: Annotation[],
   isLoading: boolean
   viewContext?: ViewContext;
-  onUpdate: (updatedMission: Mission) => void;
 }
 
-export function MissionList({ missions, annotations, isLoading, viewContext, onUpdate }: MissionItemListProps) {
+export function MissionList({ missions, annotations, isLoading, viewContext }: MissionItemListProps) {
   const [expandedMissionId, setExpandedMissionId] = useState<string | null>(null);
 
   if (isLoading) return <p>Loading missions...</p>;
@@ -49,7 +48,6 @@ export function MissionList({ missions, annotations, isLoading, viewContext, onU
             viewContext={viewContext}
             isExpanded={isCurrentlyExpanded}
             onToggleExpand={() => setExpandedMissionId(isCurrentlyExpanded ? null : mission.id)}
-            onUpdate={onUpdate}
           />
         )
       }

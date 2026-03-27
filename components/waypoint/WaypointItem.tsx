@@ -7,7 +7,7 @@ interface WaypointItemProps {
   index: number;
   viewContext?: ViewContext;
   onUpdate: (id: string, updates: Partial<Waypoint>) => void;
-  onDelete: (id: string) => void;
+  onDelete: ((id: string) => void) | undefined;
 }
 
 export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete }: WaypointItemProps) {
@@ -15,7 +15,8 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- 2-STEP DELETE LOGIC ---
-  const handleDeleteClick = () => {
+  const handleDelete = () => {
+    if (onDelete === undefined) return
     if (!isConfirming) {
       // First click: arm the button
       setIsConfirming(true);
@@ -28,6 +29,12 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
       if (timerRef.current) clearTimeout(timerRef.current);
       onDelete(waypoint.id);
     }
+  };
+
+  const handleUpdate = () => {
+    if (onDelete === undefined) return
+    // TODO
+    onUpdate(waypoint.id, waypoint);
   };
 
   // Cleanup the timer if the component unmounts while confirming
@@ -57,23 +64,26 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
         <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '12px' }}>
           WP {index}
         </div>
-        
+
+
         <div style={{ textAlign: 'right' }}>
-          <Button
-            onClick={handleDeleteClick}
-            variant={isConfirming ? 'danger' : 'sad'}
-            style={{
-              padding: '2px 8px',
-              display: 'inline',
-              fontSize: '10px',
-              maxWidth: '80px',
-              transition: 'background 0.2s ease',
-            }}
-          >
-            {isConfirming ? 'CONFIRM?' : 'DELETE'}
-          </Button>
+          {onDelete &&
+            <Button
+              onClick={handleDelete}
+              variant={isConfirming ? 'danger' : 'sad'}
+              style={{
+                padding: '2px 8px',
+                display: 'inline',
+                fontSize: '10px',
+                maxWidth: '80px',
+                transition: 'background 0.2s ease',
+              }}
+            >
+              {isConfirming ? 'CONFIRM?' : 'DELETE'}
+            </Button>
+          }
         </div>
-        
+
         {/* Telemetry Data */}
         <div><span style={{ color: '#666' }}>Lon:</span> {waypoint.longitude?.toFixed(6)}</div>
         <div><span style={{ color: '#666' }}>Lat:</span> {waypoint.latitude?.toFixed(6)}</div>
@@ -82,6 +92,7 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
         <div><span style={{ color: '#666' }}>Yaw:</span> {waypoint.yaw}°</div>
         <div><span style={{ color: '#666' }}>Pitch:</span> {waypoint.pitch}°</div>
         <div><span style={{ color: '#666' }}>Zoom:</span> {waypoint.zoom}x</div>
+        <div><span style={{ color: '#666' }}>Hover Time:</span> {waypoint.hoverTime}s</div>
       </div>
 
     </div>

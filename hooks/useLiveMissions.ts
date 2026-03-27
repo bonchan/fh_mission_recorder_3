@@ -11,36 +11,146 @@ export function useLiveMissions(orgId: string, projectId: string) {
 
   const storageKey = getProjectMissionsStorageKey(orgId, projectId);
 
-  // --- THE WRITE FUNCTION ---
-  // We use useCallback so this function doesn't recreate itself on every render
-  const saveMissions = useCallback(async (dockSn: string, updatedMissions: Mission[]) => {
-    if (!orgId || !projectId) return;
 
-    // 1. Get the absolute latest data from storage directly
-    // (This prevents race conditions if two tabs try to save at the exact same millisecond)
+  const saveMission = useCallback(async (mission: Mission) => {
+    const dockSn = mission.device?.parent?.deviceSn;
+    if (!orgId || !projectId || !dockSn) return;
     const currentData = await browser.storage.local.get(storageKey);
-    const currentMap = currentData[storageKey] || {};
+    const currentMap: MissionMap = (currentData[storageKey] || {}) as MissionMap;
 
-    // 2. Merge the specific dock's new missions into the map
-    const newMap = { ...currentMap, [dockSn]: updatedMissions };
+    // Get current missions for this dock, or default to an empty array
+    const dockMissions = currentMap[dockSn] || [];
 
-    // 3. Save it back to the browser storage
+    // Check if it already exists (Upsert logic)
+    const existingIndex = dockMissions.findIndex((m: Mission) => m.id === mission.id);
+    let updatedDockMissions;
+
+    if (existingIndex >= 0) {
+      // Replace existing
+      updatedDockMissions = [...dockMissions];
+      updatedDockMissions[existingIndex] = mission;
+    } else {
+      // Add new
+      updatedDockMissions = [...dockMissions, mission];
+    }
+
+    const newMap = { ...currentMap, [dockSn]: updatedDockMissions };
     await browser.storage.local.set({ [storageKey]: newMap });
+  }, [orgId, projectId, storageKey]);
 
-    // Note: We DO NOT need to call setMissions(newMap) here! 
-    // Why? Because browser.storage.local.set will instantly trigger the 
-    // onChanged listener below, which updates the React state automatically.
-  }, [orgId, projectId]);
+  const updateMission = useCallback(async (mission: Partial<Mission>) => {
+    const dockSn = mission.device?.parent?.deviceSn;
+    const missionId = mission.id
+    if (!orgId || !projectId || !dockSn || !missionId) return;
+    const currentData = await browser.storage.local.get(storageKey);
+    const currentMap: MissionMap = (currentData[storageKey] || {}) as MissionMap;
+
+    const dockMissions = currentMap[dockSn] || [];
+
+    // Map over the array and apply the partial updates to the matching mission
+    const updatedDockMissions = dockMissions.map((m: Mission) =>
+      m.id === missionId ? { ...m, ...mission } : m
+    );
+
+    const newMap = { ...currentMap, [dockSn]: updatedDockMissions };
+    await browser.storage.local.set({ [storageKey]: newMap });
+  }, [orgId, projectId, storageKey]);
+
+  const deleteMission = useCallback(async (mission: Mission) => {
+    const dockSn = mission.device?.parent?.deviceSn;
+    const missionId = mission.id
+    if (!orgId || !projectId || !dockSn || !missionId) return;
+    const currentData = await browser.storage.local.get(storageKey);
+    const currentMap: MissionMap = (currentData[storageKey] || {}) as MissionMap;
+
+    const dockMissions = currentMap[dockSn] || [];
+
+    // Filter out the mission with the matching ID
+    const updatedDockMissions = dockMissions.filter((m: Mission) => m.id !== missionId);
+
+    const newMap = { ...currentMap, [dockSn]: updatedDockMissions };
+    await browser.storage.local.set({ [storageKey]: newMap });
+  }, [orgId, projectId, storageKey]);
 
 
-  // --- THE READ & SYNC LISTENER ---
+  const addWaypoints = useCallback(async (mission: Mission, waypoints: Waypoint | Waypoint[]) => {
+    const dockSn = mission.device?.parent?.deviceSn;
+    const missionId = mission.id;
+
+    if (!orgId || !projectId || !dockSn || !missionId) return;
+
+    const currentData = await browser.storage.local.get(storageKey);
+    const currentMap = (currentData[storageKey] || {}) as MissionMap;
+    const dockMissions = currentMap[dockSn] || [];
+
+    // Normalize the input: force it to be an array even if they only passed one
+    const waypointsToAdd = Array.isArray(waypoints) ? waypoints : [waypoints];
+
+    // Map over missions, find the target, and push the new waypoint(s)
+    const updatedMissions = dockMissions.map((m: Mission) => {
+      if (m.id === missionId) {
+        const currentWaypoints = m.waypoints || []; // Safety fallback
+        // Spread both the existing waypoints AND our new array of waypoints
+        return { ...m, waypoints: [...currentWaypoints, ...waypointsToAdd] };
+      }
+      return m;
+    });
+
+    const newMap = { ...currentMap, [dockSn]: updatedMissions };
+    await browser.storage.local.set({ [storageKey]: newMap });
+  }, [orgId, projectId, storageKey]);
+
+  const updateWaypoint = useCallback(async (mission: Mission, waypointId: string, updates: Partial<Waypoint>) => {
+    const dockSn = mission.device?.parent?.deviceSn;
+    const missionId = mission.id
+    if (!orgId || !projectId || !dockSn || !missionId) return;
+    const currentData = await browser.storage.local.get(storageKey);
+    const currentMap = (currentData[storageKey] || {}) as MissionMap;
+    const dockMissions = currentMap[dockSn] || [];
+
+    const updatedMissions = dockMissions.map((m: Mission) => {
+      if (m.id === missionId) {
+        // Map over the waypoints inside this specific mission
+        const updatedWaypoints = (m.waypoints || []).map(wp =>
+          wp.id === waypointId ? { ...wp, ...updates } : wp
+        );
+        return { ...m, waypoints: updatedWaypoints };
+      }
+      return m;
+    });
+
+    const newMap = { ...currentMap, [dockSn]: updatedMissions };
+    await browser.storage.local.set({ [storageKey]: newMap });
+  }, [orgId, projectId, storageKey]);
+
+  const deleteWaypoint = useCallback(async (mission: Mission, waypointId: string) => {
+    const dockSn = mission.device?.parent?.deviceSn;
+    const missionId = mission.id
+    if (!orgId || !projectId || !dockSn || !missionId) return;
+    const currentData = await browser.storage.local.get(storageKey);
+    const currentMap = (currentData[storageKey] || {}) as MissionMap;
+    const dockMissions = currentMap[dockSn] || [];
+
+    const updatedMissions = dockMissions.map((m: Mission) => {
+      if (m.id === missionId) {
+        // Filter out the waypoint that matches the ID
+        const updatedWaypoints = (m.waypoints || []).filter(wp => wp.id !== waypointId);
+        return { ...m, waypoints: updatedWaypoints };
+      }
+      return m;
+    });
+
+    const newMap = { ...currentMap, [dockSn]: updatedMissions };
+    await browser.storage.local.set({ [storageKey]: newMap });
+  }, [orgId, projectId, storageKey]);
+
+  
   useEffect(() => {
     if (!orgId || !projectId) {
       setIsLoadingMissions(false);
       return;
     }
 
-    // Initial load
     const loadInitialData = async () => {
       setIsLoadingMissions(true);
       const data = await browser.storage.local.get(storageKey);
@@ -52,7 +162,6 @@ export function useLiveMissions(orgId: string, projectId: string) {
 
     loadInitialData();
 
-    // Live sync
     const handleStorageChange = (changes: any, areaName: string) => {
       if (areaName === 'local' && changes[storageKey]) {
         log.debug(`[Sync] Missions updated across tabs!`);
@@ -65,8 +174,17 @@ export function useLiveMissions(orgId: string, projectId: string) {
     return () => {
       browser.storage.onChanged.removeListener(handleStorageChange);
     };
-  }, [orgId, projectId]);
+  }, [orgId, projectId, storageKey]);
 
-  // Return both the data and the mutator!
-  return { missions, isLoadingMissions, saveMissions };
+  // Export all the new functions!
+  return {
+    missions,
+    isLoadingMissions,
+    saveMission,
+    updateMission,
+    deleteMission,
+    addWaypoints,
+    updateWaypoint,
+    deleteWaypoint
+  };
 }

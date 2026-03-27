@@ -7,7 +7,7 @@ export default defineConfig({
     permissions: ['sidePanel', 'storage', 'tabs', 'activeTab', 'debugger'],
     host_permissions: [
       'https://fh.dji.com/*',
-      '*://*.google.com/*'
+      '*://*.djigate.com/*'
     ],
     action: {},
   },

@@ -1,12 +1,137 @@
-.dashboardContainer {
+/* --- LAYOUT --- */
+.mainContainer {
+  display: flex;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
   background-color: #000;
+}
+
+.errorContainer {
+  color: white;
+  padding: 20px;
+}
+
+.missionColumn {
+  width: 350px;
+  background-color: #111;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.waypointColumn {
+  width: 500px;
+  background-color: #1a1a1a;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.mapColumn {
+  flex: 1;
   position: relative;
+  min-width: 10px;
+  min-height: 10px;
   overflow: hidden;
 }
 
-/* Merged definition */
+/* --- HEADERS & TYPOGRAPHY --- */
+.columnHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-shrink: 0;
+}
+
+.columnTitle {
+  color: white;
+  font-size: 16px;
+  margin: 0;
+}
+
+.waypointTitle {
+  color: #aaa;
+  font-size: 12px;
+  margin: 0 0 10px 0;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.emptyText {
+  color: #888;
+  font-size: 12px;
+}
+
+.emptyStateContainer {
+  color: #666;
+  font-size: 12px;
+  text-align: center;
+  margin-top: 40px;
+}
+
+/* --- LISTS & ITEMS --- */
+.listContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Crucial for flexbox scrolling inside parents */
+  padding-right: 4px; /* Space for scrollbar */
+}
+
+.missionItem {
+  padding: 10px;
+  background-color: #222;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  border: 1px solid #444;
+  transition: all 0.2s ease;
+}
+
+.missionItem:hover {
+  background-color: #333;
+}
+
+.missionItemActive {
+  background-color: #0066ff;
+  border-color: #0066ff;
+}
+
+.missionItemActive:hover {
+  background-color: #005ce6;
+}
+
+/* --- ACTIONS & STATES --- */
+.actionButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 15px;
+  flex-shrink: 0;
+}
+
+.uploadingText {
+  color: #a1b7da;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 5px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+/* --- EXISTING OVERLAY STYLES --- */
 .statusOverlay {
   position: absolute;
   top: 20px;
@@ -14,36 +139,21 @@
   padding: 12px;
   min-width: 200px;
   background: rgba(0, 0, 0, 0.8);
-  /* Slightly darker for better contrast */
   color: #00ff00;
   font-family: monospace;
   border: 1px solid #333;
   border-radius: 4px;
   z-index: 1000;
-  /* High enough to beat the Map */
   pointer-events: none;
-  /* Clicks pass through to the map... */
 }
-
-.missionTitle {
-  font-size: 11px;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-.missionSubtitle {
-  font-size: 9px;
-  color: #888;
-  margin-bottom: 10px;
-  /* Space before the button */
-}
+.tabInfo { margin-bottom: 10px; }
+.debugInfo { margin-top: 10px; font-size: 10px; overflow-x: auto; }
+.telemetryError { margin-top: 10px; color: red; font-weight: bold; }
 
 .simButton {
   pointer-events: auto;
-  /* ...EXCEPT for the button! */
   cursor: pointer;
   display: block;
-  /* Ensures it takes its own line */
   padding: 8px 16px;
   margin-top: 10px;
   border: 1px solid #444;
@@ -56,13 +166,11 @@
   text-transform: uppercase;
   transition: all 0.2s ease;
 }
-
 .simButton.active {
   background-color: #ff4d4d;
   border-color: #ff0000;
   box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
 }
-
 .simButton:hover {
   background-color: #444;
 }

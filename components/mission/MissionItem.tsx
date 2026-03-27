@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { createLogger } from '@/utils/logger';
-import { Mission, Waypoint, ViewContext, MissionType, Annotation } from '@/utils/interfaces';
+import { Mission, Waypoint, ViewContext, MissionType, Annotation, WaypointType } from '@/utils/interfaces';
 import { WaypointList } from '@/components/waypoint/WaypointList';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { useLiveMissions } from '@/hooks/useLiveMissions';
@@ -39,7 +39,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
 
-  const { updateMission, addWaypoints, updateWaypoint, deleteWaypoint } = useLiveMissions(mission.orgId, mission.projectId);
+  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint } = useLiveMissions(mission.orgId, mission.projectId);
 
 
   // --- MISSION NAME EDITING ---
@@ -97,17 +97,18 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
           hoverTime: 0,
           // tag: '' // Default to empty string
           turn: "CW",
-          actionGroup: null
+          type: 'picture',
+          actionGroup: null,
         };
 
 
         if (template) {
           const cluster = generateWaypointsFromTemplate(newWaypoint, template);
-          await addWaypoints(mission, cluster)
+          await createWaypoints(mission, cluster)
           showToast(`Added (${cluster.length}) waypoints from template`, template.name, 'warning')
 
         } else {
-          await addWaypoints(mission, newWaypoint)
+          await createWaypoints(mission, newWaypoint)
           showToast('Added waypoint', ``)
         }
 
@@ -149,12 +150,13 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
 
   const handleAnnotationClick = async (annotation: Annotation) => {
 
+    // FIXME move this values to a config file
     let elevation = 100
     let hoverTime = 0
     let yaw = 0
     let pitch = -90
     let zoom = 1
-
+    let type: WaypointType = 'picture'
 
     if (mission.missionType == MissionType.ZENITHAL) {
       elevation = 70
@@ -162,6 +164,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
     if (mission.missionType == MissionType.CLAMP) {
       elevation = 50
       hoverTime = 10
+      type = 'hover'
     }
 
     const newWaypoint: Waypoint = {
@@ -175,10 +178,11 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
       zoom: zoom,
       hoverTime: hoverTime,
       turn: 'CW',
-      actionGroup: null
+      type: type,
+      actionGroup: null,
     };
 
-    await addWaypoints(mission, newWaypoint)
+    await createWaypoints(mission, newWaypoint)
     showToast(`Added waypoint at annotation: ${annotation.name}`, ``)
 
     setTimeout(() => {
@@ -278,6 +282,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
         <div style={{ padding: '12px', borderTop: '1px solid #333', background: '#181818', borderRadius: '0 0 8px 8px' }}>
           <WaypointList
             waypoints={mission.waypoints}
+            onCreate={undefined}
             onUpdate={handleUpdateWaypoint}
             onDelete={handleDeleteWaypoint}
             viewContext={viewContext as any}

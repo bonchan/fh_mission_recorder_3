@@ -41,7 +41,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
     payloadPositionIndex: payloadGimbalindex,
   }
 
-  const readyWaypoints = transformWaypointsForExport(mission.waypoints, mission.missionType, payloadGimbalindex);
+  const readyWaypoints = transformWaypointsForExport(mission.waypoints, payloadGimbalindex);
 
   const missionConfigXml = `
     <wpml:missionConfig>

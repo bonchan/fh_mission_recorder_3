@@ -1,0 +1,61 @@
+/* Base Container */
+.container {
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  border: 1px solid #333;
+  font-size: 11px;
+  /* Smooth transition if the type changes! */
+  transition: background-color 0.3s ease; 
+}
+
+/* Dynamic Type Colors (Subtle tints so text is still readable) */
+.type_default { background-color: #252525; }
+.type_picture { background-color: #1a2a40; border-color: #2a4a70; } /* Subtle Blue */
+.type_security { background-color: #401a1a; border-color: #702a2a; } /* Subtle Red */
+.type_hover { background-color: #403a1a; border-color: #70602a; } /* Subtle Yellow */
+
+/* Grid & Text Styles */
+.dataGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px 12px;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+
+.headerTitle {
+  font-weight: bold;
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.deleteWrapper {
+  text-align: right;
+}
+
+.telemetryLabel {
+  color: #666;
+}
+
+/* Specific styling for the mini-delete button */
+.deleteBtn {
+  padding: 2px 8px;
+  display: inline;
+  font-size: 10px;
+  max-width: 80px;
+  max-height: 25px;
+  transition: background 0.2s ease;
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}

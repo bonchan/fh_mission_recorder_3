@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
 
 export function MissionsContainer({ orgId, projectId, devices, annotations, isFetching, viewContext }:
   { orgId: string; projectId: string; devices: Drone[]; annotations: Annotation[]; isFetching: boolean; viewContext: ViewContext }) {
-  const { missions, isLoadingMissions, saveMission } = useLiveMissions(orgId, projectId);
+  const { missions, isLoadingMissions, createMission } = useLiveMissions(orgId, projectId);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleMissionSubmit = async (missionName: string, selectedDevice: Drone, missionType: MissionType) => {
@@ -23,7 +23,7 @@ export function MissionsContainer({ orgId, projectId, devices, annotations, isFe
       missionType: missionType,
       waypoints: []
     };
-    await saveMission(newMission)
+    await createMission(newMission)
 
     setIsModalOpen(false);
   };

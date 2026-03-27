@@ -12,7 +12,7 @@ export function useLiveMissions(orgId: string, projectId: string) {
   const storageKey = getProjectMissionsStorageKey(orgId, projectId);
 
 
-  const saveMission = useCallback(async (mission: Mission) => {
+  const createMission = useCallback(async (mission: Mission) => {
     const dockSn = mission.device?.parent?.deviceSn;
     if (!orgId || !projectId || !dockSn) return;
     const currentData = await browser.storage.local.get(storageKey);
@@ -73,7 +73,7 @@ export function useLiveMissions(orgId: string, projectId: string) {
   }, [orgId, projectId, storageKey]);
 
 
-  const addWaypoints = useCallback(async (mission: Mission, waypoints: Waypoint | Waypoint[]) => {
+  const createWaypoints = useCallback(async (mission: Mission, waypoints: Waypoint | Waypoint[], index?: number) => {
     const dockSn = mission.device?.parent?.deviceSn;
     const missionId = mission.id;
 
@@ -86,12 +86,26 @@ export function useLiveMissions(orgId: string, projectId: string) {
     // Normalize the input: force it to be an array even if they only passed one
     const waypointsToAdd = Array.isArray(waypoints) ? waypoints : [waypoints];
 
-    // Map over missions, find the target, and push the new waypoint(s)
+    // Map over missions, find the target, and insert the new waypoint(s)
     const updatedMissions = dockMissions.map((m: Mission) => {
       if (m.id === missionId) {
         const currentWaypoints = m.waypoints || []; // Safety fallback
-        // Spread both the existing waypoints AND our new array of waypoints
-        return { ...m, waypoints: [...currentWaypoints, ...waypointsToAdd] };
+        let newWaypointsList;
+
+        // Check if a valid index was provided
+        if (index !== undefined && index >= 0 && index <= currentWaypoints.length) {
+          // Sandwich the new waypoints at the exact index!
+          newWaypointsList = [
+            ...currentWaypoints.slice(0, index), // Everything BEFORE the index
+            ...waypointsToAdd,                   // The new stuff to insert
+            ...currentWaypoints.slice(index)     // Everything AFTER the index
+          ];
+        } else {
+          // Fallback: If no index is provided (or it's out of bounds), just append to the end
+          newWaypointsList = [...currentWaypoints, ...waypointsToAdd];
+        }
+
+        return { ...m, waypoints: newWaypointsList };
       }
       return m;
     });
@@ -180,10 +194,10 @@ export function useLiveMissions(orgId: string, projectId: string) {
   return {
     missions,
     isLoadingMissions,
-    saveMission,
+    createMission,
     updateMission,
     deleteMission,
-    addWaypoints,
+    createWaypoints,
     updateWaypoint,
     deleteWaypoint
   };

@@ -1,6 +1,6 @@
 // utils/mission-transformer.ts
 import { getFocalLengthFromZoom, normalizeHeading360, getShortestTurn } from '@/utils/utils'
-import { Waypoint, MissionType } from './interfaces';
+import { Waypoint, WaypointType } from './interfaces';
 
 export function recalculateWaypointTurns(waypoints: Waypoint[]): Waypoint[] {
     if (!waypoints || waypoints.length === 0) return [];
@@ -23,7 +23,7 @@ export function recalculateWaypointTurns(waypoints: Waypoint[]): Waypoint[] {
     return updated;
 }
 
-export const transformWaypointsForExport = (waypoints: Waypoint[], missionType: MissionType, payloadPositionIndex: number) => {
+export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositionIndex: number) => {
     return waypoints.map((wp, index) => {
 
         // 1. Start with the base coordinate data
@@ -35,7 +35,6 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], missionType: 
             ellipsoidHeight: wp.elevation,// FIXME wp.height,
             height: wp.elevation,
             useStraightLine: 1,
-
         };
 
         // 2. Add Actions based on your logic (Dynamic Injection)
@@ -80,7 +79,7 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], missionType: 
         //     }
         // });
 
-        if (missionType == MissionType.WAYPOINT || missionType == MissionType.ZENITHAL) {
+        if (waypoint.type == 'picture') {
             actions.push({
                 actionId: actionId++,
                 actionActuatorFunc: "orientedShoot",

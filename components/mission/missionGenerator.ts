@@ -43,6 +43,8 @@ export function generateWaypointsFromTemplate(triggerData: Waypoint, missionTemp
     // FIXME move this values to a config file 
     const trueElevation = isFirstOrLastSecurityPoint ? 70 : elevation + point.z
 
+    const trueTags = [...(missionTemplate.templateTagIds || []), ...(point.tagIds || [])];
+
     // 6. Return the finalized global waypoint
     return {
       ...triggerData,               // Keep timestamp, serial number, etc.
@@ -54,7 +56,8 @@ export function generateWaypointsFromTemplate(triggerData: Waypoint, missionTemp
       yaw: trueHeading,
       pitch: point.pitch,     // Use template's exact pitch
       zoom: point.zoomFactor,
-      type: point.type
+      type: point.type,
+      tagIds: trueTags
     };
   });
 }

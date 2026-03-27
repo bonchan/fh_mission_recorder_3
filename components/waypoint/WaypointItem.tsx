@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Button from '@/components/ui/Button';
 import { ViewContext, Waypoint } from "@/utils/interfaces";
-import styles from './WaypointItem.module.css'; // <-- Import the new CSS!
+import styles from './WaypointItem.module.css';
+import { WaypointTags } from './WaypointTags';
+import { createLogger } from '@/utils/logger';
+
 
 interface WaypointItemProps {
   waypoint: Waypoint;
@@ -10,12 +13,12 @@ interface WaypointItemProps {
   onUpdate: ((id: string, updates: Partial<Waypoint>) => void) | undefined;
   onDelete: ((id: string) => void) | undefined;
 }
+const log = createLogger('WaypointItem');
 
 export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete }: WaypointItemProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- 2-STEP DELETE LOGIC ---
   const handleDelete = () => {
     if (onDelete === undefined) return;
     if (!isConfirming) {
@@ -56,13 +59,13 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
 
   return (
     <div className={`${styles.container} ${typeClass}`}>
-      
+
       {/* 1. THE HEADER ROW */}
       <div className={styles.itemHeader}>
         <div className={styles.headerTitle}>
           <span>{getIcon()}</span> WP {index + 1}
         </div>
-        
+
         {onDelete && (
           <Button
             onClick={handleDelete}
@@ -74,7 +77,7 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
         )}
       </div>
 
-      {/* 2. THE TELEMETRY GRID */}
+      {/* 2. TELEMETRY GRID */}
       <div className={styles.dataGrid}>
         <div><span className={styles.telemetryLabel}>Lon:</span> {waypoint.longitude?.toFixed(6)}</div>
         <div><span className={styles.telemetryLabel}>Lat:</span> {waypoint.latitude?.toFixed(6)}</div>
@@ -85,6 +88,16 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete 
         <div><span className={styles.telemetryLabel}>Zoom:</span> {waypoint.zoom}x</div>
         <div><span className={styles.telemetryLabel}>Hover Time:</span> {waypoint.hoverTime || 0}s</div>
       </div>
+
+      {/* 2. WAYPOINT TAGS */}
+      {waypoint.type == 'picture' &&
+        <WaypointTags
+          selectedTagIds={waypoint.tagIds || []}
+          onChange={(newTags) => {
+            if (onUpdate) onUpdate(waypoint.id, { tagIds: newTags });
+          }}
+        />
+      }
 
     </div>
   );

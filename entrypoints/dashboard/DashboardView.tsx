@@ -4,17 +4,14 @@ import { Map } from '@/components/map/Map';
 import styles from './DashboardView.module.css';
 import Button from '@/components/ui/Button';
 import SearchInput from '@/components/ui/SearchInput';
-import { LiveDroneData, LiveWaypointData, Annotation, Mission, WaypointType, ViewContext } from '@/utils/interfaces';
+import { LiveDroneData, LiveWaypointData, Annotation, WaypointType, ViewContext, Waypoint } from '@/utils/interfaces';
 import { useDjiSimulator } from '@/hooks/useDjiSimulator';
 import { useLiveMissions } from '@/hooks/useLiveMissions';
 import { useMissionActions } from '@/hooks/useMissionActions';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { WaypointList } from '@/components/waypoint/WaypointList';
-import { generateDJIMission, generateDJIMissionFiles } from '@/utils/wpml-generator';
 import { XMLDebugModal } from '@/components/debug/XMLDebugModal';
-import { uploadToCloudStorage } from '@/services/cloudStorage';
 import { useToast } from '@/providers/ToastProvider';
-import { delay } from '@/utils/time';
 
 const log = createLogger('DashboardView');
 
@@ -28,7 +25,7 @@ export function DashboardView() {
 
   const viewContext = ViewContext.DASHBOARD
 
-  const { missions, createWaypoints, deleteWaypoint } = useLiveMissions(orgId, projectId);
+  const { missions, createWaypoints, updateWaypoint, deleteWaypoint } = useLiveMissions(orgId, projectId);
   const { getAnnotations, getStorageUploadCredentials, duplicateNameStorageCheck, importCallbackStorage } = useExtensionData();
 
   const [liveAnnotations, setLiveAnnotations] = useState<Annotation[]>([]);
@@ -153,6 +150,11 @@ export function DashboardView() {
     }
     createWaypoints(selectedMission, securityWaypoint, index)
   };
+  
+    const handleUpdateWaypoint = (wpId: string, updates: Partial<Waypoint>) => {
+      if (!selectedMission) return
+      updateWaypoint(selectedMission, wpId, updates)
+    };
 
   const handleDeleteWaypoint = (wpId: string) => {
     if (!selectedMission) return
@@ -229,7 +231,7 @@ export function DashboardView() {
                 <WaypointList
                   waypoints={selectedMission.waypoints}
                   onCreate={handleCreateSecurityWaypoint}
-                  onUpdate={undefined}
+                  onUpdate={handleUpdateWaypoint}
                   onDelete={handleDeleteWaypoint}
                   viewContext={viewContext}
                 />

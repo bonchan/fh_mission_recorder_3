@@ -115,6 +115,7 @@ export interface Waypoint {
   turn: string;
   actionGroup: any | null;
   type: WaypointType;
+  tagIds?: string[];
 }
 
 export type MissionMap = Record<string, Mission[]>;

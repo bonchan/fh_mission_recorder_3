@@ -74,6 +74,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
     <wpml:action>
       <wpml:actionId>${action.actionId}</wpml:actionId>
       <wpml:actionActuatorFunc>${action.actionActuatorFunc}</wpml:actionActuatorFunc>
+      <wpml:actionActuatorTags>${action.actionActuatorTags}</wpml:actionActuatorTags>
       <wpml:actionActuatorFuncParam>
         ${action.actionActuatorFunc === "orientedShoot"
       ? `

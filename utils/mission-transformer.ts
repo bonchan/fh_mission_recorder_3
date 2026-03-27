@@ -72,6 +72,7 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
         // actions.push({
         //     actionId: actionId++,
         //     actionActuatorFunc: "takePhoto",
+        //     actionActuatorTags: wp.tagIds?.join(',') || '',
         //     actionActuatorFuncParam: {
         //         payloadPositionIndex: payloadPositionIndex,
         //         payloadLensIndex: "zoom,ir",
@@ -83,6 +84,7 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
             actions.push({
                 actionId: actionId++,
                 actionActuatorFunc: "orientedShoot",
+                actionActuatorTags: wp.tagIds?.join(',') || '',
                 actionActuatorFuncParam: {
                     gimbalPitchRotateAngle: wp.pitch,               // From recorded data
                     gimbalRollRotateAngle: 0,

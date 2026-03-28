@@ -13,6 +13,7 @@ export interface Dock {
   index: number;
   deviceSn: string;
   deviceModelName: string;
+  deviceProjectCallsign: string;
   deviceOrganizationCallsign: string;
   longitude: number;
   latitude: number;
@@ -23,6 +24,7 @@ export interface Drone {
   deviceSn: string;
   deviceModelName: string;
   deviceModelKey: string;
+  deviceProjectCallsign: string;
   deviceOrganizationCallsign: string;
   payloadIndex: string;
   parent: Dock | null;
@@ -69,10 +71,10 @@ export interface LiveDroneData {
   sn: string;
   latitude: number;
   longitude: number;
-  altitude: number;
-  heading: number;
-  gimbalPitch: number;
-  zoomFactor: number;
+  elevation: number;
+  yaw: number;
+  pitch: number;
+  zoom: number;
   cameraMode: number;
   trigger: boolean;
 }

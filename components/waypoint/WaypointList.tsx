@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WaypointItem } from './WaypointItem';
 import { WaypointTags } from './WaypointTags';
 import { Waypoint, ViewContext } from '@/utils/interfaces';
@@ -18,8 +18,11 @@ interface WaypointListProps {
 export function WaypointList({ waypoints, viewContext, isEditing, showOffset, onCreate, onUpdate, onDelete }: WaypointListProps) {
   const [offsetWaypointIndex, setOffsetWaypointIndex] = useState(0)
 
+  useEffect(() => {
+    if (!showOffset) setOffsetWaypointIndex(0)
+    }, [showOffset]);
+  
   if (!waypoints || waypoints.length === 0) return <p style={{ fontSize: '12px', color: '#888' }}>No waypoints added yet.</p>;
-
   return (
     <div className="waypoint-list"
       style={{

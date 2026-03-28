@@ -6,8 +6,9 @@ import { MapController, FlyToInterpolator } from 'deck.gl';
 import * as turf from '@turf/turf';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Compass } from '@/components/map/Compass';
-import { LiveDroneData, LiveWaypointData, Annotation } from '@/utils/interfaces';
+import { LiveDroneData, LiveWaypointData, Annotation, Waypoint } from '@/utils/interfaces';
 import { hexToRgb } from '@/utils/utils';
+import { createLogger } from '@/utils/logger'
 
 // --- THE EVENT HACK: Remapping Middle Click & Disabling Right Click ---
 class MiddleClickOrbitController extends MapController {
@@ -57,6 +58,8 @@ const GOOGLE_SATELLITE_STYLE = {
   ]
 };
 
+const MIN_ZOOM_TO_SHOW_LABELS = 10;
+
 type ViewState = {
   longitude: number;
   latitude: number;
@@ -71,9 +74,11 @@ interface MapProps {
   initialCenter?: [number, number];
   initialZoom?: number;
   liveDroneData?: LiveDroneData;
-  waypoints?: LiveWaypointData[];
+  waypoints?: Waypoint[];
   annotations?: Annotation[];
 }
+
+const log = createLogger('Map')
 
 export function Map({
   initialCenter = [0, 0],
@@ -82,6 +87,7 @@ export function Map({
   waypoints = [],
   annotations = []
 }: MapProps) {
+
   const [viewState, setViewState] = useState<ViewState>({
     longitude: initialCenter[0],
     latitude: initialCenter[1],
@@ -102,10 +108,12 @@ export function Map({
     const textData: any[] = [];
     const flightPathCoords: number[][] = [];
 
-    const processDroneGeometry = (data: LiveDroneData, isLive: boolean, index?: number) => {
-      const { latitude, longitude, heading, gimbalPitch, altitude } = data;
+    const processDroneGeometry = (data: Partial<Waypoint>, isLive: boolean, index?: number) => {
+      const { longitude, latitude, yaw, pitch, elevation, type } = data;
 
-      const visualAltitude = altitude * altitudeScale;
+      if (!longitude || !latitude || !yaw || !pitch || !elevation ) return
+
+      const visualAltitude = elevation * altitudeScale;
       const droneCoord = [longitude, latitude, visualAltitude];
       const textCoord = [longitude, latitude, visualAltitude + 4];
 
@@ -116,9 +124,9 @@ export function Map({
       // 1. Drone Body (ONLY FOR LIVE DRONE)
       if (isLive) {
         const sizeKm = 0.004;
-        const n2D = turf.destination([longitude, latitude], sizeKm, heading, { units: 'kilometers' }).geometry.coordinates;
-        const bl2D = turf.destination([longitude, latitude], sizeKm * 0.8, heading - 140, { units: 'kilometers' }).geometry.coordinates;
-        const br2D = turf.destination([longitude, latitude], sizeKm * 0.8, heading + 140, { units: 'kilometers' }).geometry.coordinates;
+        const n2D = turf.destination([longitude, latitude], sizeKm, yaw, { units: 'kilometers' }).geometry.coordinates;
+        const bl2D = turf.destination([longitude, latitude], sizeKm * 0.8, yaw - 140, { units: 'kilometers' }).geometry.coordinates;
+        const br2D = turf.destination([longitude, latitude], sizeKm * 0.8, yaw + 140, { units: 'kilometers' }).geometry.coordinates;
 
         polygonData.push({
           isLive,
@@ -132,23 +140,23 @@ export function Map({
       }
 
       // 2. Gimbal Laser Math
-      const pitchRad = (gimbalPitch * Math.PI) / 180;
-      const MAX_LASER_LENGTH = 500;
+      const pitchRad = (pitch * Math.PI) / 180;
+      const MAX_LASER_LENGTH = type == 'picture' ? 500 : 10;
 
       let rayLength = MAX_LASER_LENGTH;
-      if (gimbalPitch < 0) {
-        const distanceToGround = altitude / Math.abs(Math.sin(pitchRad));
+      if (pitch < 0) {
+        const distanceToGround = elevation / Math.abs(Math.sin(pitchRad));
         rayLength = Math.min(MAX_LASER_LENGTH, Math.max(0, distanceToGround - 0.1));
       }
 
       const deltaZ = rayLength * Math.sin(pitchRad);
-      const targetAlt = Math.max(0, altitude + deltaZ) * altitudeScale;
+      const targetAlt = Math.max(0, elevation + deltaZ) * altitudeScale;
       const horizontalDist = rayLength * Math.cos(pitchRad);
 
       const targetCoord2D = turf.destination(
         [longitude, latitude],
         horizontalDist / 1000,
-        heading,
+        yaw,
         { units: 'kilometers' }
       ).geometry.coordinates;
 
@@ -170,15 +178,16 @@ export function Map({
           position: textCoord,
           // text: `${(index || 0) ? (index || 0) + 1 : 'S'}`,
           text: `${(index || 0) + 1}`,
-          isLive
+          isLive,
+          type
         });
       }
     };
 
-    waypoints.forEach((wp, index) => processDroneGeometry(wp as LiveDroneData, false, index));
+    waypoints.forEach((wp, index) => processDroneGeometry(wp, false, index));
 
     if (liveDroneData) {
-      processDroneGeometry(liveDroneData, true);
+      processDroneGeometry(liveDroneData as Partial<Waypoint>, true);
     }
 
     return [
@@ -258,6 +267,7 @@ export function Map({
       new TextLayer({
         id: 'annotation-labels',
         data: annotations,
+        visible: viewState.zoom >= MIN_ZOOM_TO_SHOW_LABELS,
         getPosition: (d: Annotation) => [d.longitude, d.latitude, 10],
         getText: (d: Annotation) => d.name,
         getSize: 12,
@@ -274,19 +284,10 @@ export function Map({
       })
 
     ];
-  }, [liveDroneData, waypoints, viewState.pitch]);
+  }, [liveDroneData, waypoints, viewState.pitch, viewState.zoom]);
 
   const handleCompassClick = () => {
     setViewState(prev => ({ ...prev, bearing: 0, pitch: 0, transitionDuration: 100 }));
-
-
-    // setViewState(prev => ({ 
-    //   ...prev, 
-    //   bearing: 0, 
-    //   pitch: 0, 
-    //   transitionDuration: 500,
-    //   transitionInterpolator: new FlyToInterpolator() 
-    // }));
   };
 
   useEffect(() => {
@@ -296,7 +297,7 @@ export function Map({
         ...prev,
         longitude: initialCenter[0],
         latitude: initialCenter[1],
-        zoom: 18, 
+        zoom: 18,
         transitionDuration: 1500,
         transitionInterpolator: new FlyToInterpolator()
       }));

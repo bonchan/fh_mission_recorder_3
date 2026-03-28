@@ -22,7 +22,7 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
   const missionOptions = enumToOptions(MissionType)
 
   const dockOptions = devices.map((device, index) => ({
-    label: `${device.parent?.deviceOrganizationCallsign} - ${device.deviceOrganizationCallsign}`,
+    label: `${device.parent?.deviceOrganizationCallsign || device.parent?.deviceProjectCallsign} - ${device.deviceOrganizationCallsign || device.deviceProjectCallsign}`,
     value: index,
   }));
 

@@ -89,7 +89,7 @@
 }
 
 .missionItem {
-  padding: 10px;
+  padding: 6px;
   background-color: #222;
   color: white;
   border-radius: 4px;
@@ -111,6 +111,16 @@
 
 .missionItemActive:hover {
   background-color: #005ce6;
+}
+
+.missionItemTitle {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.missionItemDescription {
+  font-size: 10px;
+  color: #a3a3a3
 }
 
 /* --- ACTIONS & STATES --- */

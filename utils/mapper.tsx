@@ -10,6 +10,7 @@ export function toDock(djiItem: any): any | null {
         index: extractNumber(parentRaw.device_organization_callsign),
         deviceSn: parentRaw.device_sn,
         deviceModelName: parentRaw.device_model.name,
+        deviceProjectCallsign: parentRaw.device_project_callsign,
         deviceOrganizationCallsign: parentRaw.device_organization_callsign,
         longitude: device_state.longitude,
         latitude: device_state.latitude,
@@ -27,6 +28,7 @@ export function toDrone(djiItem: any, dock: Dock | null): any | null {
         deviceSn: hostRaw.device_sn,
         deviceModelName: hostRaw.device_model.name,
         deviceModelKey: hostRaw.device_model.key,
+        deviceProjectCallsign: hostRaw.device_project_callsign,
         deviceOrganizationCallsign: hostRaw.device_organization_callsign,
         payloadIndex: camera.payload_index,
         parent: dock,
@@ -55,7 +57,8 @@ export function toWaypoint(djiItem: any, hostSn?: string): any | null {
         zoom: device_state.cameras[0].zoom_factor,
         hoverTime: 0,
         turn: 'CW',
-        actionGroup: null
+        actionGroup: null,
+        type: 'default'
     };
     return waypoint
 }

@@ -48,9 +48,10 @@ export function DashboardView() {
   const lastHeartbeatRef = useRef<number>(0);
   const activeMissionSnRef = useRef<string | null>(null);
 
+  // FIXME
   const [livedroneData, setLivedroneData] = useState<LiveDroneData>({
-    timestamp: 0, sn: '', latitude: 0, longitude: 0, altitude: 0,
-    heading: 0, gimbalPitch: 0, cameraMode: 0, zoomFactor: 0, trigger: false
+    timestamp: 0, sn: '', latitude: 0, longitude: 0, elevation: 0,
+    yaw: 0, pitch: 0, cameraMode: 0, zoom: 0, trigger: false
   });
 
   const [debugXml, setDebugXml] = useState<{ template: string, waylines: string } | null>(null);
@@ -121,15 +122,17 @@ export function DashboardView() {
     if (simData.trigger) {
       handleAddSimWaypoint()
     }
-  }, [simData]);
+  }, [simData?.trigger]);
 
   const displayedMissions = useMemo(() => {
     if (searchQuery.length > 2) {
       const lowerQuery = searchQuery.toLowerCase();
       return allMissions.filter(mission =>
-        mission.name.toLowerCase().includes(lowerQuery) ||
-        mission.device.deviceOrganizationCallsign.toLowerCase().includes(lowerQuery) ||
-        mission.device.parent?.deviceOrganizationCallsign.toLowerCase().includes(lowerQuery)
+        mission.name?.toLowerCase().includes(lowerQuery) ||
+        mission.device.deviceProjectCallsign?.toLowerCase().includes(lowerQuery) ||
+        mission.device.deviceOrganizationCallsign?.toLowerCase().includes(lowerQuery) ||
+        mission.device.parent?.deviceProjectCallsign?.toLowerCase().includes(lowerQuery) ||
+        mission.device.parent?.deviceOrganizationCallsign?.toLowerCase().includes(lowerQuery)
       );
     }
     return allMissions;
@@ -172,6 +175,7 @@ export function DashboardView() {
       setSelectedMissionId(missionId === selectedMissionId ? null : missionId);
       setIsEditing(false)
       disconnectSim()
+      setIsShowOffset(false)
     }
   }
 
@@ -193,6 +197,8 @@ export function DashboardView() {
       // Signature: (orgId, projectId, tabId?, forceFetch?)
       const currentDroneData = await getDroneTelemetry(selectedMission.orgId, selectedMission.projectId, selectedMission.device.deviceSn);
 
+      log.info('currentDroneData' , currentDroneData)
+      
       // 3. Extract the live telemetry
       if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
 
@@ -260,10 +266,10 @@ export function DashboardView() {
     }
   }
 
-  const mappedWaypoints: LiveWaypointData[] = (selectedMission?.waypoints || []).map(wp => ({
-    latitude: wp.latitude, longitude: wp.longitude, altitude: wp.elevation || 0,
-    heading: wp.yaw || 0, gimbalPitch: wp.pitch || 0, zoomFactor: wp.zoom || 1
-  }));
+  // const mappedWaypoints: LiveWaypointData[] = (selectedMission?.waypoints || []).map(wp => ({
+  //   latitude: wp.latitude, longitude: wp.longitude, altitude: wp.elevation || 0,
+  //   heading: wp.yaw || 0, gimbalPitch: wp.pitch || 0, zoomFactor: wp.zoom || 1
+  // }));
 
   if (!orgId || !projectId) {
     return <div className={styles.errorContainer}>Missing orgId or projectId in URL!</div>;
@@ -296,8 +302,14 @@ export function DashboardView() {
                 onClick={() => { handleSelectMission(mission.id) }}
                 className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''}`}
               >
-                {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} - ${(mission.waypoints || []).length} WP`}
+                <div className={`${styles.missionItemTitle}`}>
+                  {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign}`}
+                </div>
+                <div className={`${styles.missionItemDescription}`}>
+                  Mission Type: {mission.missionType.toUpperCase()} | {(mission.waypoints || []).length} Waypoints
+                </div>
               </div>
+
             ))}
           </div>
         )}
@@ -351,7 +363,7 @@ export function DashboardView() {
         <Map
           initialCenter={mapCenter}
           liveDroneData={livedroneData}
-          waypoints={mappedWaypoints}
+          waypoints={selectedMission?.waypoints}
           annotations={liveAnnotations}
         />
 

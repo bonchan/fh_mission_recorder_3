@@ -1,34 +1,29 @@
 import React from 'react';
 import { Waypoint } from '@/utils/interfaces';
+import { getRelativeOffset } from '@/utils/geo'; // Import our new WGS84 math!
 
 interface WaypointOffsetProps {
   originWp: Waypoint;
   currentWp: Waypoint;
   isOrigin?: boolean;
   showOffset?: boolean;
-  onClick: () => void
+  onClick: () => void;
 }
 
 export function WaypointOffset({ originWp, currentWp, isOrigin, showOffset, onClick }: WaypointOffsetProps) {
-  // If we shouldn't show it, render absolutely nothing!
   if (!showOffset) return null;
 
-  const METERS_PER_DEGREE = 111320;
+  // 1. Get the highly accurate relative X (Right) and Y (Forward) offsets!
+  const { x, y } = getRelativeOffset(
+    originWp.latitude,
+    originWp.longitude,
+    originWp.yaw,
+    currentWp.latitude,
+    currentWp.longitude
+  );
 
-  // dy = North/South offset
-  const dy = (currentWp.latitude - originWp.latitude) * METERS_PER_DEGREE;
-
-  // dx = East/West offset (requires cosine of latitude to adjust for earth's curve)
-  const dx = (currentWp.longitude - originWp.longitude) * METERS_PER_DEGREE * Math.cos(originWp.latitude * (Math.PI / 180));
-
-  // dz = Altitude offset (fallback to 0 if elevation is undefined)
-  const dz = (currentWp.elevation || 0) - (originWp.elevation || 0);
-
-  // If this IS the origin waypoint, maybe you want to show "Origin" instead of 0s? 
-  // Uncomment the next 3 lines if you prefer that!
-  // if (originWp.id === currentWp.id) {
-  //   return <div style={{ fontSize: '11px', color: '#a0aec0', textAlign: 'center' }}>★ Origin Point</div>;
-  // }
+  // 2. Calculate Z (Up/Down)
+  const z = (currentWp.elevation || 0) - (originWp.elevation || 0);
 
   return (
     <div
@@ -39,12 +34,17 @@ export function WaypointOffset({ originWp, currentWp, isOrigin, showOffset, onCl
         color: 'black',
         fontWeight: 'bold',
         textAlign: 'center',
-        backgroundColor: `${isOrigin ? 'red' : 'lightcyan'}`,
-        padding: '4px',
+        backgroundColor: `${isOrigin ? '#ffcccc' : '#e0f7fa'}`, // slightly softer colors
+        padding: '6px',
         borderRadius: '4px',
-        margin: '8px'
+        margin: '8px 0', // updated to fit nicer in your list
+        border: isOrigin ? '1px solid #ff0000' : '1px solid #00bcd4'
       }}>
-      Offset from WP1 ➔ X: {dx.toFixed(1)}m | Y: {dy.toFixed(1)}m | Z: {dz.toFixed(1)}m
+      {isOrigin ? (
+        <span>📍 Relative Origin (Yaw: {originWp.yaw.toFixed(2)}°)</span>
+      ) : (
+        <span>X: {x.toFixed(2)}m | Y: {y.toFixed(2)}m | Z: {z.toFixed(2)}m</span>
+      )}
     </div>
   );
 }

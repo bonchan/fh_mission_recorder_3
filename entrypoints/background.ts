@@ -81,8 +81,8 @@ export default defineBackground(() => {
     }
 
     if (message.type === 'OPEN_ADMIN_DASHBOARD') {
-      const { orgId, projectId, sourceTabId } = message;
-      const url = browser.runtime.getURL(`/adminview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}`);
+      const { orgId, projectId, sourceTabId, debugMode } = message;
+      const url = browser.runtime.getURL(`/adminview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
 
       const adminDashboardTab = await browser.tabs.create({ url });
       registry.set(sourceTabId, adminDashboardTab.id!);

@@ -1,41 +1,20 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createLogger } from '@/utils/logger';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
-// 1. Import your mapper and type! (Adjust the path as needed)
 import { toFlatDevice } from '@/utils/mapper';
 import { FlatDevice } from '@/utils/interfaces';
-
+import { filterObjectTree } from '@/utils/utils';
 import SearchInput from '@/components/ui/SearchInput';
+import { HostRowItem, ParentRowItem } from '@/entrypoints/adminview/DeviceDetails'
 
 const log = createLogger('AdminView');
-
 type SortDirection = 'asc' | 'desc';
 
-// 2. Define exactly which columns you want to see in the table
 const COLUMNS: { key: keyof FlatDevice; label: string }[] = [
-  { key: 'hostDeviceSn', label: 'hostDeviceSn' },
-  { key: 'hostDeviceModelName', label: 'hostDeviceModelName' },
-  { key: 'hostDeviceOnlineStatus', label: 'hostDeviceOnlineStatus' },
-  { key: 'hostDeviceDeviceProjectCallsign', label: 'hostDeviceDeviceProjectCallsign' },
-  { key: 'hostDeviceOrganizationCallsign', label: 'hostDeviceOrganizationCallsign' },
-  { key: 'hostBatteryCapacityPercent', label: 'hostBatteryCapacityPercent' },
-  { key: 'hostBatteryFirmwareVersion', label: 'hostBatteryFirmwareVersion' },
-  { key: 'hostBatteryHighVoltageStorageDays', label: 'hostBatteryHighVoltageStorageDays' },
-  { key: 'hostBatteryLoopTimes', label: 'hostBatteryLoopTimes' },
-  { key: 'hostBatterySn', label: 'hostBatterySn' },
-  { key: 'hostDeviceStateFirmwareUpgradeStatus', label: 'hostDeviceStateFirmwareUpgradeStatus' },
-  { key: 'hostDeviceStateFirmwareVersion', label: 'hostDeviceStateFirmwareVersion' },
-  { key: 'hostDeviceStateFlysafeDatabaseVersion', label: 'hostDeviceStateFlysafeDatabaseVersion' },
-  { key: 'hostDeviceStateTrackId', label: 'hostDeviceStateTrackId' },
-  { key: 'hostDeviceStateWpmzVersion', label: 'hostDeviceStateWpmzVersion' },
-  { key: 'parentDeviceModelName', label: 'parentDeviceModelName' },
-  { key: 'parentDeviceOnlineStatus', label: 'parentDeviceOnlineStatus' },
-  { key: 'parentDeviceProjectCallsign', label: 'parentDeviceProjectCallsign' },
-  { key: 'parentDeviceOrganizationCallsign', label: 'parentDeviceOrganizationCallsign' },
-  { key: 'parentDeviceStateDroneChargeStateState', label: 'parentDeviceStateDroneChargeStateState' },
-  { key: 'parentDeviceStateDroneInDock', label: 'parentDeviceStateDroneInDock' },
-  { key: 'parentIndex', label: 'parentIndex' },
-  { key: 'parentDeviceSn', label: 'parentDeviceSn' }
+  { key: 'parentCallsign', label: 'Dock name' },
+  { key: 'parentModel', label: 'Dock Model' },
+  { key: 'parentStatus', label: 'Dock Status' },
+  { key: 'hostStatus', label: 'Drone Status' },
 ];
 
 export function AdminView() {
@@ -43,60 +22,73 @@ export function AdminView() {
   const orgId = params.get('orgId') || '';
   const projectId = params.get('projectId') || '';
   const sourceTabId = parseInt(params.get('sourceTabId') || '0');
+  const debugMode = params.get('debugMode') === 'true';
 
   const { getFreshTopologies } = useExtensionData();
 
-  // 3. Swap the dummy data out for real state!
   const [devices, setDevices] = useState<FlatDevice[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof FlatDevice; direction: SortDirection } | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  // 4. Fetch and Map the Data
   useEffect(() => {
     const loadData = async () => {
       try {
         const freshTopologies = await getFreshTopologies(orgId, projectId, sourceTabId);
-        log.info('fresh data received', freshTopologies);
-
-        // // FlightHub APIs usually return data inside a .list or .data array, or maybe it's the raw array. 
-        // // Adjust `freshTopologies.list` to whatever the actual array is!
-        // const itemsArray = Array.isArray(freshTopologies) ? freshTopologies : freshTopologies?.list || [];
-
-        // // Run every item through your awesome mapper, and filter out any nulls!
-        // const mappedDevices = itemsArray
-        //   .map(toFlatDevice)
-        //   .filter((device: any): device is FlatDevice => device !== null);
-
         setDevices(freshTopologies);
       } catch (error) {
         log.error("Failed to load topologies:", error);
       }
     };
-
     loadData();
   }, [orgId, projectId, sourceTabId, getFreshTopologies]);
 
-
-  // 5. Update Search & Sort Logic
   const processedData = useMemo(() => {
     let data = [...devices];
 
-    // Step A: Search dynamically across all the defined columns!
     if (searchQuery.trim()) {
       const lowerQuery = searchQuery.toLowerCase();
-      data = data.filter(device =>
-        COLUMNS.some(col => {
+      data = data.reduce((acc: any[], device) => {
+        let rowHasMatch = false;
+        const processedDevice = { ...device };
+
+        // 1. Check standard UI columns (Strings)
+        COLUMNS.forEach(col => {
           const val = device[col.key];
-          return val ? String(val).toLowerCase().includes(lowerQuery) : false;
-        })
-      );
+          if (val && String(val).toLowerCase().includes(lowerQuery)) {
+            rowHasMatch = true;
+          }
+        });
+
+        // 2. Check and Prune Deep Objects (Save them to NEW properties!)
+        const deepObjects = [
+          { key: 'rawHost', debugKey: 'debugHost' },
+          { key: 'rawParent', debugKey: 'debugParent' }
+        ];
+
+        deepObjects.forEach(({ key, debugKey }) => {
+          const val = device[key];
+          if (val && typeof val === 'object') {
+            const { isMatch, filtered } = filterObjectTree(val, lowerQuery);
+            if (isMatch) {
+              processedDevice[debugKey] = filtered; // Save to debugHost/debugParent
+              rowHasMatch = true;
+            } else {
+              processedDevice[debugKey] = null; // Explicitly null if no match found inside
+            }
+          }
+        });
+
+        if (rowHasMatch) acc.push(processedDevice);
+        return acc;
+      }, []);
     }
 
-    // Step B: Sort
     if (sortConfig) {
       data.sort((a, b) => {
-        const valueA = a[sortConfig.key] ?? '';
-        const valueB = b[sortConfig.key] ?? '';
+        const actualSortKey = sortConfig.key === 'parentCallsign' ? 'parentIndex' : sortConfig.key;
+        const valueA = a[actualSortKey as keyof FlatDevice] ?? '';
+        const valueB = b[actualSortKey as keyof FlatDevice] ?? '';
 
         if (valueA < valueB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valueA > valueB) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -107,7 +99,6 @@ export function AdminView() {
     return data;
   }, [devices, searchQuery, sortConfig]);
 
-  // Handlers
   const handleSort = (key: keyof FlatDevice) => {
     setSortConfig(current => {
       if (current && current.key === key) {
@@ -117,70 +108,193 @@ export function AdminView() {
     });
   };
 
-  const getSortIcon = (key: keyof FlatDevice) => {
-    if (sortConfig?.key !== key) return ' ↕';
-    return sortConfig.direction === 'asc' ? ' ↑' : ' ↓';
+  const toggleRow = (id: string) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(id)) newExpanded.delete(id);
+    else newExpanded.add(id);
+    setExpandedRows(newExpanded);
+  };
+
+  const isAllExpanded = processedData.length > 0 && expandedRows.size === processedData.length;
+
+  const toggleExpandAll = () => {
+    if (isAllExpanded) {
+      // Collapse all
+      setExpandedRows(new Set());
+    } else {
+      // Expand all currently visible rows
+      setExpandedRows(new Set(processedData.map(device => device.id)));
+    }
   };
 
   return (
-    <div style={{ padding: '30px', backgroundColor: '#0a0a0a', minHeight: '100vh', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
-
-      {/* Header & Search Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+    <div style={{
+      padding: '30px',
+      backgroundColor: '#0a0a0a',
+      height: '100vh', // 1. Lock the page height
+      boxSizing: 'border-box',
+      display: 'flex', // 2. Use flexbox
+      flexDirection: 'column',
+      color: '#fff',
+      fontFamily: 'system-ui, sans-serif'
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px',
+        flexShrink: 0 // Prevent header from collapsing
+      }}>
         <h1 style={{ margin: 0, fontSize: '24px' }}>Device Administration</h1>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
 
-        <SearchInput
-          onSearch={setSearchQuery}
-          initialValue={searchQuery}
-          placeholder="Search devices..."
-        />
+          <button
+            onClick={toggleExpandAll}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: isAllExpanded ? '#2a2a2a' : '#1a1a1a',
+              color: isAllExpanded ? '#fff' : '#ccc',
+              border: '1px solid #333',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 500,
+              transition: 'all 0.2s ease',
+              height: '38px' // Matches most standard input heights
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#333'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isAllExpanded ? '#2a2a2a' : '#1a1a1a'}
+          >
+            {isAllExpanded ? 'Collapse All' : 'Expand All'}
+          </button>
 
+          <SearchInput onSearch={setSearchQuery} initialValue={searchQuery} placeholder="Search devices deep JSON..." />
+        </div>
       </div>
 
-      {/* The Data Table */}
-      <div style={{ backgroundColor: '#111', borderRadius: '8px', border: '1px solid #222', overflow: 'scroll' }}>
+      <div style={{
+        backgroundColor: '#111',
+        borderRadius: '8px',
+        border: '1px solid #222',
+        overflow: 'auto', // 3. Allow only the table to scroll
+        flex: 1, // Fill remaining space
+        minHeight: 0 // Critical flexbox trick to prevent infinite stretching
+      }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-
-          {/* Dynamic Table Headers */}
-          <thead style={{ backgroundColor: '#1a1a1a', borderBottom: '2px solid #333' }}>
+          <thead>
             <tr>
+              <th style={{
+                padding: '16px',
+                width: '40px',
+                position: 'sticky', // 4. Sticky header
+                top: 0,
+                backgroundColor: '#1a1a1a', // Must be solid so rows hide behind it
+                zIndex: 10,
+                borderBottom: '2px solid #333'
+              }}></th>
               {COLUMNS.map(({ key, label }) => (
                 <th
-                  key={key}
+                  key={String(key)}
                   onClick={() => handleSort(key)}
                   style={{
-                    padding: '16px', cursor: 'pointer', userSelect: 'none',
+                    padding: '16px',
+                    cursor: 'pointer',
+                    userSelect: 'none',
                     color: sortConfig?.key === key ? '#0066ff' : '#aaa',
+                    position: 'sticky', // 4. Sticky header
+                    top: 0,
+                    backgroundColor: '#1a1a1a', // Must be solid
+                    zIndex: 10,
+                    borderBottom: '2px solid #333'
                   }}
                 >
-                  {label} <span style={{ fontSize: '12px', opacity: 0.7 }}>{getSortIcon(key)}</span>
+                  {label} {sortConfig?.key === key ? (sortConfig.direction === 'asc' ? ' ↑' : ' ↓') : ' ↕'}
                 </th>
               ))}
             </tr>
           </thead>
 
-          {/* Table Body */}
           <tbody>
             {processedData.length > 0 ? (
-              processedData.map((device, index) => (
-                <tr
-                  // If hostDeviceSn isn't guaranteed to be unique, fallback to index
-                  key={device.hostDeviceSn ? String(device.hostDeviceSn) : index}
-                  style={{ borderBottom: '1px solid #222', transition: 'background-color 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1a1a1a'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  {/* Map through the columns array to output the correct values */}
-                  {COLUMNS.map(({ key }) => (
-                    <td key={key} style={{ padding: '16px', color: '#ccc' }}>
-                      {String(device[key] ?? '--')}
-                    </td>
-                  ))}
-                </tr>
-              ))
+              processedData.map((device) => {
+                const isExpanded = expandedRows.has(device.id);
+
+                return (
+                  <React.Fragment key={device.id}>
+                    <tr
+                      onClick={() => toggleRow(device.id)}
+                      style={{
+                        borderBottom: isExpanded ? 'none' : '1px solid #222',
+                        cursor: 'pointer',
+                        backgroundColor: isExpanded ? '#1a1a1a' : 'transparent',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => { if (!isExpanded) e.currentTarget.style.backgroundColor = '#161616' }}
+                      onMouseLeave={(e) => { if (!isExpanded) e.currentTarget.style.backgroundColor = 'transparent' }}
+                    >
+                      <td style={{ padding: '16px', color: '#666' }}>
+                        {isExpanded ? '▼' : '▶'}
+                      </td>
+                      {COLUMNS.map(({ key }) => (
+                        <td key={String(key)} style={{ padding: '16px', color: '#ccc' }}>
+                          {String(device[key] ?? '--')}
+                        </td>
+                      ))}
+                    </tr>
+
+                    {isExpanded && (
+                      <>
+                        <tr style={{ borderBottom: '1px solid #222', backgroundColor: '#151515' }}>
+                          <td colSpan={COLUMNS.length + 1} style={{ padding: '20px' }}>
+
+                            {/* We use grid here to ensure both cards stretch to equal height */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
+                              {/* The beautifully formatted Drone details! */}
+                              <HostRowItem host={device.rawHost} />
+
+                              {/* The beautifully formatted Dock details! */}
+                              <ParentRowItem parent={device.rawParent} />
+
+                            </div>
+
+                          </td>
+                        </tr>
+
+                        {debugMode &&
+                          <tr style={{ borderBottom: '1px solid #222', backgroundColor: '#151515' }}>
+                            <td colSpan={COLUMNS.length + 1} style={{ padding: '20px' }}>
+                              <div style={{ display: 'flex', gap: '20px' }}>
+                                <div style={{ flex: 1, backgroundColor: '#000', padding: '16px', borderRadius: '6px', border: '1px solid #333' }}>
+                                  <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>
+                                    RAW HOST (DRONE) DATA {searchQuery && ' - FILTERED'}
+                                  </h3>
+                                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', color: '#a0aec0', maxHeight: '400px', overflowY: 'auto' }}>
+                                    {JSON.stringify(device.debugHost || device.rawHost, null, 2)}
+                                  </pre>
+                                </div>
+
+                                <div style={{ flex: 1, backgroundColor: '#000', padding: '16px', borderRadius: '6px', border: '1px solid #333' }}>
+                                  <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>
+                                    RAW PARENT (DOCK) DATA {searchQuery && ' - FILTERED'}
+                                  </h3>
+                                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', color: '#a0aec0', maxHeight: '400px', overflowY: 'auto' }}>
+                                    {JSON.stringify(device.debugParent || device.rawParent, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </>
+
+                    )}
+                  </React.Fragment>
+                );
+              })
             ) : (
               <tr>
-                <td colSpan={COLUMNS.length} style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+                <td colSpan={COLUMNS.length + 1} style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
                   No devices found matching "{searchQuery}"
                 </td>
               </tr>

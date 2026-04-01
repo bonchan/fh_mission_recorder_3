@@ -71,7 +71,8 @@ export default function SidePanelView() {
       type: 'OPEN_ADMIN_DASHBOARD',
       orgId: orgId,
       projectId: projectId,
-      sourceTabId: tabId
+      sourceTabId: tabId,
+      debugMode: false,
     });
   };
 

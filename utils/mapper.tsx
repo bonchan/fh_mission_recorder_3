@@ -70,30 +70,35 @@ export function toDockDrone(djiItem: any): any | null {
     return drone;
 }
 
-export function toFlatDevice(djiItem: any): FlatDevice | null {
-    if (!djiItem.host) return null
-    const hostRaw = djiItem.host;
-    const hostDeviceModel = hostRaw.device_model
-    const hostDeviceState = hostRaw.device_state
-    const hostBattery = hostDeviceState.battery.batteries[0]
+export const toFlatDevice = (item: any): FlatDevice | null => {
+    if (!item || !item.host) return null;
 
-    let parent = {}
-    if (djiItem.parents && djiItem.parents.length > 0) {
-        const parentRaw = djiItem.parents[0];
-        parent = prefixKeys(parentRaw, 'parent')
+    const host = item.host;
+    // DJI data usually puts the Dock inside a 'parents' array
+    const parent = (item.parents && item.parents.length > 0) ? item.parents[0] : null;
 
-    }
+    if (!parent) return null
 
-    const flatDevice: FlatDevice = {
-        ...prefixKeys(hostRaw, 'host'),               // Handles hostDeviceSn, hostDeviceOnlineStatus, etc.
-        ...prefixKeys(hostDeviceModel, 'hostDeviceModel'), // Handles hostDeviceModelName
-        ...prefixKeys(hostBattery, 'hostBattery'),         // Handles hostBatteryCapacityPercent, etc.
-        ...prefixKeys(hostDeviceState, 'hostDeviceState'), // Handles hostDeviceStateFirmwareVersion, etc.
-        ...parent
-    } as FlatDevice;
+    return {
+        id: host.device_sn || crypto.randomUUID(),
 
-    return flatDevice
-}
+        // Host (Drone)
+        hostSn: host.device_sn || '--',
+        hostModel: host.device_model?.name || '--',
+        hostCallsign: host.device_organization_callsign || host.device_project_callsign || '--',
+        hostStatus: host.device_online_status ? '🟢 Online' : '🔴 Offline',
+        // Parent (Dock)
+        parentIndex: extractNumber(parent?.device_organization_callsign),
+        parentSn: parent?.device_sn || '--',
+        parentModel: parent?.device_model?.name || '--',
+        parentCallsign: parent?.device_organization_callsign || parent?.device_project_callsign || '--',
+        parentStatus: parent?.device_online_status ? '🟢 Online' : '🔴 Offline',
+
+        // The massive raw objects for deep inspection
+        rawHost: host,
+        rawParent: parent,
+    };
+};
 
 export function toAnnotation(djiItem: any): any | null {
     const geometry = djiItem.resource.content.geometry

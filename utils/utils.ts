@@ -125,3 +125,52 @@ export const enumToOptions = <T extends string | number>(enumObj: Record<string,
     value: value,
   }));
 };
+
+export const filterObjectTree = (obj: any, query: string): { isMatch: boolean; filtered: any } => {
+  // Base case for null/undefined
+  if (obj === null || obj === undefined) return { isMatch: false, filtered: obj };
+
+  // 1. Primitive Values (Strings, Numbers, Booleans)
+  if (typeof obj !== 'object') {
+    const isMatch = String(obj).toLowerCase().includes(query);
+    return { isMatch, filtered: obj };
+  }
+
+  // 2. Arrays
+  if (Array.isArray(obj)) {
+    const filteredArray = [];
+    let arrayHasMatch = false;
+
+    for (const item of obj) {
+      const { isMatch, filtered } = filterObjectTree(item, query);
+      if (isMatch) {
+        filteredArray.push(filtered);
+        arrayHasMatch = true;
+      }
+    }
+    return { isMatch: arrayHasMatch, filtered: filteredArray };
+  }
+
+  // 3. Objects
+  const filteredObj: any = {};
+  let objHasMatch = false;
+
+  for (const [key, value] of Object.entries(obj)) {
+    // Did the KEY match?
+    if (key.toLowerCase().includes(query)) {
+      // If the key matches, keep its entire untouched value!
+      filteredObj[key] = value; 
+      objHasMatch = true;
+    } else {
+      // Key didn't match, so dive deeper into the VALUE
+      const { isMatch, filtered } = filterObjectTree(value, query);
+      if (isMatch) {
+        // Value matched deep down, so keep the path/parent tree alive!
+        filteredObj[key] = filtered; 
+        objHasMatch = true;
+      }
+    }
+  }
+
+  return { isMatch: objHasMatch, filtered: filteredObj };
+};

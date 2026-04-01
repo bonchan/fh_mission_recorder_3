@@ -31,31 +31,21 @@ export interface Drone {
 }
 
 export interface FlatDevice {
-  hostDeviceSn: string
-  hostDeviceModelName: string
-  hostDeviceOnlineStatus: boolean
-  hostDeviceDeviceProjectCallsign: string
-  hostDeviceOrganizationCallsign: string
-  hostBatteryCapacityPercent: number
-  hostBatteryFirmwareVersion: string
-  hostBatteryHighVoltageStorageDays: number
-  hostBatteryLoopTimes: number
-  hostBatterySn: string
-  hostDeviceStateFirmwareUpgradeStatus: number
-  hostDeviceStateFirmwareVersion: string
-  hostDeviceStateFlysafeDatabaseVersion: string
-  hostDeviceStateTrackId: string
-  hostDeviceStateWpmzVersion: string
-  parentDeviceModelName: string
-  parentDeviceOnlineStatus: boolean
-  parentDeviceProjectCallsign: string
-  parentDeviceOrganizationCallsign: string
-  parentDeviceStateDroneChargeStateState: number
-  parentDeviceStateDroneInDock: number
+  id: string; // Unique ID for React keys
+  hostSn: string;
+  hostModel: string;
+  hostCallsign: string;
+  hostStatus: string;
 
-  parentIndex: number
-  parentDeviceSn: string
+  parentIndex: number;
+  parentSn: string;
+  parentModel: string;
+  parentCallsign: string;
+  parentStatus: string;
 
+  rawHost: any;
+  rawParent: any;
+  [key: string]: any;
 }
 
 export interface Annotation {

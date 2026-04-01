@@ -122,7 +122,14 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
         deviceList.push(flatDevice);
       }
     }
-    return deviceList
+    
+    const deviceListSorted = [...deviceList].sort((a, b) => {
+        const indexA = a.parentIndex ?? 999;
+        const indexB = b.parentIndex ?? 999;
+        return indexA - indexB;
+      });
+      console.log('deviceListSorted', deviceListSorted)
+      return deviceListSorted
   };
 
   // --- ANNOTATIONS ---

@@ -135,6 +135,7 @@ export const TAG_OPTIONS: TagOption[] = [
   { id: 'a6c2c7d4-75dc-48fa-8b4b-62924ba68537', name: 'bateria', category: 'location' },
   { id: '7f661ff3-d8c3-4b6a-8cc0-8719935929c3', name: 'pias', category: 'location' },
   { id: '587429ba-2a05-456c-8f7b-ff3f1bdc8a93', name: 'pad', category: 'location' },
+  { id: '98276b6a-7108-490d-b67a-cbd19c3ff2f9', name: 'powerline', category: 'location' },
   { id: '0852f4d4-7c34-48ae-9f59-c78280e8189e', name: 'rgb', category: 'intention' },
   { id: '6c9177e5-7c34-421d-b78c-b78b1266fe45', name: 'thermal', category: 'intention' },
   { id: 'fa5a93b1-974e-4295-8bf5-6d88ac70e353', name: 'aib', category: 'asset' },

@@ -321,7 +321,7 @@ export function DashboardView() {
           <>
             <div className={styles.actionButtons}>
               <Button onClick={(e) => { e.stopPropagation(); toggleIsEditing() }} variant={isEditing ? 'danger' : 'primary'}>{isEditing ? 'Done' : 'Security'}</Button>
-              <Button onClick={(e) => { e.stopPropagation(); handleOptimizeMission() }} variant='warning'>Optimize</Button>
+              {/* <Button onClick={(e) => { e.stopPropagation(); handleOptimizeMission() }} variant='warning'>Optimize</Button> */}
               <Button onClick={(e) => { e.stopPropagation(); debugMission(selectedMission, setDebugXml); }} variant='sad'>Debug</Button>
               <Button onClick={(e) => { e.stopPropagation(); exportMission(selectedMission); }} variant='sad'>Export</Button>
               <Button

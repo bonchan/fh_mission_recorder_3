@@ -64,7 +64,7 @@ export default defineContentScript({
 
     async function handleDuplicateNameStorageUpload(sendResponse: any, orgId: string, projectId: string, duplicateName: string) {
       if (!projectId) return sendResponse({ error: "Missing projectId" });
-      const dnResponse = await fhApi.duplicateNameStorageUpload(projectId,  duplicateName);
+      const dnResponse = await fhApi.duplicateNameStorageUpload(projectId, duplicateName);
       sendResponse({ dnResponse, orgId, projectId });
     }
 

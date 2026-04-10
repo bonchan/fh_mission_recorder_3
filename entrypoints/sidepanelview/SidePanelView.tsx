@@ -4,6 +4,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { ViewContext, Mission, Drone, Annotation } from '@/utils/interfaces';
 import { MissionsContainer } from '@/components/mission/MissionsContainer';
+import { CockpitOverlay } from '@/components/cockpitoverlay/CockpitOverlay';
 import Button from '@/components/ui/Button';
 
 const log = createLogger('SidePanelView');
@@ -20,6 +21,9 @@ export default function SidePanelView() {
   const urlParams = new URLSearchParams(window.location.search);
   const orgId = urlParams.get('orgId');
   const projectId = urlParams.get('projectId');
+  const droneSn = urlParams.get('droneSn');
+  const dockSn = urlParams.get('dockSn');
+
   const tabId = parseInt(urlParams.get('tabId') || '0', 10);
 
   if (orgId == null || projectId == null) {
@@ -77,9 +81,38 @@ export default function SidePanelView() {
   };
 
   return (
-    <div style={{ padding: '20px', backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      <Button onClick={handleViewAdminDashboard} variant={'warning'} isLoading={isFetching}>Open Admin Dashboard</Button>
-      <MissionsContainer orgId={orgId} projectId={projectId} devices={devices} annotations={annotations} isFetching={isFetching} viewContext={ViewContext.SIDEPANEL} ></MissionsContainer>
+    <div style={{ backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+
+      {/* --- STICKY HEADER SECTION --- */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backgroundColor: '#121212', // Solid background so scrolled items hide behind it
+        padding: '20px 20px 10px 20px' // Top padding goes here now!
+      }}>
+        {droneSn && dockSn ? (
+          <></>
+          // <CockpitOverlay />
+        ) : (
+          <Button onClick={handleViewAdminDashboard} variant="warning" isLoading={isFetching} style={{ width: '100%' }}>
+            Open Admin Dashboard
+          </Button>
+        )}
+      </div>
+
+      {/* --- SCROLLING CONTENT SECTION --- */}
+      <div style={{ padding: '0 20px 20px 20px' }}>
+        <MissionsContainer
+          orgId={orgId}
+          projectId={projectId}
+          devices={devices}
+          annotations={annotations}
+          isFetching={isFetching}
+          viewContext={ViewContext.SIDEPANEL}
+        />
+      </div>
+
     </div>
   );
 }

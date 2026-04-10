@@ -1,4 +1,4 @@
-import { DJI_PROJECT_BASE_REGEX, ICONS_ON, ICONS_OFF } from '@/utils/constants'
+import { DJI_PROJECT_BASE_REGEX, DJI_COCKPIT_REGEX, ICONS_ON, ICONS_OFF } from '@/utils/constants'
 import { LiveDroneData } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 
@@ -12,12 +12,22 @@ export default defineBackground(() => {
     if (!url) return;
 
     // Use .exec() instead of .match() so we can grab the capture groups
-    const match = DJI_PROJECT_BASE_REGEX.exec(url);
+    const project_match = DJI_PROJECT_BASE_REGEX.exec(url);
+    const cockpit_match = DJI_COCKPIT_REGEX.exec(url);
 
-    if (match) {
-      // match[1] is the orgId, match[2] is the projectId based on your Regex
-      const orgId = match[1];
-      const projectId = match[2];
+    if (cockpit_match) {
+      const [ , orgId, projectId, droneSn, dockSn ] = cockpit_match;
+
+      await browser.action.setIcon({ tabId, path: ICONS_ON });
+
+      // Append the extracted IDs to the URL!
+      await browser.sidePanel.setOptions({
+        tabId,
+        path: `sidepanelview.html?orgId=${orgId}&projectId=${projectId}&droneSn=${droneSn}&dockSn=${dockSn}&tabId=${tabId}`,
+        enabled: true
+      });
+    } else if (project_match) {
+      const [ , orgId, projectId ] = project_match;
 
       await browser.action.setIcon({ tabId, path: ICONS_ON });
 

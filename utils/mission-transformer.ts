@@ -1,5 +1,5 @@
 // utils/mission-transformer.ts
-import { getFocalLengthFromZoom, normalizeHeading360, getShortestTurn } from '@/utils/utils'
+import { getFocalLengthFromZoom, normalizeHeading360, normalizeHeading180, getShortestTurn } from '@/utils/utils'
 import { Waypoint, WaypointType } from './interfaces';
 
 export function recalculateWaypointTurns(waypoints: Waypoint[]): Waypoint[] {
@@ -45,7 +45,7 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
             actionId: actionId++,
             actionActuatorFunc: "rotateYaw",
             actionActuatorFuncParam: {
-                aircraftHeading: normalizeHeading360(wp.yaw),
+                aircraftHeading: normalizeHeading180(wp.yaw),
                 aircraftPathMode: wp.turn ? "clockwise" : "counterClockwise",
             }
         });
@@ -88,13 +88,13 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
                 actionActuatorFuncParam: {
                     gimbalPitchRotateAngle: wp.pitch,               // From recorded data
                     gimbalRollRotateAngle: 0,
-                    gimbalYawRotateAngle: normalizeHeading360(wp.yaw),                   // Align with aircraftHeading for M3E
+                    gimbalYawRotateAngle: normalizeHeading180(wp.yaw),                   // Align with aircraftHeading for M3E
                     focusX: 0,                                    // Center (960/2)
                     focusY: 0,                                    // Center (720/2)
                     focusRegionWidth: 0,
                     focusRegionHeight: 0,
                     focalLength: getFocalLengthFromZoom(wp.zoom),   // Example focal length
-                    aircraftHeading: normalizeHeading360(wp.yaw),                        // True north relative
+                    aircraftHeading: normalizeHeading180(wp.yaw),                        // True north relative
                     accurateFrameValid: 0,                          // 1: AI Spot-check ON
                     payloadPositionIndex: payloadPositionIndex,
                     // payloadLensIndex: "zoom,ir",                    // "wide", "zoom", or "wide,ir"

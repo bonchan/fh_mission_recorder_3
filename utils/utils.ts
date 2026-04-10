@@ -67,6 +67,11 @@ export const normalizeHeading360 = (heading: number): number => {
   return ((heading % 360) + 360) % 360;
 };
 
+export const normalizeHeading180 = (heading: number): number => {
+  const normalized360 = normalizeHeading360(heading)
+  return normalized360 > 180 ? normalized360 - 360 : normalized360;
+};
+
 export const getFocalLengthFromZoom = (
   zoomFactor: number,
   baseFovDeg: number = 84,

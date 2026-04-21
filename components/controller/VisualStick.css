@@ -1,0 +1,71 @@
+/* --- Base Wrapper (Shared) --- */
+.stick-wrapper {
+  position: relative;
+  width: 100%;
+  background-color: #1f2937;
+  border: 2px solid #374151;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* --- 2D Square Stick --- */
+.stick-wrapper-2d {
+  aspect-ratio: 1 / 1;
+  border-radius: 0.5rem;
+}
+
+/* Crosshairs for 2D */
+.stick-wrapper-2d::before,
+.stick-wrapper-2d::after {
+  content: '';
+  position: absolute;
+  background-color: #4b5563;
+}
+.stick-wrapper-2d::before { top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-50%); }
+.stick-wrapper-2d::after { left: 0; right: 0; top: 50%; height: 2px; transform: translateY(-50%); }
+
+/* --- 1D Horizontal Stick (Wheels) --- */
+.stick-wrapper-horizontal {
+  height: 24px;
+  border-radius: 12px;
+}
+
+/* Center tick mark for the horizontal slider */
+.stick-wrapper-horizontal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background-color: #4b5563;
+  transform: translateX(-50%);
+}
+
+/* --- The Moving Dot (Shared - stays exactly the same) --- */
+.stick-dot {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+  z-index: 10;
+  transition: top 0.03s linear, left 0.03s linear;
+}
+
+/* --- Parent Container Helper --- */
+/* You can leave this here so it's globally available, 
+   or move it to your SidePanelView CSS later if you prefer */
+.flex-row-2 {
+  display: flex;
+  gap: 24px;
+  padding: 0 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.flex-row-2 > * {
+  flex: 1;
+}

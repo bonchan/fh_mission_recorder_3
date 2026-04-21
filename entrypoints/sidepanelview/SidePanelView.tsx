@@ -6,6 +6,7 @@ import { ViewContext, Mission, Drone, Annotation } from '@/utils/interfaces';
 import { MissionsContainer } from '@/components/mission/MissionsContainer';
 import { CockpitOverlay } from '@/components/cockpitoverlay/CockpitOverlay';
 import Button from '@/components/ui/Button';
+import VisualController from '@/components/controller/VisualController'
 
 const log = createLogger('SidePanelView');
 
@@ -99,6 +100,7 @@ export default function SidePanelView() {
             Open Admin Dashboard
           </Button>
         )}
+        <VisualController/>
       </div>
 
       {/* --- SCROLLING CONTENT SECTION --- */}

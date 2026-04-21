@@ -152,4 +152,38 @@ export function useFlightHubKeyboard(sticks: any, buttons: any, isConnected: boo
       sendKeyToTab('keyup', 'ArrowRight', 39, 'ArrowRight'); keys.current.right = false;
     }
   }, [sticks.wheel_l, sticks.wheel_r, isConnected]);
+
+  // --- EMERGENCY STOP / DISCONNECT CLEANUP ---
+  useEffect(() => {
+    // Only run this cleanup when the controller disconnects
+    if (!isConnected) {
+      // A map of exactly what to send for each key if it is stuck
+      const releaseMap: Record<string, [string, number, string]> = {
+        c: ['c', 67, 'KeyC'],
+        z: ['z', 90, 'KeyZ'],
+        q: ['q', 81, 'KeyQ'],
+        e: ['e', 69, 'KeyE'],
+        w: ['w', 87, 'KeyW'],
+        s: ['s', 83, 'KeyS'],
+        a: ['a', 65, 'KeyA'],
+        d: ['d', 68, 'KeyD'],
+        up: ['ArrowUp', 38, 'ArrowUp'],
+        down: ['ArrowDown', 40, 'ArrowDown'],
+        left: ['ArrowLeft', 37, 'ArrowLeft'],
+        right: ['ArrowRight', 39, 'ArrowRight'],
+      };
+
+      // Loop through all our tracked keys
+      for (const [key, isPressed] of Object.entries(keys.current)) {
+        if (isPressed) {
+          // Fire the release event
+          const [keyName, keyCode, codeString] = releaseMap[key];
+          sendKeyToTab('keyup', keyName, keyCode, codeString);
+
+          // Reset the tracker safely
+          keys.current[key as keyof typeof keys.current] = false;
+        }
+      }
+    }
+  }, [isConnected]);
 }

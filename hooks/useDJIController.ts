@@ -11,22 +11,49 @@ const H_MAX = 1900.0;
 
 const log = createLogger('useDJIController');
 
+const INITIAL_STICKS = { throttle: 0, yaw: 0, pitch: 0, roll: 0, wheel_l: 0, wheel_r: 0 };
+const INITIAL_TOUCH = { x: 0, y: 0, active: false };
+const INITIAL_BUTTONS = {
+  back: false, tr: false, tl: false,
+  f1: false, f2: false, f3: false,
+  f4: false, f5: false, f6: false,
+  power: false
+};
+
 export function useDJIController() {
   const [isConnected, setIsConnected] = useState(false);
-  const [sticks, setSticks] = useState({ throttle: 0, yaw: 0, pitch: 0, roll: 0, wheel_l: 0, wheel_r: 0 });
-  const [touch, setTouch] = useState({ x: 0, y: 0, active: false });
-  const [buttons, setButtons] = useState({ back: false, tr: false, tl: false, f1: false, f2: false, f3: false, f4: false, f5: false, f6: false , power: false});
+  const [sticks, setSticks] = useState(INITIAL_STICKS);
+  const [touch, setTouch] = useState(INITIAL_TOUCH);
+  const [buttons, setButtons] = useState(INITIAL_BUTTONS);
 
   const stopRef = useRef(false);
+  const transportRef = useRef<any>(null);
+  const processRef = useRef<any>(null);
 
   // Clean up if the hook unmounts
   useEffect(() => {
     return () => { stopRef.current = true; };
   }, []);
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
     stopRef.current = true;
     setIsConnected(false);
+
+    // Aggressively kill the ADB process
+    if (processRef.current) {
+      try { await processRef.current.kill(); } catch (e) { }
+      processRef.current = null;
+    }
+
+    // Aggressively close the USB Transport
+    if (transportRef.current) {
+      try { await transportRef.current.close(); } catch (e) { }
+      transportRef.current = null;
+    }
+    // RESET
+    setSticks(INITIAL_STICKS);
+    setTouch(INITIAL_TOUCH);
+    setButtons(INITIAL_BUTTONS);
   }, []);
 
   const processLine = (line: string) => {
@@ -82,7 +109,7 @@ export function useDJIController() {
         if (btnCode === "KEY_F1") next.f1 = isDown;
         if (btnCode === "KEY_F2") next.f2 = isDown;
         if (btnCode === "KEY_F3") next.f3 = isDown;
-        
+
         if (btnCode === "KEY_F4") next.f4 = isDown;
         if (btnCode === "KEY_F5") next.f5 = isDown;
         if (btnCode === "KEY_F6") next.f6 = isDown;
@@ -139,6 +166,9 @@ export function useDJIController() {
       const adb = new Adb(transport);
       const process = await adb.subprocess.noneProtocol.spawn('getevent -lt');
 
+      transportRef.current = transport;
+      processRef.current = process;
+
       setIsConnected(true);
       stopRef.current = false;
 
@@ -147,16 +177,25 @@ export function useDJIController() {
       let buffer = "";
 
       while (!stopRef.current) {
-        const { value, done } = await reader.read();
-        if (done) break;
+        try {
+          const { value, done } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || "";
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || "";
 
-        lines.forEach(line => {
-          if (line.trim()) processLine(line);
-        });
+          lines.forEach(line => {
+            if (line.trim()) processLine(line);
+          });
+        } catch (err) {
+          // If we intentionally disconnected, we EXPECT an error here. 
+          // Just silently break the loop.
+          if (stopRef.current) break;
+
+          console.error("Stream read error:", err);
+          break;
+        }
       }
 
       await process.kill();

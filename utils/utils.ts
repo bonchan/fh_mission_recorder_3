@@ -10,6 +10,16 @@ export const getProjectAnnotationsStorageKey = (orgId: string, projectId: string
   return `${orgId}__${projectId}__annotations`;
 };
 
+export function simulateClick(el: HTMLElement) {
+  el.click();
+  const events = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'];
+  events.forEach(eventType => {
+    el.dispatchEvent(new MouseEvent(eventType, {
+      bubbles: true, cancelable: true, view: window, composed: true, buttons: 1
+    }));
+  });
+}
+
 export const extractNumber = (input: string): number => {
   const match = input.match(/#(\d+)\s/);
 
@@ -164,14 +174,14 @@ export const filterObjectTree = (obj: any, query: string): { isMatch: boolean; f
     // Did the KEY match?
     if (key.toLowerCase().includes(query)) {
       // If the key matches, keep its entire untouched value!
-      filteredObj[key] = value; 
+      filteredObj[key] = value;
       objHasMatch = true;
     } else {
       // Key didn't match, so dive deeper into the VALUE
       const { isMatch, filtered } = filterObjectTree(value, query);
       if (isMatch) {
         // Value matched deep down, so keep the path/parent tree alive!
-        filteredObj[key] = filtered; 
+        filteredObj[key] = filtered;
         objHasMatch = true;
       }
     }

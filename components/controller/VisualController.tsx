@@ -5,7 +5,12 @@ import VisualButton from './VisualButton';
 import { useDJIController } from '@/hooks/useDJIController';
 import { useFlightHubKeyboard } from '@/hooks/useFlightHubKeyboard';
 
-export default function VisualController() {
+interface VisualControllerProps {
+  isLoading: boolean
+  viewContext?: ViewContext;
+}
+
+export default function VisualController({ isLoading, viewContext }: VisualControllerProps) {
   // 1. Pull the live hardware data from your custom hook
   const { isConnected, connect, disconnect, sticks, touch, buttons } = useDJIController();
 
@@ -16,7 +21,7 @@ export default function VisualController() {
   return (
     <>
       {!isConnected ? (
-        <Button onClick={connect} variant="success">
+        <Button onClick={connect} variant="success" isLoading={isLoading}>
           Connect USB RC
         </Button>
       ) : (

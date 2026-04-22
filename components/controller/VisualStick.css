@@ -69,3 +69,35 @@
 .flex-row-2 > * {
   flex: 1;
 }
+
+/* =========================================
+   COMPACT MODE OVERRIDES (VisualStick)
+   ========================================= */
+
+/* Shrink the gaps between the sticks */
+.compact-mode .flex-row-2 {
+  gap: 12px;
+  padding: 0 4px;
+}
+
+/* Override inline margins for the stick rows */
+.compact-mode .flex-row-2[style] {
+  margin-bottom: 8px !important;
+}
+
+/* Shrink the label above the sticks */
+.compact-mode .stick-label {
+  font-size: 0.65rem;
+  margin-bottom: 4px;
+}
+
+/* Make the moving dot slightly smaller */
+.compact-mode .stick-dot {
+  width: 12px;
+  height: 12px;
+}
+
+/* Make the horizontal wheels thinner */
+.compact-mode .stick-wrapper-horizontal {
+  height: 16px; 
+}

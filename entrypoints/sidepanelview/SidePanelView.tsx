@@ -100,7 +100,14 @@ export default function SidePanelView() {
             Open Admin Dashboard
           </Button>
         )}
-        <VisualController isLoading={isFetching}/>
+        <VisualController
+          isLoading={isFetching}
+          size="compact"
+          layout='real'
+          showTouch={false}
+          showWheels={false}
+          showButtons={true}
+        />
       </div>
 
       {/* --- SCROLLING CONTENT SECTION --- */}

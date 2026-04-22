@@ -66,8 +66,8 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
     deleteWaypoint(mission, wpId)
   };
 
-  const handleAddWaypointClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleAddWaypointClick = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
 
     // Safety check just in case legacy missions don't have these IDs
     if (!mission.orgId || !mission.projectId) {
@@ -129,6 +129,30 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
       });
     }, 100);
   };
+
+  // --- RC BUTTON LISTENER ---
+  useEffect(() => {
+    // 1. If this specific mission isn't open, ignore the controller completely
+    if (!isExpanded) return;
+
+    const handleRcButtonTap = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      
+      if (customEvent.detail === 'TR') {
+        // 2. Only fire if it's a Waypoint mission (since that's where the button exists)
+        // and prevent double-clicks if it's already fetching.
+        if (mission.missionType === MissionType.WAYPOINT && !isFetchingLocation) {
+          handleAddWaypointClick();
+        }
+      }
+    };
+
+    window.addEventListener('RC_BUTTON_TAP', handleRcButtonTap);
+
+    return () => {
+      window.removeEventListener('RC_BUTTON_TAP', handleRcButtonTap);
+    };
+  }, [isExpanded, mission.missionType, isFetchingLocation, handleAddWaypointClick]);
 
 
 

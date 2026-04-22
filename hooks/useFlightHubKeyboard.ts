@@ -4,6 +4,10 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('SidePanelView');
 
+const notifyUI = (buttonName: string) => {
+  window.dispatchEvent(new CustomEvent('RC_BUTTON_TAP', { detail: buttonName }));
+};
+
 // The messenger function
 const sendKeyToTab = async (type: 'keydown' | 'keyup' | 'tap', keyName: string, keyCode: number, codeString: string) => {
   try {
@@ -29,21 +33,6 @@ const stepZoomInTab = async (direction: 'in' | 'out') => {
       await browser.tabs.sendMessage(tabs[0].id, {
         action: 'ZOOM_STEP',
         direction: direction
-      });
-    }
-  } catch (err) {
-    // Ignore errors
-  }
-};
-
-const sendScrollToTab = async (deltaX: number, deltaY: number) => {
-  try {
-    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-    if (tabs.length > 0 && tabs[0].id) {
-      await browser.tabs.sendMessage(tabs[0].id, {
-        action: 'DISPATCH_SCROLL',
-        deltaX: deltaX,
-        deltaY: deltaY
       });
     }
   } catch (err) {
@@ -227,6 +216,7 @@ export function useFlightHubKeyboard(sticks: any, buttons: any, isConnected: boo
     }
     // TR -> F
     if (buttons.tr && !prevButtons.current.tr) {
+      notifyUI('TR')
       sendKeyToTab('tap', 'f', 70, 'KeyF');
     }
 

@@ -111,7 +111,7 @@ export function Map({
     const processDroneGeometry = (data: Partial<Waypoint>, isLive: boolean, index?: number) => {
       const { longitude, latitude, yaw, pitch, elevation, type } = data;
 
-      if (!longitude || !latitude || !yaw || !pitch || !elevation ) return
+      if (longitude == null || latitude == null || yaw == null || pitch == null || elevation == null) return;
 
       const visualAltitude = elevation * altitudeScale;
       const droneCoord = [longitude, latitude, visualAltitude];

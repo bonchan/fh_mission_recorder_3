@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { createLogger } from '@/utils/logger';
 
-const log = createLogger('SidePanelView');
+const log = createLogger('useFlightHubKeyboard');
 
 const notifyUI = (buttonName: string) => {
   window.dispatchEvent(new CustomEvent('RC_BUTTON_TAP', { detail: buttonName }));

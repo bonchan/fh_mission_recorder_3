@@ -6,6 +6,11 @@ import VisualButton from './VisualButton';
 import { useDJIController } from '@/hooks/useDJIController';
 import { useFlightHubKeyboard } from '@/hooks/useFlightHubKeyboard';
 
+// Adjust these imports based on where you put your driver classes
+import { ControllerModel } from '@/components/controller/ControllerDriver';
+import { AdbControllerDriver } from '@/drivers/AdbControllerDriver';
+import { HidControllerDriver } from '@/drivers/HidControllerDriver';
+
 // Mocking ViewContext if you have it imported elsewhere
 type ViewContext = any;
 
@@ -32,28 +37,83 @@ export default function VisualController({
 }: VisualControllerProps) {
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const [rcType, setRcType] = useState<ControllerModel>(ControllerModel.RCP2);
   const { isConnected, connect, disconnect, sticks, touch, buttons } = useDJIController();
+
   useFlightHubKeyboard(sticks, buttons, isConnected);
 
-  // Helper to safely render touch coordinates if they exist
   const touchX = touch.active ? touch.x : 0;
   const touchY = touch.active ? touch.y : 0;
+
+  const handleConnect = () => {
+    let driver;
+    switch (rcType) {
+      case ControllerModel.RCP2:
+        driver = new AdbControllerDriver();
+        break;
+      case ControllerModel.RC3:
+      default:
+        driver = new HidControllerDriver();
+        break;
+    }
+    connect(driver);
+  };
 
   return (
     <>
       {!isConnected ? (
-        <Button onClick={connect} variant="success" isLoading={isLoading}>
-          Connect USB RC
-        </Button>
+        <div className={`visual-controller-wrapper ${size === 'compact' ? 'compact-mode' : ''}`}>
+
+          {/* Connection Bar */}
+          <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+            <Button onClick={handleConnect} variant="success" isLoading={isLoading} style={{ flexGrow: 1 }}>
+              Connect {rcType}
+            </Button>
+            <Button
+              onClick={() => setIsExpanded(!isExpanded)}
+              variant="sad"
+              style={{
+                width: size === 'compact' ? '32px' : '40px',
+                padding: '0',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+              title={isExpanded ? "Hide Settings" : "Controller Settings"}
+            >
+              {isExpanded ? '▲' : '▼'}
+            </Button>
+          </div>
+
+          {/* Expanded Settings Section for Disconnected State */}
+          {isExpanded && (
+            <div style={{ marginBottom: '16px' }}>
+              <p className="section-title">Controller Setup</p>
+              <select
+                value={rcType}
+                onChange={(e) => setRcType(e.target.value as ControllerModel)}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  backgroundColor: '#1f2937', // Adjust to match your theme
+                  color: 'white',
+                  border: '1px solid #374151',
+                  borderRadius: '4px',
+                  outline: 'none'
+                }}
+              >
+                <option value={ControllerModel.RCP2}>{ControllerModel.RCP2}</option>
+                <option value={ControllerModel.RC3}>{ControllerModel.RC3}</option>
+              </select>
+            </div>
+          )}
+
+        </div>
       ) : (
         <div className={`visual-controller-wrapper ${size === 'compact' ? 'compact-mode' : ''}`}>
 
-
           {isExpanded && (
             <div style={{ marginBottom: '16px' }}>
-
-
-
 
               {/* ==========================================
               LAYOUT: NORMAL (Stacked Rows)
@@ -143,9 +203,6 @@ export default function VisualController({
                         <div className="shrunk-stick">
                           <VisualStick x={touchY} y={touchX} label="" />
                         </div>
-                        {/* <div style={{ textAlign: 'center', marginTop: '8px', color: touch.active ? '#4ade80' : '#6b7280', fontSize: '0.75rem' }}>
-                      {touch.active ? `X: ${touch.x.toFixed(2)} Y: ${touch.y.toFixed(2)}` : 'IDLE'}
-                    </div> */}
                       </div>
                     )}
                   </div>
@@ -175,7 +232,6 @@ export default function VisualController({
               )}
 
             </div>
-
           )}
 
           <div style={{ display: 'flex', gap: '8px', width: '100%' }}>

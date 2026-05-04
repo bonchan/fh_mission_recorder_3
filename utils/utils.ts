@@ -20,6 +20,81 @@ export function simulateClick(el: HTMLElement) {
   });
 }
 
+export function getZoomPoints() {
+  const containers = Array.from(document.querySelectorAll('.point-container')) as HTMLElement[];
+  return containers.map(el => {
+    const pMatch = el.style.bottom.match(/(\d+)%/);
+    return { el, percent: pMatch ? parseInt(pMatch[1], 10) : -1 };
+  }).filter(p => p.percent !== -1).sort((a, b) => a.percent - b.percent);
+}
+
+export function getCurrentZoomLevel(): { index: number; value: number | null } {
+  const currentIndicator = document.querySelector('.current-scale') as HTMLElement;
+  if (!currentIndicator) return { index: -1, value: null };
+
+  const match = currentIndicator.style.bottom.match(/(\d+)%/);
+  if (!match) return { index: -1, value: null };
+  const currentPercent = parseInt(match[1], 10);
+
+  const points = getZoomPoints(); // Assuming this still returns { el, percent }[]
+  if (points.length === 0) return { index: -1, value: null };
+
+  let currentIndex = 0;
+  let minDiff = Infinity;
+
+  points.forEach((p, i) => {
+    const diff = Math.abs(p.percent - currentPercent);
+    if (diff < minDiff) {
+      minDiff = diff;
+      currentIndex = i;
+    }
+  });
+
+  let labelValue: number | null = null;
+  const closestElement = points[currentIndex].el;
+  const labelEl = closestElement.querySelector('.label');
+
+  if (labelEl && labelEl.textContent) {
+    const parsed = parseInt(labelEl.textContent, 10);
+    if (!isNaN(parsed)) {
+      labelValue = parsed;
+    }
+  }
+
+  return {
+    index: currentIndex,
+    value: labelValue
+  };
+}
+
+export function getRngValue(): number | null {
+  const titleSpans = Array.from(document.querySelectorAll('.measure-distance-title'));
+  const rngTitle = titleSpans.find(el => el.textContent?.trim() === 'RNG');
+  if (!rngTitle) return null;
+  const valueSpan = rngTitle.nextElementSibling;
+  if (!valueSpan || !valueSpan.textContent) return null;
+  const parsedValue = parseFloat(valueSpan.textContent);
+  return isNaN(parsedValue) ? null : parsedValue;
+}
+
+export function getPitchValue(): number | null {
+  const pitchEl = document.querySelector('.pitch-bar-text');
+  if (!pitchEl || !pitchEl.textContent) return null;
+  const parsedValue = parseFloat(pitchEl.textContent);
+  return isNaN(parsedValue) ? null : parsedValue;
+}
+
+export function clickZoomLevel(targetIndex: number) {
+  const points = getZoomPoints();
+  if (points.length === 0) return;
+  const safeIndex = Math.max(0, Math.min(targetIndex, points.length - 1));
+  simulateClick(points[safeIndex].el);
+}
+
+export function isInRange(desiredValue: number, value: number, tolerance: number = 0.5): boolean {
+  return Math.abs(desiredValue - value) <= tolerance;
+}
+
 export const extractNumber = (input: string): number => {
   const match = input.match(/#(\d+)\s/);
 

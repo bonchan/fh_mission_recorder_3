@@ -15,6 +15,7 @@ interface DataContextType {
   duplicateNameStorageCheck: (orgId: string, projectId: string, missionName: string, tabId?: number) => Promise<any>;
   importCallbackStorage: (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => Promise<any>;
   getFreshTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
+  getCockpitData: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
 
   simData: LiveDroneData | null;
   isSimConnected: boolean;
@@ -122,14 +123,14 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
         deviceList.push(flatDevice);
       }
     }
-    
+
     const deviceListSorted = [...deviceList].sort((a, b) => {
-        const indexA = a.parentIndex ?? 999;
-        const indexB = b.parentIndex ?? 999;
-        return indexA - indexB;
-      });
-      console.log('deviceListSorted', deviceListSorted)
-      return deviceListSorted
+      const indexA = a.parentIndex ?? 999;
+      const indexB = b.parentIndex ?? 999;
+      return indexA - indexB;
+    });
+    console.log('deviceListSorted', deviceListSorted)
+    return deviceListSorted
   };
 
   // --- ANNOTATIONS ---
@@ -176,6 +177,13 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
     return res;
   };
 
+  // --- COCKPIT ---
+  const getCockpitData = async (orgId: string, projectId: string, tabId?: number) => {
+    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
+    const cockpitData = await browser.tabs.sendMessage(targetTabId, { action: "GET_COCKPIT_DATA", orgId, projectId });
+    return cockpitData
+  };
+
   return (
     <DataContext.Provider value={{
       getTopologies,
@@ -185,6 +193,7 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
       duplicateNameStorageCheck,
       importCallbackStorage,
       getFreshTopologies,
+      getCockpitData,
 
       simData,
       isSimConnected,

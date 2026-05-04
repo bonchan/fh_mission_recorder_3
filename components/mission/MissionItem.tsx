@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { createLogger } from '@/utils/logger';
+import { isInRange } from '@/utils/utils';
 import { Mission, Waypoint, ViewContext, MissionType, Annotation, WaypointType } from '@/utils/interfaces';
 import { WaypointList } from '@/components/waypoint/WaypointList';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
@@ -14,6 +15,8 @@ import { useToast } from '@/providers/ToastProvider';
 
 import Button from '@/components/ui/Button';
 import SearchInput from '@/components/ui/SearchInput';
+
+import { TemplateWaypoint } from '@/components/mission/templates'
 
 interface MissionItemProps {
   mission: Mission;
@@ -30,7 +33,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(mission.name);
 
-  const { getDroneTelemetry } = useExtensionData();
+  const { getDroneTelemetry, getCockpitData } = useExtensionData();
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   const [template, setTemplate] = useState<MissionTemplate | null>(null);
@@ -73,6 +76,30 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
     if (!mission.orgId || !mission.projectId) {
       log.error("Missing Project or Org IDs on this mission!");
       return;
+    }
+
+
+    if (template) {
+      const cockpitData: any = await getCockpitData(mission.orgId, mission.projectId);
+      const originItem: TemplateWaypoint | undefined = template.template.find(step => step.x === 0 && step.y === 0 && step.z === 0);
+
+      let paramError = false
+
+      if (!originItem) {
+        showToast(`Error de template`, `el template no tiene origen`, 'error')
+        return
+      }
+
+      if (!isInRange(originItem.pitch, cockpitData.pitch)) {
+        showToast(`PITCH ERROR`, `Pitch must be ${originItem.pitch}, not ${cockpitData.pitch}`, 'error')
+        paramError = true
+      }
+
+      if (!isInRange(originItem.zoomFactor, cockpitData.zoomFactor)) {
+        showToast(`ZOOM ERROR`, `Zoom must be ${originItem.zoomFactor}, not ${cockpitData.zoomFactor}`, 'error')
+        paramError = true
+      }
+      if (paramError) return
     }
 
     setIsFetchingLocation(true);
@@ -137,7 +164,7 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
 
     const handleRcButtonTap = (e: Event) => {
       const customEvent = e as CustomEvent;
-      
+
       if (customEvent.detail === 'TR') {
         // 2. Only fire if it's a Waypoint mission (since that's where the button exists)
         // and prevent double-clicks if it's already fetching.

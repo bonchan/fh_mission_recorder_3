@@ -1,7 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import { createLogger } from '@/utils/logger';
 import { Annotation, Drone, Waypoint, FlatDevice, SimulatorConnectParams } from '@/utils/interfaces';
-import { getProjectTopologiesStorageKey } from '@/utils/utils';
+import { getProjectTopologiesStorageKey, getProjectAnnotationsStorageKey } from '@/utils/utils';
 import { toDockDrone, toAnnotation, toWaypoint, toFlatDevice } from '@/utils/mapper';
 import { getCachedOrFetch } from '@/utils/storageCache';
 import { useDjiSimulator } from '@/hooks/useDjiSimulator'

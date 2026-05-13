@@ -85,8 +85,8 @@ export default defineBackground(() => {
         `/dashboard.html?missionId=${missionId}&orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&statusOverlay=${statusOverlay}`
       );
 
-      const dashboardTab = await browser.tabs.create({ url });
-      registry.set(sourceTabId, dashboardTab.id!);
+      const tab = await browser.tabs.create({ url });
+      registry.set(sourceTabId, tab.id!);
       return;
     }
 
@@ -94,10 +94,28 @@ export default defineBackground(() => {
       const { orgId, projectId, sourceTabId, debugMode } = message;
       const url = browser.runtime.getURL(`/adminview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
 
-      const adminDashboardTab = await browser.tabs.create({ url });
-      registry.set(sourceTabId, adminDashboardTab.id!);
+      const tab = await browser.tabs.create({ url });
+      registry.set(sourceTabId, tab.id!);
       return;
     }
+
+    if (message.type === 'OPEN_SETTINGS_DASHBOARD') {
+      const { orgId, projectId, sourceTabId, debugMode } = message;
+      const url = browser.runtime.getURL(`/settingsview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
+
+      const tab = await browser.tabs.create({ url });
+      registry.set(sourceTabId, tab.id!);
+      return;
+    }
+
+    // if (message.type === 'OPEN_FLIGT_ROUTES_DASHBOARD') {
+    //   const { orgId, projectId, sourceTabId, debugMode } = message;
+    //   const url = browser.runtime.getURL(`/flightroutesview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
+
+    //   const tab = await browser.tabs.create({ url });
+    //   registry.set(sourceTabId, tab.id!);
+    //   return;
+    // }
 
     // 2. Handling Debugger Toggles
     // Note: message.tabId here should be the sourceTabId (FlightHub) 

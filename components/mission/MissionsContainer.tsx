@@ -1,14 +1,16 @@
 
 import React, { useState } from 'react';
-import { useLiveMissions } from '@/hooks/useLiveMissions';
+import { useDatabase } from '@/hooks/useDatabase';
 import { CreateMissionModal } from './CreateMissionModal';
 import { MissionList } from './MissionList';
 import { Mission, MissionType, ViewContext, Drone, Annotation } from '@/utils/interfaces';
 import Button from '@/components/ui/Button';
 
+const log = createLogger('MissionsContainer');
+
 export function MissionsContainer({ orgId, projectId, devices, annotations, isFetching, viewContext }:
   { orgId: string; projectId: string; devices: Drone[]; annotations: Annotation[]; isFetching: boolean; viewContext: ViewContext }) {
-  const { missions, isLoadingMissions, createMission } = useLiveMissions(orgId, projectId);
+  const { projectMissions, createMission } = useDatabase(projectId);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleMissionSubmit = async (missionName: string, selectedDevice: Drone, missionType: MissionType) => {
@@ -28,7 +30,7 @@ export function MissionsContainer({ orgId, projectId, devices, annotations, isFe
     setIsModalOpen(false);
   };
 
-  const allMissions = Object.values(missions)
+  const allMissions = Object.values(projectMissions)
     .flat()
     .sort((a, b) => b.createdDate - a.createdDate);
 
@@ -41,7 +43,7 @@ export function MissionsContainer({ orgId, projectId, devices, annotations, isFe
       <MissionList
         missions={allMissions}
         annotations={annotations}
-        isLoading={isLoadingMissions}
+        isLoading={false} // FIXME
         viewContext={viewContext}
       />
 

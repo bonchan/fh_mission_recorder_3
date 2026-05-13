@@ -5,7 +5,7 @@ import styles from './DashboardView.module.css';
 import Button from '@/components/ui/Button';
 import SearchInput from '@/components/ui/SearchInput';
 import { LiveDroneData, LiveWaypointData, Annotation, WaypointType, ViewContext, Waypoint, SimulatorConnectParams } from '@/utils/interfaces';
-import { useLiveMissions } from '@/hooks/useLiveMissions';
+import { useDatabase } from '@/hooks/useDatabase';
 import { useMissionActions } from '@/hooks/useMissionActions';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { WaypointList } from '@/components/waypoint/WaypointList';
@@ -26,7 +26,7 @@ export function DashboardView() {
 
   const viewContext = ViewContext.DASHBOARD
 
-  const { missions, updateMission, createWaypoints, updateWaypoint, deleteWaypoint } = useLiveMissions(orgId, projectId);
+  const { projectMissions, updateMission, deleteMission, createWaypoints, updateWaypoint, deleteWaypoint } = useDatabase(projectId);
   const { getDroneTelemetry, getAnnotations, simData, isSimConnected, connectSim, disconnectSim, } = useExtensionData();
 
   const [liveAnnotations, setLiveAnnotations] = useState<Annotation[]>([]);
@@ -34,7 +34,7 @@ export function DashboardView() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const allMissions = Object.values(missions)
+  const allMissions = Object.values(projectMissions)
     .flat()
     .sort((a, b) => b.createdDate - a.createdDate);
 
@@ -197,8 +197,8 @@ export function DashboardView() {
       // Signature: (orgId, projectId, tabId?, forceFetch?)
       const currentDroneData = await getDroneTelemetry(selectedMission.orgId, selectedMission.projectId, selectedMission.device.deviceSn);
 
-      log.info('currentDroneData' , currentDroneData)
-      
+      log.info('currentDroneData', currentDroneData)
+
       // 3. Extract the live telemetry
       if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
 
@@ -218,7 +218,7 @@ export function DashboardView() {
           actionGroup: null,
         };
 
-        await createWaypoints(selectedMission, newWaypoint)
+        await createWaypoints(selectedMission.id, newWaypoint)
         showToast('Added waypoint', ``)
 
       } else {
@@ -246,23 +246,23 @@ export function DashboardView() {
       pitch: -30,
       type: 'security' as WaypointType,
     }
-    createWaypoints(selectedMission, securityWaypoint, index)
+    createWaypoints(selectedMission.id, securityWaypoint, index)
   };
 
   const handleUpdateWaypoint = (wpId: string, updates: Partial<Waypoint>) => {
     if (!selectedMission) return
-    updateWaypoint(selectedMission, wpId, updates)
+    updateWaypoint(selectedMission.id, wpId, updates)
   };
 
   const handleDeleteWaypoint = (wpId: string) => {
     if (!selectedMission) return
-    deleteWaypoint(selectedMission, wpId)
+    deleteWaypoint(selectedMission.id, wpId)
   };
 
   const handleOptimizeMission = () => {
     const updatedMission = optimizeMissionPath(selectedMission);
     if (updatedMission) {
-      updateMission(updatedMission)
+      updateMission(updatedMission.id, updatedMission)
     }
   }
 
@@ -308,6 +308,18 @@ export function DashboardView() {
                 <div className={`${styles.missionItemDescription}`}>
                   Mission Type: {mission.missionType.toUpperCase()} | {(mission.waypoints || []).length} Waypoints
                 </div>
+                <br />
+                <Button
+                  disabled={mission.id !== selectedMissionId}
+                  variant="sad"
+                  requireConfirm={true}
+                  confirmText="CONFIRM"
+                  confirmVariant="danger"
+                  className={styles.deleteBtn}
+                  onClick={() => deleteMission(mission.id)}
+                >
+                  DELETE
+                </Button>
               </div>
 
             ))}

@@ -20,19 +20,6 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete,
   const [isConfirming, setIsConfirming] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleDelete = () => {
-    if (onDelete === undefined) return;
-    if (!isConfirming) {
-      setIsConfirming(true);
-      timerRef.current = setTimeout(() => {
-        setIsConfirming(false);
-      }, 2000);
-    } else {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      onDelete(waypoint.id);
-    }
-  };
-
   const handleUpdate = () => {
     if (onUpdate === undefined) return;
     onUpdate(waypoint.id, waypoint);
@@ -69,11 +56,14 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete,
 
         {onDelete && (
           <Button
-            onClick={handleDelete}
-            variant={isConfirming ? 'danger' : 'sad'}
+            variant="sad"
+            requireConfirm={true}
+            confirmText="CONFIRM"
+            confirmVariant="danger"
             className={styles.deleteBtn}
+            onClick={() => onDelete(waypoint.id)}
           >
-            {isConfirming ? 'CONFIRM?' : 'DELETE'}
+            DELETE
           </Button>
         )}
       </div>

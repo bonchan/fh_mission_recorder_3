@@ -1,3 +1,5 @@
+import { TurnType } from "./interfaces";
+
 export const getProjectTopologiesStorageKey = (orgId: string, projectId: string) => {
   return `${orgId}__${projectId}__topologies`;
 };
@@ -176,7 +178,27 @@ export const getFocalLengthFromZoom = (
   return Math.round(focalLength);
 };
 
-export function getShortestTurn(prevYaw: number, nextYaw: number): 'CW' | 'CCW' {
+export const getZoomFromFocalLength = (
+  focalLength: number,
+  baseFovDeg: number = 84,
+  sensorDiagonal: number = 43.3
+): number => {
+  // Prevent division by zero if something goes wrong
+  if (sensorDiagonal === 0) return 1;
+
+  // 1. Convert Base FOV degrees to Radians
+  const baseRad: number = baseFovDeg * (Math.PI / 180);
+
+  // 2. Calculate the Zoom Factor based on the reversed formula
+  // Formula: (2 * focalLength * tan(base_rad / 2)) / sensor_diagonal
+  const zoomFactor: number = (2 * focalLength * Math.tan(baseRad / 2)) / sensorDiagonal;
+
+  // Round to 2 decimal places (since the original rounded the focal length, 
+  // you might get a zoom of 1.999999 instead of exactly 2)
+  return Math.round(zoomFactor * 100) / 100;
+};
+
+export function getShortestTurn(prevYaw: number, nextYaw: number): TurnType {
   // 1. Find the raw difference
   const diff = nextYaw - prevYaw;
 

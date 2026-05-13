@@ -6,6 +6,7 @@ import { toDockDrone, toAnnotation, toWaypoint, toFlatDevice } from '@/utils/map
 import { getCachedOrFetch } from '@/utils/storageCache';
 import { useDjiSimulator } from '@/hooks/useDjiSimulator'
 
+import { FIVE_MIN_MS, TWELVE_HOURS_MS } from '@/utils/constants';
 
 interface DataContextType {
   getTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
@@ -24,9 +25,6 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | null>(null);
-
-const FIVE_MIN_MS = 5 * 60 * 1000;
-const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 const log = createLogger('ExtensionDataProvider');
 

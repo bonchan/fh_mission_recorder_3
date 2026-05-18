@@ -100,7 +100,7 @@ export const toFlatDevice = (item: any): FlatDevice | null => {
     };
 };
 
-export function toAnnotation(djiItem: any): any | null {
+export function toAnnotation(djiItem: any): Annotation | null {
     const geometry = djiItem.resource.content.geometry
     const properties = djiItem.resource.content.properties
     if (geometry.type == 'Point') {

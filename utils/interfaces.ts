@@ -9,6 +9,11 @@ export enum MissionType {
   CLAMP = 'clamp',
 }
 
+export interface SyncMetadata {
+  id: string;
+  lastUpdated: number;
+}
+
 export interface Dock {
   index: number;
   deviceSn: string;
@@ -18,15 +23,20 @@ export interface Dock {
   longitude: number;
   latitude: number;
   height: number;
+  droneInDock: boolean;
 }
 
 export interface Drone {
   deviceSn: string;
+  projectId: string;
   deviceModelName: string;
   deviceModelKey: string;
   deviceProjectCallsign: string;
   deviceOrganizationCallsign: string;
   payloadIndex: string;
+  longitude: number;
+  latitude: number;
+  yaw: number;
   parent: Dock | null;
 }
 
@@ -48,12 +58,54 @@ export interface FlatDevice {
   [key: string]: any;
 }
 
+export type RouteSafetyStatus =
+  | 'UNKNOWN'
+  | 'SAFE'
+  | 'AREA_WARNING'
+  | 'PATH_COMPROMISED';
+
+export interface FlightRouteHeader {
+  id: string;
+  projectId: string;
+  name: string;
+  updateTime: number;
+  syncStatus: 'PENDING' | 'SYNCED' | 'READY' | 'FAILED';
+  safetyStatus: RouteSafetyStatus;
+  isExecutionRoute: boolean | false;
+  kmzWithoutResUrl: string | null;
+  url: string | null;
+  waylinePointNums: number | null;
+  startLat: number | null;
+  startLon: number | null;
+  distance: number | null;
+}
+
+export interface FlightRouteData {
+  routeId: string;
+  rawTemplate: string;
+  rawWaylines: string;
+  parsedWaypoints: Waypoint[];
+}
+
+export interface FlightRoute extends FlightRouteHeader {
+  originalWaypoints: FlightRouteData['parsedWaypoints'];
+  safeWaypoints?: Waypoint[];
+}
+
 export interface Annotation {
   id: string;
+  projectId: string;
   name: string;
   longitude: number;
   latitude: number;
   color: string;
+  isCompromised?: boolean;
+}
+
+export interface AnnotationFlag {
+  id: string;
+  projectId: string;
+  isCompromised: boolean;
 }
 
 export interface LiveDroneData {
@@ -81,8 +133,8 @@ export interface LiveWaypointData {
 export interface Mission {
   id: string;
   name: string;
-  projectId: string;
   orgId: string;
+  projectId: string;
   device: Drone;
   createdDate: number;
   updatedDate: number;
@@ -93,6 +145,7 @@ export interface Mission {
 }
 
 export type WaypointType = 'default' | 'picture' | 'security' | 'hover';
+export type TurnType = 'CW' | 'CCW';
 
 export interface Waypoint {
   id: string;
@@ -104,7 +157,7 @@ export interface Waypoint {
   pitch: number;
   zoom: number;
   hoverTime: number;
-  turn: string;
+  turn: TurnType;
   actionGroup: any | null;
   type: WaypointType;
   tagIds?: string[];

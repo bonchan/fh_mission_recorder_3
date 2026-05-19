@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="44px" height="44px" viewBox="0 0 44 44" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>编组 23备份 3</title>
+    <defs>
+        <circle id="path-1" cx="20" cy="18" r="18"></circle>
+        <filter x="-16.7%" y="-16.7%" width="133.3%" height="133.3%" filterUnits="objectBoundingBox" id="filter-2">
+            <feOffset dx="0" dy="0" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.5 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+        <path d="M2.1,10.5 L2.1,16.2 L18.9,16.2 L18.9,10.5 L21,10.5 L21,21 L0,21 L0,10.5 L2.1,10.5 Z M10.5955785,4.29222297 L10.6204868,4.33275703 L14.4874105,14.0183947 C14.5344287,14.1361021 14.4426921,14.2548524 14.3291393,14.2498471 L14.2794791,14.2397612 L10.5156866,12.8628613 L10.5,12.8600517 L10.5,12.8600517 L10.4843134,12.8628613 L6.72052094,14.2397612 C6.60312146,14.2826723 6.49083265,14.1837385 6.50059312,14.0682148 L6.51258951,14.0180541 L10.3795133,4.33275703 C10.4172756,4.23817757 10.5349765,4.22466622 10.5955785,4.29222297 Z M10.6579926,7.36173164 L10.6579926,11.7092174 L12.7402373,12.553964 L10.6579926,7.36173164 Z M9.7125,0 L9.7125,2.1 L2.1,2.1 L2.1,8.925 L0,8.925 L0,0 L9.7125,0 Z M21,0 L21,8.925 L18.9,8.925 L18.9,2.1 L11.2875,2.1 L11.2875,0 L21,0 Z" id="path-3"></path>
+    </defs>
+    <g id="控件" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="地图飞机显示" transform="translate(-179.000000, -194.000000)">
+            <g id="编组-27" transform="translate(0.000000, 8.000000)">
+                <g id="编组-23备份-3" transform="translate(181.000000, 190.000000)">
+                    <g id="椭圆形">
+                        <use fill="black" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"></use>
+                        <use fill="#1FA3F6" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    </g>
+                    <g id="编组" transform="translate(8.000000, 6.126072)">
+                        <g id="飞机在机巢内备份" transform="translate(1.500000, 1.500000)">
+                            <mask id="mask-4" fill="white">
+                                <use xlink:href="#path-3"></use>
+                            </mask>
+                            <use id="形状结合" fill="#FFFFFF" fill-rule="nonzero" xlink:href="#path-3"></use>
+                            <g id="编组" mask="url(#mask-4)">
+                                <g transform="translate(-42.000000, -42.000000)" id="1颜色/白色/nor">
+                                    <rect id="矩形" fill="#FFFFFF" x="0" y="0" width="102" height="102"></rect>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

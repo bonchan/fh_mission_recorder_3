@@ -108,14 +108,14 @@ export default defineBackground(() => {
       return;
     }
 
-    // if (message.type === 'OPEN_FLIGT_ROUTES_DASHBOARD') {
-    //   const { orgId, projectId, sourceTabId, debugMode } = message;
-    //   const url = browser.runtime.getURL(`/flightroutesview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
+    if (message.type === 'OPEN_FLIGT_ROUTES_DASHBOARD') {
+      const { orgId, projectId, sourceTabId, debugMode } = message;
+      const url = browser.runtime.getURL(`/flightroutesview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
 
-    //   const tab = await browser.tabs.create({ url });
-    //   registry.set(sourceTabId, tab.id!);
-    //   return;
-    // }
+      const tab = await browser.tabs.create({ url });
+      registry.set(sourceTabId, tab.id!);
+      return;
+    }
 
     // 2. Handling Debugger Toggles
     // Note: message.tabId here should be the sourceTabId (FlightHub) 

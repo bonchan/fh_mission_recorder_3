@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Mission } from '@/utils/interfaces';
 import { useToast } from '@/providers/ToastProvider';
-import { useExtensionData } from '@/providers/ExtensionDataProvider';
+import { useMessage } from '@/hooks/useMessage';
 import { generateDJIMission } from '@/utils/wpml-generator';
 import { uploadToCloudStorage } from '@/services/cloudStorage';
 import { delay } from '@/utils/time';
@@ -9,10 +9,10 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('useMissionActions');
 
-export function useMissionActions() {
+export function useMissionActions(orgId: string, projectId: string) {
   // Pull in the necessary contexts internally!
   const { showToast } = useToast();
-  const { getStorageUploadCredentials, duplicateNameStorageCheck, importCallbackStorage } = useExtensionData();
+  const { getStorageUploadCredentials, duplicateNameStorageCheck, importCallbackStorage } = useMessage(orgId, projectId);
 
   // Manage the uploading state locally within the hook
   const [isUploading, setIsUploading] = useState(false);
@@ -42,7 +42,7 @@ export function useMissionActions() {
     try {
       setIsUploading(true);
       showToast('Getting storage credentials', '', 'info', toastTTL, true);
-      const stsResponse = await getStorageUploadCredentials(mission.orgId, mission.projectId);
+      const stsResponse = await getStorageUploadCredentials();
       const { object_key_prefix } = stsResponse.credentials.data;
 
       showToast('Generating mission file', '', 'info', toastTTL, true);
@@ -59,11 +59,11 @@ export function useMissionActions() {
 
       let desiredFileName = `P3--${cleanName}.kmz`;
       showToast('Checking file name', desiredFileName, 'info', toastTTL, true);
-      const nscResponse = await duplicateNameStorageCheck(mission.orgId, mission.projectId, desiredFileName);
+      const nscResponse = await duplicateNameStorageCheck(desiredFileName);
       desiredFileName = nscResponse.dnResponse.data.index_name;
       showToast('Final file name', desiredFileName, 'warning', toastTTL, true);
 
-      const icResponse = await importCallbackStorage(mission.orgId, mission.projectId, desiredFileName, objectKey);
+      const icResponse = await importCallbackStorage(desiredFileName, objectKey);
       const finalFileName = icResponse.icResponse.data.name;
       showToast('Mission uploaded to FlightHub', finalFileName, 'success', toastTTL, true);
     } catch (err) {

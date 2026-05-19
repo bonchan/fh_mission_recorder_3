@@ -10,7 +10,7 @@ const log = createLogger('MissionsContainer');
 
 export function MissionsContainer({ orgId, projectId, devices, annotations, isFetching, viewContext }:
   { orgId: string; projectId: string; devices: Drone[]; annotations: Annotation[]; isFetching: boolean; viewContext: ViewContext }) {
-  const { projectMissions, createMission } = useDatabase(projectId);
+  const { projectMissions, createMission } = useDatabase(orgId, projectId);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleMissionSubmit = async (missionName: string, selectedDevice: Drone, missionType: MissionType) => {

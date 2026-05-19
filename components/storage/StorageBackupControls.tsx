@@ -2,37 +2,42 @@ import React, { useRef } from 'react';
 import { createLogger } from '@/utils/logger';
 import { useToast } from '@/providers/ToastProvider';
 import Button from '@/components/ui/Button';
-
-// Import your Dexie database instance
-import { db } from '@/utils/db'; 
+import { useDatabase } from '@/hooks/useDatabase';
 
 const log = createLogger('StorageBackupControls');
 
-export function StorageBackupControls() {
+interface StorageBackupControlsProps {
+  orgId: string;
+  projectId: string;
+}
+
+export function StorageBackupControls({ orgId, projectId }: StorageBackupControlsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+
+  const { doBackup, doRestore } = useDatabase(orgId, projectId)
 
   // --- 1. BACKUP LOGIC (IndexedDB) ---
   const handleBackup = async () => {
     try {
-      const allDbData: Record<string, any[]> = {};
+      // 1. Ask the DB for the backup file
+      const backupBlob = await doBackup();
 
-      // Dynamically loop through every table defined in your Dexie schema
-      for (const table of db.tables) {
-        allDbData[table.name] = await table.toArray();
-      }
-
-      const blob = new Blob([JSON.stringify(allDbData, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-
+      // 2. UI Logic: Create the download link and click it
+      const url = window.URL.createObjectURL(backupBlob);
       const a = document.createElement('a');
       a.href = url;
       const dateStr = new Date().toISOString().split('T')[0];
       a.download = `flighthub-idb-backup-${dateStr}.json`;
-      a.click();
 
+      document.body.appendChild(a); // Safest way to trigger clicks in some browsers
+      a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      log.info('IndexedDB backup generated successfully.');
+
+      // 3. Optional: Show a success toast!
+      showToast("Backup downloaded successfully!", '', 'success');
+
     } catch (err) {
       log.error("Failed to backup IndexedDB:", err);
       showToast("Failed to backup database:", String(err), 'error');
@@ -44,54 +49,25 @@ export function StorageBackupControls() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
+    try {
+      // 1. Tell the DB to do the work
+      await doRestore(file);
 
-    reader.onload = async (e) => {
-      try {
-        const content = e.target?.result as string;
-        const parsedData = JSON.parse(content);
-        
-        // Get the names of the tables in the backup file
-        const backupTableNames = Object.keys(parsedData);
-        
-        // Filter to only include tables that actually exist in your current schema
-        const validTables = db.tables.filter(table => backupTableNames.includes(table.name));
+      // 2. UI Logic: Success!
+      showToast("Database restored successfully! Reloading...", '', 'success');
 
-        if (validTables.length === 0) {
-           throw new Error("No matching tables found in this backup file.");
-        }
-
-        // Run the wipe and insert inside a single Transaction.
-        // If anything fails here, Dexie automatically rolls back to the previous state!
-        await db.transaction('rw', validTables, async () => {
-          for (const table of validTables) {
-            log.info(`Restoring table: ${table.name}...`);
-            
-            // 1. Wipe current table clean
-            await table.clear();
-            
-            // 2. Bulk insert the backup records
-            const recordsToInsert = parsedData[table.name];
-            if (recordsToInsert && recordsToInsert.length > 0) {
-              await table.bulkAdd(recordsToInsert);
-            }
-          }
-        });
-
-        showToast("Database restored successfully!", '', 'success');
-
-        // Reload to let Dexie's useLiveQuery hooks re-mount and pull the fresh data
+      // 3. UI Logic: Delay the reload so they see the toast
+      setTimeout(() => {
         window.location.reload();
+      }, 1500);
 
-      } catch (err) {
-        log.error("Failed to parse or restore IDB backup", err);
-        showToast("Invalid backup file.", 'Make sure it is an IndexedDB backup.', 'error', 4000);
-      } finally {
-        event.target.value = '';
-      }
-    };
-
-    reader.readAsText(file);
+    } catch (err) {
+      // 4. UI Logic: Failure!
+      showToast("Invalid backup file.", 'Make sure it is an IndexedDB backup.', 'error', 4000);
+    } finally {
+      // 5. Always clear the input so they can try again with the same file if needed
+      event.target.value = '';
+    }
   };
 
   // --- 3. RENDER BUTTONS ---

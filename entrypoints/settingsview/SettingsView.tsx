@@ -33,7 +33,7 @@ export function SettingsView() {
           Backup your entire IndexedDB workspace to a local JSON file, or restore a previous session.
         </p>
         <div style={{ marginTop: '15px' }}>
-          <StorageBackupControls />
+          <StorageBackupControls orgId={orgId} projectId={projectId} />
         </div>
       </section>
 

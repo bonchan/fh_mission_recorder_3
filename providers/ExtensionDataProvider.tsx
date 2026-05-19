@@ -10,13 +10,9 @@ import { FIVE_MIN_MS, TWELVE_HOURS_MS } from '@/utils/constants';
 
 interface DataContextType {
   getTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
-  getAnnotations: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
+  // getAnnotations: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
   getDroneTelemetry: (orgId: string, projectId: string, droneDeviceSn: string) => Promise<Waypoint>;
-  getStorageUploadCredentials: (orgId: string, projectId: string, tabId?: number) => Promise<any>;
-  duplicateNameStorageCheck: (orgId: string, projectId: string, missionName: string, tabId?: number) => Promise<any>;
-  importCallbackStorage: (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => Promise<any>;
   getFreshTopologies: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
-  getCockpitData: (orgId: string, projectId: string, tabId?: number) => Promise<any[]>;
 
   simData: LiveDroneData | null;
   isSimConnected: boolean;
@@ -88,7 +84,7 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
 
       const deviceList: Drone[] = [];
       for (const item of topologies) {
-        const drone = toDockDrone(item);
+        const drone = toDockDrone(item, projectId);
         // Only add to the list if the mapper returned a valid object
         if (drone && drone.deviceSn && drone.parent.deviceSn) {
           deviceList.push(drone);
@@ -131,67 +127,37 @@ export function ExtensionDataProvider({ children }: { children: React.ReactNode 
     return deviceListSorted
   };
 
-  // --- ANNOTATIONS ---
-  const getAnnotations = async (orgId: string, projectId: string, tabId?: number) => {
-    const key = getProjectAnnotationsStorageKey(orgId, projectId)
+  // // --- ANNOTATIONS ---
+  // const getAnnotations = async (orgId: string, projectId: string, tabId?: number) => {
+  //   const key = getProjectAnnotationsStorageKey(orgId, projectId)
 
-    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
+  //   const targetTabId = await getTargetTabId(orgId, projectId, tabId);
 
-    return await getCachedOrFetch(key, FIVE_MIN_MS, async () => {
-      // 1. Fetch fresh from the active tab
-      const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_ANNOTATIONS", orgId, projectId });
-      const annotationList: Annotation[] = [];
-      for (const elementList of res.annotations.data) {
-        for (const element of elementList.elements) {
-          const annotation = toAnnotation(element);
-          if (annotation) {
-            annotationList.push(annotation);
-          }
-        }
-      }
+  //   return await getCachedOrFetch(key, FIVE_MIN_MS, async () => {
+  //     // 1. Fetch fresh from the active tab
+  //     const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_ANNOTATIONS", orgId, projectId });
+  //     const annotationList: Annotation[] = [];
+  //     for (const elementList of res.annotations.data) {
+  //       for (const element of elementList.elements) {
+  //         const annotation = toAnnotation(element);
+  //         if (annotation) {
+  //           annotationList.push(annotation);
+  //         }
+  //       }
+  //     }
 
-      return annotationList;
-    });
-  };
+  //     return annotationList;
+  //   });
+  // };
 
-  const getStorageUploadCredentials = async (orgId: string, projectId: string, tabId?: number) => {
-    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
-    // 1. Fetch fresh from the active tab
-    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_STORAGE_UPLOAD_CREDENTIALS", orgId, projectId });
-    return res;
-  };
-
-  const duplicateNameStorageCheck = async (orgId: string, projectId: string, missionName: string, tabId?: number) => {
-    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
-    // 1. Fetch fresh from the active tab
-    const res = await browser.tabs.sendMessage(targetTabId, { action: "DUPLICATE_NAME_STORAGE_CHECK", orgId, projectId, duplicateName: missionName });
-    return res;
-  };
-
-  const importCallbackStorage = async (orgId: string, projectId: string, fileName: string, objectKey: string, tabId?: number) => {
-    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
-    // 1. Fetch fresh from the active tab
-    const res = await browser.tabs.sendMessage(targetTabId, { action: "IMPORT_CALLBACK_STORAGE", orgId, projectId, fileName: fileName, objectKey: objectKey });
-    return res;
-  };
-
-  // --- COCKPIT ---
-  const getCockpitData = async (orgId: string, projectId: string, tabId?: number) => {
-    const targetTabId = await getTargetTabId(orgId, projectId, tabId);
-    const cockpitData = await browser.tabs.sendMessage(targetTabId, { action: "GET_COCKPIT_DATA", orgId, projectId });
-    return cockpitData
-  };
+  
 
   return (
     <DataContext.Provider value={{
       getTopologies,
-      getAnnotations,
+      // getAnnotations,
       getDroneTelemetry,
-      getStorageUploadCredentials,
-      duplicateNameStorageCheck,
-      importCallbackStorage,
       getFreshTopologies,
-      getCockpitData,
 
       simData,
       isSimConnected,

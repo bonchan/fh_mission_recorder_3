@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Drone, MissionType } from '@/utils/interfaces';
 import { enumToOptions } from '@/utils/utils';
-import { StorageBackupControls } from '@/components/storage/StorageBackupControls'
 import godMode from '@/assets/GgsQO4YX0AAyEFG.jpg';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
@@ -53,7 +52,6 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
               <img src={godMode} alt="God Mode" width="150" />
             </div>
-            <StorageBackupControls />
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <Button onClick={onClose} variant='outline'>Close</Button>
             </div>

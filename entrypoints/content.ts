@@ -23,6 +23,24 @@ export default defineContentScript({
         return true
       }
 
+      if (action === "GET_FLIGHT_ROUTES") {
+        const { searchQuery, page, size } = message;
+        handleGetFlightRoutes(sendResponse, orgId, projectId, searchQuery, page, size);
+        return true
+      }
+
+      if (action === "GET_FLIGHT_ROUTE_DETAILS") {
+        const { waylineId } = message;
+        handleGetFlightRouteDetails(sendResponse, orgId, projectId, waylineId);
+        return true
+      }
+
+      if (action === "DOWNLOAD_FLIGHT_ROUTE") {
+        const { fileUrl } = message;
+        handleDownloadFlightRoute(sendResponse, fileUrl);
+        return true
+      }
+
       if (action === "GET_STORAGE_UPLOAD_CREDENTIALS") {
         handleGetStorageUploadCredentials(sendResponse, orgId, projectId);
         return true
@@ -73,11 +91,28 @@ export default defineContentScript({
       sendResponse({ annotations, orgId, projectId });
     }
 
+    async function handleGetFlightRoutes(sendResponse: any, orgId: string, projectId: string, searchQuery: string, page: number, size: number) {
+      if (!projectId) return sendResponse({ error: "Missing projectId" });
+      const flightRoutes = await fhApi.getFlightRoutes(projectId, searchQuery, page, size);
+      sendResponse({ flightRoutes, orgId, projectId });
+    }
+
+    async function handleGetFlightRouteDetails(sendResponse: any, orgId: string, projectId: string, searchQuery: string) {
+      if (!projectId) return sendResponse({ error: "Missing projectId" });
+      const flightRoutes = await fhApi.getFlightRouteDetails(projectId, searchQuery);
+      sendResponse({ flightRoutes, orgId, projectId });
+    }
+
+    async function handleDownloadFlightRoute(sendResponse: any, fileUrl: string) {
+      const unzipped = await fhApi.downloadFlightRoute(fileUrl);
+      sendResponse({ unzipped });
+    }
+
     async function handleGetCockpitData(sendResponse: any) {
       const zoomFactor = getCurrentZoomLevel().value;
       const rng = getRngValue();
       const pitch = getPitchValue();
-      sendResponse({zoomFactor, rng, pitch});
+      sendResponse({ zoomFactor, rng, pitch });
     }
 
     async function handleGetStorageUploadCredentials(sendResponse: any, orgId: string, projectId: string) {

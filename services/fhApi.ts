@@ -1,4 +1,5 @@
 import { createLogger } from '@/utils/logger';
+import { kmzParser } from '@/utils/kmzParser';
 
 // Defining valid HTTP methods
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -6,7 +7,13 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 /**
  * Base request handler to centralize headers and error handling
  */
-async function request<T>(endpoint: string, method: HttpMethod = 'GET', body?: any, customHeaders?: Record<string, string>): Promise<T> {
+async function request<T>(
+    endpoint: string,
+    method: HttpMethod = 'GET',
+    body?: any,
+    customHeaders?: Record<string, string>,
+    responseType: 'json' | 'blob' = 'json'
+): Promise<T> {
     const zoneId = localStorage.getItem("uranus:zone_id");
     const beConfigRaw = localStorage.getItem("uranus:be-config");
 
@@ -55,21 +62,25 @@ async function request<T>(endpoint: string, method: HttpMethod = 'GET', body?: a
 
     if (body) options.body = JSON.stringify(body);
 
-    log.info('fetching: ' + url, options)
+    log.debug(`fetching: ${url}`, options)
 
     const response = await fetch(url, options);
-
-    // 1. Parse the JSON body FIRST
-    const data = await response.json().catch(() => ({}));
 
     // 2. Now check if the response was successful
     if (!response.ok) {
         // If there's a specific message from DJI, use it; otherwise, fallback to status
-        throw new Error(data.message || `DJI API Error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `DJI API Error: ${response.status}`);
+    }
+
+    if (responseType === 'blob') {
+        return (await response.blob()) as unknown as T;
     }
 
     // 3. Return the parsed data (cast to T for TypeScript)
-    return data as T;
+    const json = (await response.json()) as T
+    log.info(`response: ${url}`, json)
+    return json;
 }
 
 /**
@@ -111,6 +122,29 @@ export const fhApi = {
         return this.call('GET', endpoint);
     },
 
+    async getFlightRoutes(projectUUID: string, searchQuery: string, page: number, size: number): Promise<any> {
+        const endpoint = `/wayline/api/v1/workspaces/${projectUUID}/web-waylines?size=${size}&key=${searchQuery}&template_type=0&order_by=update_time%20desc&file_type=5&page=${page}`
+        return this.call('GET', endpoint);
+    },
+
+    async getFlightRouteDetails(projectUUID: string, waylineId: string): Promise<any> {
+        const endpoint = `/wayline/api/v1/workspaces/${projectUUID}/waylines/${waylineId}`
+        return this.call('GET', endpoint);
+    },
+
+    async downloadFlightRoute(fileUrl: string): Promise<any> {
+        const fileResponse = await fetch(fileUrl);
+
+        if (!fileResponse.ok) {
+            throw new Error(`Storage download failed with status: ${fileResponse.status}`);
+        }
+        const kmzBlob = await fileResponse.blob();
+        log.info("KMZ Blob received! Size:", kmzBlob.size);
+
+        return await kmzParser.unzip(kmzBlob)
+    },
+
+
     async getStorageUploadCredentials(projectUUID: string): Promise<any> {
         const endpoint = `/storage/api/v1/workspaces/${projectUUID}/sts`;
         const headers = {
@@ -130,10 +164,10 @@ export const fhApi = {
     async importCallbackStorageUpload(projectUUID: string, fileName: string, objectKey: string): Promise<any> {
         const endpoint = `/wayline/api/v1/workspaces/${projectUUID}/import-callback`;
         const body = {
-          "name": fileName,
-          "object_key": objectKey,
-          "parent_id": '',
-          "request_id": crypto.randomUUID(),
+            "name": fileName,
+            "object_key": objectKey,
+            "parent_id": '',
+            "request_id": crypto.randomUUID(),
         }
 
         log.info("importCallbackStorageUpload", body)

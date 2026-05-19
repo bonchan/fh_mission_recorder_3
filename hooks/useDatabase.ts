@@ -87,9 +87,6 @@ export function useDatabase(orgId: string, projectId: string) {
 
         let safetyStatus: RouteSafetyStatus = 'UNKNOWN';
 
-        log.info(`[DEBUG] Route ${header.name}: Found ${compromisedAnnotations.length} compromised annotations from ${projectAnnotations.length}`);
-
-
         if (header.startLat != null && header.startLon != null && header.distance != null) {
           const isAreaCompromised = compromisedAnnotations.some(anno => {
             if (!anno.latitude || !anno.longitude) return false;
@@ -98,8 +95,6 @@ export function useDatabase(orgId: string, projectId: string) {
               header.startLat!, header.startLon!, 0,
               anno.latitude, anno.longitude, 0
             );
-
-            log.info('distanceToCenter', distanceToCenter <= header.distance!)
 
             return distanceToCenter <= header.distance!;
           });

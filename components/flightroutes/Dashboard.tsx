@@ -104,7 +104,7 @@ export function Dashboard({ orgId, projectId }: DashboardProps) {
 
 
         } else {
-          console.warn(`Skipping ${route.name}`, route);
+          log.warn(`Skipping ${route.name}`, route);
           // await db.flight_routes.update(route.id, { syncStatus: 'FAILED' });
           continue;
         }
@@ -114,7 +114,7 @@ export function Dashboard({ orgId, projectId }: DashboardProps) {
       }
       showToast("", `Successfully downloaded ${successCount} KMZ files!`, "success")
     } catch (error) {
-      console.error("Validation/Download failed:", error);
+      log.error("Validation/Download failed:", error);
       showToast("Error", `There was an error downloading some files. Check the console.`, "error")
 
     } finally {

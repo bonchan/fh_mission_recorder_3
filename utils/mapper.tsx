@@ -70,8 +70,6 @@ export function toDrone(djiItem: any, dock: Dock | null, projectId: string): any
     const device_state = hostRaw.device_state;
     const payload_index = device_state.cameras[0].payload_index;
 
-    console.log('hostRawhostRawhostRawhostRawhostRaw', hostRaw)
-
     const drone: Drone = {
         deviceSn: hostRaw.device_sn,
         longitude: device_state.longitude,

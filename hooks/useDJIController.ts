@@ -66,7 +66,7 @@ export function useDJIController() {
 
       setIsConnected(true);
     } catch (err) {
-      console.error("Failed to connect via Driver:", err);
+      log.error("Failed to connect via Driver:", err);
       setIsConnected(false);
     }
   };

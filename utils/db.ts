@@ -17,8 +17,6 @@ export class AppDatabase extends Dexie {
   constructor() {
     super('P3DB');
 
-    // 1. Change version(1) to version(2)
-    // 2. Add the compound index [project_uuid+sync_status]
     this.version(1).stores({
       sync_metadata: 'id',
 

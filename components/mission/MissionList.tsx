@@ -6,11 +6,12 @@ import * as turf from '@turf/turf';
 interface MissionItemListProps {
   missions: Mission[],
   annotations: Annotation[],
-  isLoading: boolean
+  isLoading: boolean,
+  sourceTabId: number,
   viewContext?: ViewContext;
 }
 
-export function MissionList({ missions, annotations, isLoading, viewContext }: MissionItemListProps) {
+export function MissionList({ missions, annotations, isLoading, sourceTabId, viewContext }: MissionItemListProps) {
   const [expandedMissionId, setExpandedMissionId] = useState<string | null>(null);
 
   if (isLoading) return <p>Loading missions...</p>;
@@ -44,6 +45,7 @@ export function MissionList({ missions, annotations, isLoading, viewContext }: M
           <MissionItem
             key={mission.id}
             mission={mission}
+            sourceTabId={sourceTabId}
             annotations={nearbyAnnotations}
             viewContext={viewContext}
             isExpanded={isCurrentlyExpanded}

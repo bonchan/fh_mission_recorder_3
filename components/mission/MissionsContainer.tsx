@@ -8,8 +8,8 @@ import Button from '@/components/ui/Button';
 
 const log = createLogger('MissionsContainer');
 
-export function MissionsContainer({ orgId, projectId, devices, annotations, isFetching, viewContext }:
-  { orgId: string; projectId: string; devices: Drone[]; annotations: Annotation[]; isFetching: boolean; viewContext: ViewContext }) {
+export function MissionsContainer({ orgId, projectId, sourceTabId, devices, annotations, isFetching, viewContext }:
+  { orgId: string; projectId: string; sourceTabId: number, devices: Drone[]; annotations: Annotation[]; isFetching: boolean; viewContext: ViewContext }) {
   const { projectMissions, createMission } = useDatabase(orgId, projectId);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -44,6 +44,7 @@ export function MissionsContainer({ orgId, projectId, devices, annotations, isFe
         missions={allMissions}
         annotations={annotations}
         isLoading={false} // FIXME
+        sourceTabId={sourceTabId}
         viewContext={viewContext}
       />
 

@@ -5,6 +5,8 @@ import { Mission, Waypoint, ViewContext, MissionType, Annotation, WaypointType }
 import { WaypointList } from '@/components/waypoint/WaypointList';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { useDatabase } from '@/hooks/useDatabase';
+import { useMessage } from '@/hooks/useMessage';
+import { useSync } from '@/hooks/useSync';
 
 import { generateWaypointsFromTemplate } from '@/components/mission/missionGenerator'
 import { TemplateSelector } from '@/components/mission/TemplateSelector'
@@ -21,18 +23,20 @@ interface MissionItemProps {
   mission: Mission;
   annotations: Annotation[];
   isExpanded: boolean;
+  sourceTabId: number;
   viewContext?: ViewContext;
   onToggleExpand: () => void;
 }
 
 const log = createLogger('MissionItem');
 
-export function MissionItem({ mission, annotations, isExpanded, viewContext, onToggleExpand }: MissionItemProps) {
+export function MissionItem({ mission, annotations, isExpanded, sourceTabId, viewContext, onToggleExpand }: MissionItemProps) {
   // --- UI STATE ---
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(mission.name);
 
-  const { getDroneTelemetry, getCockpitData } = useExtensionData();
+  const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(mission.orgId, mission.projectId, sourceTabId)
+
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   const [template, setTemplate] = useState<MissionTemplate | null>(null);
@@ -41,7 +45,10 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
 
-  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint } = useDatabase(mission.projectId);
+  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint } = useDatabase(mission.orgId, mission.projectId);
+  const { openPage, getCockpitData } = useMessage(mission.orgId, mission.projectId);
+
+
 
   // --- MISSION NAME EDITING ---
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -77,7 +84,8 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
     }
 
     if (template) {
-      const cockpitData: any = await getCockpitData(mission.orgId, mission.projectId);
+      // if i need the tabId... drill it
+      const cockpitData: any = await getCockpitData();
       const originItem: TemplateWaypoint | undefined = template.template.find(step => step.x === 0 && step.y === 0 && step.z === 0);
 
       let paramError = false
@@ -102,13 +110,21 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
     setIsFetchingLocation(true);
 
     try {
-      // 1. Fetch FRESH topologies (bypassing the 12-hour cache by passing true!)
-      // Signature: (orgId, projectId, tabId?, forceFetch?)
-      const currentDroneData = await getDroneTelemetry(mission.orgId, mission.projectId, mission.device.deviceSn);
+      const topologies = await syncTopologies(true)
+
+      if (topologies == null) {
+        showToast('Error', 'Could not fetch drone data', 'error')
+        return
+      }
+
+      let currentDroneData = null
+      for (const item of topologies) {
+        currentDroneData = toWaypoint(item, mission.device.deviceSn)
+        if (currentDroneData) break
+      }
 
       // 3. Extract the live telemetry
       if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
-
         const newWaypoint: Waypoint = {
           id: crypto.randomUUID(),
           latitude: currentDroneData.latitude,
@@ -177,17 +193,12 @@ export function MissionItem({ mission, annotations, isExpanded, viewContext, onT
   }, [isExpanded, mission.missionType, isFetchingLocation, handleAddWaypointClick]);
 
   const handleViewDashboard = async (mission: Mission) => {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return;
-
-    browser.runtime.sendMessage({
-      type: 'OPEN_DASHBOARD',
+    await openPage('OPEN_DASHBOARD', {
       missionId: mission.id,
       orgId: mission.orgId,
       projectId: mission.projectId,
-      sourceTabId: tab.id,
       statusOverlay: false
-    });
+    })
   };
 
   const handleAnnotationClick = async (annotation: Annotation) => {

@@ -1,11 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createLogger } from '@/utils/logger';
-import { useExtensionData } from '@/providers/ExtensionDataProvider';
-import { toFlatDevice } from '@/utils/mapper';
+import { toFlatDeviceList } from '@/utils/mapper';
 import { FlatDevice } from '@/utils/interfaces';
 import { filterObjectTree } from '@/utils/utils';
 import SearchInput from '@/components/ui/SearchInput';
 import { HostRowItem, ParentRowItem } from '@/entrypoints/adminview/DeviceDetails'
+
+import { useSync } from '@/hooks/useSync';
+import { useDatabase } from '@/hooks/useDatabase';
 
 const log = createLogger('AdminView');
 type SortDirection = 'asc' | 'desc';
@@ -24,24 +26,18 @@ export function AdminView() {
   const sourceTabId = parseInt(params.get('sourceTabId') || '0');
   const debugMode = params.get('debugMode') === 'true';
 
-  const { getFreshTopologies } = useExtensionData();
+  const { syncTopologies, isSyncingTopologies } = useSync(orgId, projectId, sourceTabId);
+  const { projectTopologies } = useDatabase(orgId, projectId);
 
-  const [devices, setDevices] = useState<FlatDevice[]>([]);
+  // const [devices, setDevices] = useState<FlatDevice[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof FlatDevice; direction: SortDirection } | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const freshTopologies = await getFreshTopologies(orgId, projectId, sourceTabId);
-        setDevices(freshTopologies);
-      } catch (error) {
-        log.error("Failed to load topologies:", error);
-      }
-    };
-    loadData();
-  }, [orgId, projectId, sourceTabId, getFreshTopologies]);
+
+
+
+  const devices = toFlatDeviceList(projectTopologies)
 
   const processedData = useMemo(() => {
     let data = [...devices];
@@ -149,6 +145,25 @@ export function AdminView() {
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
 
           <button
+            onClick={() => { syncTopologies(true) }}
+            disabled={isSyncingTopologies}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: isSyncingTopologies ? '#ad6c6c' : '#1a1a1a',
+              color: '#ccc',
+              border: '1px solid #333',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 500,
+              transition: 'all 0.2s ease',
+              height: '38px' // Matches most standard input heights
+            }}
+          >
+            {'Refresh'}
+          </button>
+
+          <button
             onClick={toggleExpandAll}
             style={{
               padding: '8px 16px',
@@ -250,11 +265,11 @@ export function AdminView() {
                             {/* We use grid here to ensure both cards stretch to equal height */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
-                              {/* The beautifully formatted Drone details! */}
-                              <HostRowItem host={device.rawHost} />
-
                               {/* The beautifully formatted Dock details! */}
                               <ParentRowItem parent={device.rawParent} />
+
+                              {/* The beautifully formatted Drone details! */}
+                              <HostRowItem host={device.rawHost} />
 
                             </div>
 
@@ -267,6 +282,15 @@ export function AdminView() {
                               <div style={{ display: 'flex', gap: '20px' }}>
                                 <div style={{ flex: 1, backgroundColor: '#000', padding: '16px', borderRadius: '6px', border: '1px solid #333' }}>
                                   <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>
+                                    RAW PARENT (DOCK) DATA {searchQuery && ' - FILTERED'}
+                                  </h3>
+                                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', color: '#a0aec0', maxHeight: '400px', overflowY: 'auto' }}>
+                                    {JSON.stringify(device.debugParent || device.rawParent, null, 2)}
+                                  </pre>
+                                </div>
+
+                                <div style={{ flex: 1, backgroundColor: '#000', padding: '16px', borderRadius: '6px', border: '1px solid #333' }}>
+                                  <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>
                                     RAW HOST (DRONE) DATA {searchQuery && ' - FILTERED'}
                                   </h3>
                                   <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', color: '#a0aec0', maxHeight: '400px', overflowY: 'auto' }}>
@@ -274,14 +298,6 @@ export function AdminView() {
                                   </pre>
                                 </div>
 
-                                <div style={{ flex: 1, backgroundColor: '#000', padding: '16px', borderRadius: '6px', border: '1px solid #333' }}>
-                                  <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#888' }}>
-                                    RAW PARENT (DOCK) DATA {searchQuery && ' - FILTERED'}
-                                  </h3>
-                                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: '11px', color: '#a0aec0', maxHeight: '400px', overflowY: 'auto' }}>
-                                    {JSON.stringify(device.debugParent || device.rawParent, null, 2)}
-                                  </pre>
-                                </div>
                               </div>
                             </td>
                           </tr>

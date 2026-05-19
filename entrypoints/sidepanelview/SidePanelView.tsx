@@ -1,20 +1,21 @@
 import { useState, useEffect } from 'react';
 import { createLogger } from '@/utils/logger';
 import { useToast } from '@/providers/ToastProvider';
-import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { ViewContext, Mission, Drone, Annotation } from '@/utils/interfaces';
 import { MissionsContainer } from '@/components/mission/MissionsContainer';
 import { CockpitOverlay } from '@/components/cockpitoverlay/CockpitOverlay';
 import Button from '@/components/ui/Button';
 import VisualController from '@/components/controller/VisualController'
 
+import { useSync } from '@/hooks/useSync';
+import { useDatabase } from '@/hooks/useDatabase';
+import { useMessage } from '@/hooks/useMessage';
+
+import { toDockDroneList } from '@/utils/mapper';
+
 const log = createLogger('SidePanelView');
 
 export default function SidePanelView() {
-  const { getTopologies, getAnnotations } = useExtensionData();
-  const [isFetching, setIsFetching] = useState(false);
-  const [devices, setDevices] = useState<Drone[]>([]);
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
 
   const { showToast } = useToast();
 
@@ -25,7 +26,8 @@ export default function SidePanelView() {
   const droneSn = urlParams.get('droneSn');
   const dockSn = urlParams.get('dockSn');
 
-  const tabId = parseInt(urlParams.get('tabId') || '0', 10);
+  const sourceTabId = parseInt(urlParams.get('tabId') || '0', 10);
+
 
   if (orgId == null || projectId == null) {
     return (
@@ -34,52 +36,20 @@ export default function SidePanelView() {
       </div>
     )
   }
+  log.info("log", orgId, projectId)
+  const { projectTopologies, projectAnnotations } = useDatabase(orgId, projectId)
+  const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
+
+  const { openPage } = useMessage(orgId, projectId)
+
+  const devices = toDockDroneList(projectTopologies)
+  const isFetching = isSyncingTopologies || isSyncingAnnotations
+
 
   useEffect(() => {
-    if (!orgId || !projectId || !tabId) return;
-
-    const fetchTopologies = async () => {
-      setIsFetching(true);
-      try {
-        const topoData = await getTopologies(orgId, projectId, tabId);
-        setDevices(topoData);
-      } catch (err) {
-        log.error("Failed to load Topologies", err);
-        showToast('Failed to load Topologies', '', 'error')
-      } finally {
-        setIsFetching(false);
-      }
-    };
-
-    fetchTopologies();
-  }, [orgId, projectId, tabId, getTopologies]);
-
-  useEffect(() => {
-    if (!orgId || !projectId || !tabId) return;
-
-    const fetchAnnotations = async () => {
-      try {
-        const annoData = await getAnnotations(orgId, projectId, tabId);
-        setAnnotations(annoData);
-      } catch (err) {
-        log.error("Failed to load Annotations", err);
-        showToast('Failed to load Annotations', '', 'error')
-      } finally {
-      }
-    };
-
-    fetchAnnotations();
-  }, [orgId, projectId, tabId, getAnnotations]);
-
-  const handleViewAdminDashboard = async () => {
-    browser.runtime.sendMessage({
-      type: 'OPEN_ADMIN_DASHBOARD',
-      orgId: orgId,
-      projectId: projectId,
-      sourceTabId: tabId,
-      debugMode: false,
-    });
-  };
+    syncAnnotations()
+    syncTopologies()
+  }, [projectId])
 
   return (
     <div style={{ backgroundColor: '#121212', color: '#e0e0e0', minHeight: '100vh', fontFamily: 'sans-serif' }}>
@@ -96,9 +66,32 @@ export default function SidePanelView() {
           <></>
           // <CockpitOverlay />
         ) : (
-          <Button onClick={handleViewAdminDashboard} variant="warning" isLoading={isFetching} style={{ width: '100%' }}>
-            Open Admin Dashboard
-          </Button>
+          <>
+            <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+              <Button onClick={() => { openPage('OPEN_ADMIN_DASHBOARD', undefined, sourceTabId) }} variant="warning" isLoading={isFetching} style={{ width: '100%' }}>
+                Admin Dashboard
+              </Button>
+              <Button onClick={() => { openPage('OPEN_FLIGT_ROUTES_DASHBOARD', undefined, sourceTabId) }} variant="primary" isLoading={isFetching} style={{ width: '100%' }}>
+                Flight Routes
+              </Button>
+              <Button
+                onClick={() => { openPage('OPEN_SETTINGS_DASHBOARD', undefined, sourceTabId) }}
+                variant="sad"
+                style={{
+                  minWidth: '20px',
+                  width: '70px',
+                  padding: '0',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+                title={"Settings"}
+              >
+                {'⚙️'}
+              </Button>
+            </div>
+
+          </>
         )}
         <VisualController
           isLoading={isFetching}
@@ -115,8 +108,9 @@ export default function SidePanelView() {
         <MissionsContainer
           orgId={orgId}
           projectId={projectId}
+          sourceTabId={sourceTabId}
           devices={devices}
-          annotations={annotations}
+          annotations={projectAnnotations}
           isFetching={isFetching}
           viewContext={ViewContext.SIDEPANEL}
         />

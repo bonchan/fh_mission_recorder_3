@@ -1,0 +1,95 @@
+/* Container Layout */
+.app-container {
+  padding: 30px;
+  background-color: #0a0a0a;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* Header Area */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Navigation Tabs */
+.tabs-nav {
+  display: flex;
+  gap: 8px;
+  background-color: #1a1a1a;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.tab-button {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  color: #fff;
+  background-color: #252525;
+}
+
+.tab-button.active {
+  background-color: #333;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.actions-section {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Content Area */
+.content-area {
+  background-color: #111;
+  border-radius: 12px;
+  border: 1px solid #222;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+}
+
+.dummy-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dummy-card {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #333;
+}

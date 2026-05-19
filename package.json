@@ -2,7 +2,7 @@
   "name": "panel-3",
   "description": "Panel 3",
   "private": true,
-  "version": "0.0.10",
+  "version": "0.0.11-naughty",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -46,6 +46,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/usb": "^2.0.5",
+    "@types/w3c-web-hid": "^1.0.7",
     "@wxt-dev/module-react": "^1.1.5",
     "typescript": "^5.9.3",
     "wxt": "^0.20.20"

@@ -5,7 +5,9 @@ import styles from './DashboardView.module.css';
 import Button from '@/components/ui/Button';
 import SearchInput from '@/components/ui/SearchInput';
 import { LiveDroneData, LiveWaypointData, Annotation, WaypointType, ViewContext, Waypoint, SimulatorConnectParams } from '@/utils/interfaces';
+import { useSync } from '@/hooks/useSync';
 import { useDatabase } from '@/hooks/useDatabase';
+import { useMessage } from '@/hooks/useMessage';
 import { useMissionActions } from '@/hooks/useMissionActions';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { WaypointList } from '@/components/waypoint/WaypointList';
@@ -26,10 +28,12 @@ export function DashboardView() {
 
   const viewContext = ViewContext.DASHBOARD
 
-  const { projectMissions, updateMission, deleteMission, createWaypoints, updateWaypoint, deleteWaypoint } = useDatabase(projectId);
-  const { getDroneTelemetry, getAnnotations, simData, isSimConnected, connectSim, disconnectSim, } = useExtensionData();
+  const { projectMissions, projectAnnotations, updateMission, deleteMission, createWaypoints, updateWaypoint, deleteWaypoint } = useDatabase(orgId, projectId);
+  const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
+  const { toggleDebugger } = useMessage(orgId, projectId)
+  const { simData, isSimConnected, connectSim, disconnectSim, } = useExtensionData();
 
-  const [liveAnnotations, setLiveAnnotations] = useState<Annotation[]>([]);
+  // const [liveAnnotations, setLiveAnnotations] = useState<Annotation[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missionId);
   const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,15 +62,13 @@ export function DashboardView() {
 
   const { showToast } = useToast();
 
-  const { debugMission, exportMission, uploadMission, isUploading } = useMissionActions();
+  const { debugMission, exportMission, uploadMission, isUploading } = useMissionActions(orgId, projectId)
 
 
   // --- DATA FETCHING & EFFECTS (Kept exact same) ---
   useEffect(() => {
     if (orgId && projectId) {
-      getAnnotations(orgId, projectId)
-        .then(setLiveAnnotations)
-        .catch(err => log.error("Failed to load annotations", err));
+      syncAnnotations()
     }
   }, [orgId, projectId, currentTabId]);
 
@@ -139,14 +141,14 @@ export function DashboardView() {
   }, [allMissions, searchQuery]);
 
   // --- HANDLERS ---
-  const toggleDebugger = async () => {
+  const handleToggleDebugger = async () => {
     if (!currentTabId) return;
     const nextState = !isDebuggerActive;
-    await browser.runtime.sendMessage({ action: nextState ? 'ENABLE_WS_DEBUG' : 'DISABLE_WS_DEBUG', tabId: currentTabId });
+    await toggleDebugger(nextState ? 'ENABLE_WS_DEBUG' : 'DISABLE_WS_DEBUG', currentTabId);
     setIsDebuggerActive(nextState);
   };
 
-  const toggleSimulator = async () => {
+  const handleToggleSimulator = async () => {
     if (isSimConnected) {
       disconnectSim()
     } else {
@@ -165,7 +167,7 @@ export function DashboardView() {
     setIsEditing(nextState);
   };
 
-  const toggleOffset = async () => {
+  const handleToggleOffset = async () => {
     const nextState = !isShowOffset;
     setIsShowOffset(nextState);
   };
@@ -193,9 +195,18 @@ export function DashboardView() {
     }
 
     try {
-      // 1. Fetch FRESH topologies (bypassing the 12-hour cache by passing true!)
-      // Signature: (orgId, projectId, tabId?, forceFetch?)
-      const currentDroneData = await getDroneTelemetry(selectedMission.orgId, selectedMission.projectId, selectedMission.device.deviceSn);
+      const topologies = await syncTopologies(true)
+
+      if (topologies == null) {
+        showToast('Error', 'Could not fetch drone data', 'error')
+        return
+      }
+
+      let currentDroneData = null
+      for (const item of topologies) {
+        currentDroneData = toWaypoint(item, selectedMission.device.deviceSn)
+        if (currentDroneData) break
+      }
 
       log.info('currentDroneData', currentDroneData)
 
@@ -376,7 +387,7 @@ export function DashboardView() {
           initialCenter={mapCenter}
           liveDroneData={livedroneData}
           waypoints={selectedMission?.waypoints}
-          annotations={liveAnnotations}
+          annotations={projectAnnotations}
         />
 
         {showStatusOverlay && (
@@ -384,13 +395,13 @@ export function DashboardView() {
             <div className={styles.tabInfo}>
               {currentTabId ? `Connected to Tab: ${currentTabId}` : 'Finding DJI Tab...'}
             </div>
-            <button onClick={toggleDebugger} className={`${styles.simButton} ${isDebuggerActive ? styles.active : ''}`}>
+            <button onClick={handleToggleDebugger} className={`${styles.simButton} ${isDebuggerActive ? styles.active : ''}`}>
               {isDebuggerActive ? '🔴 DISCONNECT DEBUGGER' : '🔌 ATTACH TO FLIGHTHUB'}
             </button>
-            <button onClick={toggleSimulator} className={styles.simButton}>
+            <button onClick={handleToggleSimulator} className={styles.simButton}>
               {isSimConnected ? "🛑 Stop Local Sim" : "🟢 Start Local Sim"}
             </button>
-            <button onClick={toggleOffset} className={styles.simButton}>
+            <button onClick={handleToggleOffset} className={styles.simButton}>
               {isShowOffset ? "Hide offset" : "Show offset"}
             </button>
             <pre className={styles.debugInfo}>{JSON.stringify(livedroneData, null, 2)}</pre>

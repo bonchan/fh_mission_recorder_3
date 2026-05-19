@@ -157,3 +157,172 @@ export const optimizeMissionPath = (mission: Mission | undefined): Mission | voi
 
   return updatedMission;
 };
+// --- COLLISION & BYPASS MATH ---
+/**
+ * Calculates the shortest distance in meters from a point (circle center) to a line segment.
+ */
+export function getDistanceToSegment(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number,
+  cLat: number, cLon: number
+): number {
+  const kLat = 111320.0;
+  const kLon = (40075000.0 * Math.cos(cLat * (Math.PI / 180))) / 360.0;
+
+  // Convert points to local flat-earth Cartesian coordinates (in meters) relative to the circle center
+  const x1 = (lon1 - cLon) * kLon;
+  const y1 = (lat1 - cLat) * kLat;
+  const x2 = (lon2 - cLon) * kLon;
+  const y2 = (lat2 - cLat) * kLat;
+
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+
+  // If the segment is just a single point, return the distance to that point
+  if (lenSq === 0) return Math.hypot(x1, y1);
+
+  // Project the origin (circle center) onto the line segment to find the closest point
+  const t = Math.max(0, Math.min(1, -(x1 * dx + y1 * dy) / lenSq));
+
+  return Math.hypot(x1 + t * dx, y1 + t * dy);
+}
+
+/**
+ * Calculates a 3-point tangent bypass path around a circle.
+ */
+export function calculateTangentBypass(
+  latA: number, lonA: number,
+  latB: number, lonB: number,
+  cLat: number, cLon: number,
+  radiusM: number
+): { latitude: number; longitude: number }[] {
+  const kLat = 111320.0;
+  const kLon = (40075000.0 * Math.cos(cLat * (Math.PI / 180))) / 360.0;
+
+  const ax = (lonA - cLon) * kLon;
+  const ay = (latA - cLat) * kLat;
+  const bx = (lonB - cLon) * kLon;
+  const by = (latB - cLat) * kLat;
+
+  const distA = Math.hypot(ax, ay);
+  const distB = Math.hypot(bx, by);
+
+  // If either point is already inside the danger zone, a simple tangent bypass won't work
+  if (distA <= radiusM || distB <= radiusM) return [];
+
+  const angleA = Math.atan2(ay, ax);
+  const angleB = Math.atan2(by, bx);
+
+  // Calculate the angle offset for the tangent points
+  const thetaA = Math.acos(radiusM / distA);
+  const thetaB = Math.acos(radiusM / distB);
+
+  // The two possible tangent angles for point A and point B
+  const t1Opts = [angleA + thetaA, angleA - thetaA];
+  const t2Opts = [angleB + thetaB, angleB - thetaB];
+
+  let bestPair: [number, number] | null = null;
+  let minDiff = Infinity;
+  const TWO_PI = 2 * Math.PI;
+
+  // Find the pair of tangent points that results in the shortest path around the circle
+  for (const a1 of t1Opts) {
+    for (const a2 of t2Opts) {
+      const delta = a1 - a2 + Math.PI;
+
+      // Safe JS Modulo to mimic Python's % behavior with negative numbers
+      const pyMod = ((delta % TWO_PI) + TWO_PI) % TWO_PI;
+      const diff = Math.abs(pyMod - Math.PI);
+
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestPair = [a1, a2];
+      }
+    }
+  }
+
+  if (!bestPair) return [];
+
+  const [ang1, ang2] = bestPair;
+
+  // Calculate the midpoint angle of the curve
+  const midAngle = ang1 + (Math.atan2(Math.sin(ang2 - ang1), Math.cos(ang2 - ang1)) / 2);
+
+  // Generate the 3 bypass points (Entry tangent, Midpoint pushed out by 2m, Exit tangent)
+  const pts = [
+    { x: radiusM * Math.cos(ang1), y: radiusM * Math.sin(ang1) },
+    { x: (radiusM + 2) * Math.cos(midAngle), y: (radiusM + 2) * Math.sin(midAngle) },
+    { x: radiusM * Math.cos(ang2), y: radiusM * Math.sin(ang2) }
+  ];
+
+  // Convert back to Global GPS coordinates
+  return pts.map(p => ({
+    latitude: cLat + (p.y / kLat),
+    longitude: cLon + (p.x / kLon)
+  }));
+}
+
+export function calculateRouteCollision(
+  routeId: string | number,
+  waypoints: any[],
+  annotations: any[],
+  circleBuffer: number
+) {
+  let isCompromised = false;
+  const safeWaypoints: any[] = [];
+  let lastSafeWp: any = null;
+  let activeDangerZone: any = null;
+
+  const buffer5 = circleBuffer * 1.05;
+  const buffer15 = circleBuffer * 1.15;
+
+  // Sort waypoints by index to ensure chronological order
+  const sortedWps = [...waypoints].sort((a, b) => a.index - b.index);
+
+  for (const wp of sortedWps) {
+    // 1. Check if waypoint is inside an annotation circle
+    const hitZone = annotations.find(a => {
+      if (!a.latitude || !a.longitude) return false;
+      const dist = get3DDistanceInMeters(wp.latitude, wp.longitude, 0, a.latitude, a.longitude, 0);
+      return dist <= circleBuffer;
+    });
+
+    if (!hitZone) {
+      if (activeDangerZone && lastSafeWp) {
+        // 2. Check if the straight line between last safe point and current safe point clips the circle
+        const distToCircle = getDistanceToSegment(
+          lastSafeWp.latitude, lastSafeWp.longitude,
+          wp.latitude, wp.longitude,
+          activeDangerZone.latitude, activeDangerZone.longitude
+        );
+
+        if (distToCircle < buffer5) {
+          // 3. Generate the 3-point bypass route
+          const bypass = calculateTangentBypass(
+            lastSafeWp.latitude, lastSafeWp.longitude,
+            wp.latitude, wp.longitude,
+            activeDangerZone.latitude, activeDangerZone.longitude,
+            buffer15
+          );
+
+          // Add bypass points to the safe route
+          bypass.forEach(bWp => safeWaypoints.push({ ...bWp }));
+        }
+        activeDangerZone = null;
+      }
+
+      safeWaypoints.push(wp);
+      lastSafeWp = wp;
+    } else {
+      isCompromised = true;
+      activeDangerZone = hitZone;
+    }
+  }
+
+  return {
+    flight_route_id: routeId,
+    compromised: isCompromised,
+    safe_waypoints: safeWaypoints
+  };
+}

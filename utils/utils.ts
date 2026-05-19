@@ -1,4 +1,4 @@
-import { TurnType } from "./interfaces";
+import { RouteSafetyStatus, TurnType } from "./interfaces";
 
 export const getProjectTopologiesStorageKey = (orgId: string, projectId: string) => {
   return `${orgId}__${projectId}__topologies`;
@@ -21,6 +21,15 @@ export function simulateClick(el: HTMLElement) {
     }));
   });
 }
+
+export const getStatusColor = (status?: RouteSafetyStatus) => {
+  switch (status) {
+    case 'SAFE': return '#28a745';             // Green
+    case 'AREA_WARNING': return '#ffc107';     // Yellow
+    case 'PATH_COMPROMISED': return '#dc3545'; // Red
+    default: return '#adb5bd';                 // Gray (UNKNOWN)
+  }
+};
 
 export function getZoomPoints() {
   const containers = Array.from(document.querySelectorAll('.point-container')) as HTMLElement[];

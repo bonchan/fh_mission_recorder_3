@@ -1,6 +1,47 @@
 import { Drone, Dock, Annotation, Waypoint, FlatDevice } from '@/utils/interfaces';
 import { extractNumber, prefixKeys } from '@/utils/utils'
 
+
+export function toDockDroneList(topologies: any): any | null {
+    const deviceList: Drone[] = [];
+    for (const item of topologies) {
+        const drone = toDockDrone(item);
+        // Only add to the list if the mapper returned a valid object
+        if (drone && drone.deviceSn && drone.parent.deviceSn) {
+            deviceList.push(drone);
+        }
+    }
+    const deviceListSorted = [...deviceList].sort((a, b) => {
+        const indexA = a.parent?.index ?? 999;
+        const indexB = b.parent?.index ?? 999;
+        return indexA - indexB;
+    });
+
+    return deviceListSorted
+}
+
+export function toFlatDeviceList(topologies: any): any | null {
+    const deviceList: FlatDevice[] = [];
+    for (const item of topologies) {
+        const flatDevice = toFlatDevice(item);
+        // Only add to the list if the mapper returned a valid object
+        if (flatDevice) {
+            deviceList.push(flatDevice);
+        }
+    }
+    const deviceListSorted = [...deviceList].sort((a, b) => {
+        const indexA = a.parentIndex ?? 999;
+        const indexB = b.parentIndex ?? 999;
+        return indexA - indexB;
+    });
+
+    return deviceListSorted
+}
+
+
+
+
+
 export function toDock(djiItem: any): any | null {
     if (!djiItem.host || !djiItem.parents || djiItem.parents.length === 0) return null;
     const parentRaw = djiItem.parents[0];
@@ -15,17 +56,28 @@ export function toDock(djiItem: any): any | null {
         longitude: device_state.longitude,
         latitude: device_state.latitude,
         height: device_state.height,
+        droneInDock: device_state.drone_in_dock,
     };
     return dock
 }
 
-export function toDrone(djiItem: any, dock: Dock | null): any | null {
+export function toDrone(djiItem: any, dock: Dock | null, projectId: string): any | null {
     if (!djiItem.host || !djiItem.parents || djiItem.parents.length === 0) return null;
     const hostRaw = djiItem.host;
     const camera = hostRaw.device_state.cameras?.[0] || { payload_index: 'unknown' };
 
+
+    const device_state = hostRaw.device_state;
+    const payload_index = device_state.cameras[0].payload_index;
+
+    console.log('hostRawhostRawhostRawhostRawhostRaw', hostRaw)
+
     const drone: Drone = {
         deviceSn: hostRaw.device_sn,
+        longitude: device_state.longitude,
+        latitude: device_state.latitude,
+        yaw: device_state[payload_index].gimbal_yaw,
+        projectId: projectId,
         deviceModelName: hostRaw.device_model.name,
         deviceModelKey: hostRaw.device_model.key,
         deviceProjectCallsign: hostRaw.device_project_callsign,
@@ -66,7 +118,7 @@ export function toWaypoint(djiItem: any, hostSn?: string): any | null {
 export function toDockDrone(djiItem: any): any | null {
     if (!djiItem.host || !djiItem.parents || djiItem.parents.length === 0) return null;
     const dock: Dock = toDock(djiItem)
-    const drone: Drone = toDrone(djiItem, dock)
+    const drone: Drone = toDrone(djiItem, dock, djiItem.projectId)
     return drone;
 }
 
@@ -100,13 +152,14 @@ export const toFlatDevice = (item: any): FlatDevice | null => {
     };
 };
 
-export function toAnnotation(djiItem: any): Annotation | null {
+export function toAnnotation(djiItem: any, projectId: string): Annotation | null {
     const geometry = djiItem.resource.content.geometry
     const properties = djiItem.resource.content.properties
     if (geometry.type == 'Point') {
         const [lon, lat, _] = geometry.coordinates;
         const annotation: Annotation = {
             id: djiItem.id,
+            projectId: projectId,
             name: djiItem.name,
             longitude: lon,
             latitude: lat,

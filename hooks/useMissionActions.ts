@@ -1,20 +1,19 @@
-import { useState } from 'react';
-import { Mission } from '@/utils/interfaces';
-import { useToast } from '@/providers/ToastProvider';
 import { useMessage } from '@/hooks/useMessage';
-import { generateDJIMission } from '@/utils/wpml-generator';
+import { useToast } from '@/providers/ToastProvider';
 import { uploadToCloudStorage } from '@/services/cloudStorage';
-import { delay } from '@/utils/time';
+import { Mission } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
+import { delay } from '@/utils/time';
+import { generateDJIMission } from '@/utils/wpml-generator';
+import { RouteBuilder } from 'dji-kmz-parser';
+import { useState } from 'react';
+
 
 const log = createLogger('useMissionActions');
 
 export function useMissionActions(orgId: string, projectId: string) {
-  // Pull in the necessary contexts internally!
   const { showToast } = useToast();
   const { getStorageUploadCredentials, duplicateNameStorageCheck, importCallbackStorage } = useMessage(orgId, projectId);
-
-  // Manage the uploading state locally within the hook
   const [isUploading, setIsUploading] = useState(false);
 
   const debugMission = async (mission: Mission, setDebugXml: any) => {
@@ -74,13 +73,59 @@ export function useMissionActions(orgId: string, projectId: string) {
     }
   };
 
+  const uploadFlightRoute = async (route: FlightRoute) => {
+    if (route.data?.modifiedData) {
+      const toastTTL = 3000;
+      try {
+        setIsUploading(true);
+        showToast('Getting storage credentials', '', 'info', toastTTL, true);
+        const stsResponse = await getStorageUploadCredentials();
+        const { object_key_prefix } = stsResponse.credentials.data;
 
+        showToast('Generating mission file', '', 'info', toastTTL, true);
 
-  // Return the functions and the loading state
+        const date = new Date();
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const fileName = `NO VOLAR ${route.name} ${yyyy}-${mm}-${dd}`;
+
+        const cleanName = fileName.replace(/[<>:"/|?*._\\]/g, '');
+        const fileUUID = crypto.randomUUID();
+        const tempFileName = `${fileUUID}.kmz`;
+
+        const builder = new RouteBuilder();
+        const newKmzBinary = await builder.buildKmz(route.data.modifiedData);
+        const file = new File([newKmzBinary.buffer as ArrayBuffer], tempFileName, { type: 'application/zip' });
+
+        const objectKey = `${object_key_prefix}/${tempFileName}`;
+        showToast('Uploading mission to FH', '', 'info', toastTTL, true);
+        await uploadToCloudStorage(file, objectKey, stsResponse.credentials.data);
+        await delay(500);
+
+        let desiredFileName = `P3--${cleanName}.kmz`;
+        showToast('Checking file name', desiredFileName, 'info', toastTTL, true);
+        const nscResponse = await duplicateNameStorageCheck(desiredFileName);
+        desiredFileName = nscResponse.dnResponse.data.index_name;
+        showToast('Final file name', desiredFileName, 'warning', toastTTL, true);
+
+        const icResponse = await importCallbackStorage(desiredFileName, objectKey);
+        const finalFileName = icResponse.icResponse.data.name;
+        showToast('Mission uploaded to FlightHub', finalFileName, 'success', toastTTL, true);
+      } catch (err) {
+        log.error("Failed to upload mission sequence:", err);
+        showToast('Failed to upload mission sequence:', String(err), 'error', toastTTL, true);
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
   return {
     debugMission,
     exportMission,
     uploadMission,
+    uploadFlightRoute,
     isUploading
   };
 }

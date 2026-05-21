@@ -1,3 +1,6 @@
+import { type DjiKmzData } from 'dji-kmz-parser';
+
+
 export enum ViewContext {
   SIDEPANEL = 'sidepanel',
   DASHBOARD = 'dashboard'
@@ -58,11 +61,14 @@ export interface FlatDevice {
   [key: string]: any;
 }
 
-export type RouteSafetyStatus =
-  | 'UNKNOWN'
-  | 'SAFE'
-  | 'AREA_WARNING'
-  | 'PATH_COMPROMISED';
+export const ROUTE_SAFETY_STATUSES = [
+  'UNKNOWN',
+  'SAFE',
+  'AREA_WARNING',
+  'PATH_COMPROMISED'
+] as const;
+
+export type RouteSafetyStatus = typeof ROUTE_SAFETY_STATUSES[number];
 
 export interface FlightRouteHeader {
   id: string;
@@ -80,16 +86,21 @@ export interface FlightRouteHeader {
   distance: number | null;
 }
 
+export interface RouteCollisionResult {
+  compromised: boolean;
+  modifiedData: DjiKmzData | null;
+}
+
 export interface FlightRouteData {
   routeId: string;
-  rawTemplate: string;
-  rawWaylines: string;
-  parsedWaypoints: Waypoint[];
+  originalData: DjiKmzData;
+  modifiedData: DjiKmzData | null;
 }
 
 export interface FlightRoute extends FlightRouteHeader {
-  originalWaypoints: FlightRouteData['parsedWaypoints'];
-  safeWaypoints?: Waypoint[];
+  data?: FlightRouteData;
+  originalWaypoints: WaypointMini[];
+  modifiedWaypoints: WaypointMini[];
 }
 
 export interface Annotation {
@@ -146,6 +157,13 @@ export interface Mission {
 
 export type WaypointType = 'default' | 'picture' | 'security' | 'hover';
 export type TurnType = 'CW' | 'CCW';
+
+export interface WaypointMini {
+  id: string;
+  index: number;
+  longitude: number;
+  latitude: number;
+}
 
 export interface Waypoint {
   id: string;

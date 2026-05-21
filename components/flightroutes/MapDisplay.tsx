@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
 import { createLogger } from '@/utils/logger';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { Marker, MapContainer, TileLayer, Circle, Tooltip, Polyline, useMap, useMapEvents, LayersControl, LayerGroup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Circle, LayerGroup, LayersControl, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 
-import { Dock, FlightRoute } from '@/utils/interfaces';
-import { getStatusColor } from '@/utils/utils'
-import { dockFullIcon, dockEmptyIcon, getRotatedDroneIcon } from '@/utils/mapIcons'
+import { FlightRoute } from '@/utils/interfaces';
+import { dockEmptyIcon, dockFullIcon, getRotatedDroneIcon } from '@/utils/mapIcons';
+import { getStatusColor } from '@/utils/utils';
 
 const log = createLogger('MapDisplay');
 
@@ -131,6 +131,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
   const [currentZoom, setCurrentZoom] = useState(START_ZOOM);
 
+  // TODO
   // const [layerVisibility, setLayerVisibility] = useState({
   //   estimatedAreas: true,
   //   originalRoutes: true,
@@ -254,18 +255,12 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
               {routes.map(route => {
                 if (route.safetyStatus !== 'PATH_COMPROMISED') return null;
 
-                if (route.safeWaypoints == undefined) return null
-
-                if (!(route.safeWaypoints && route.safeWaypoints.length > 0)) return null;
-
-                if (route.safeWaypoints.length === 0) return null;
-
                 return (
                   <Polyline
                     key={`safe-${route.id}`}
-                    positions={route.safeWaypoints.map(wp => [wp.latitude, wp.longitude])}
+                    positions={route.modifiedWaypoints.map(wp => [wp.latitude, wp.longitude])}
                     pathOptions={{
-                      color: '#ffc107', // Warning yellow/orange for the bypass route
+                      color: '#ffc107',
                       weight: 3,
                       dashArray: '10, 10',
                       opacity: 1

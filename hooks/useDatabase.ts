@@ -1,9 +1,11 @@
-import { useLiveQuery } from 'dexie-react-hooks';
+import { CIRCLE_BUFFER, FIVE_MIN_MS } from '@/utils/constants';
 import { db } from '@/utils/db';
 import { get3DDistanceInMeters } from '@/utils/geo';
-import { FlightRouteHeader, FlightRouteData, FlightRoute, RouteSafetyStatus, Mission, Waypoint, AnnotationFlag } from '@/utils/interfaces';
+import { AnnotationFlag, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
-import { FIVE_MIN_MS, CIRCLE_BUFFER } from '@/utils/constants';
+import { toWaypointMini } from '@/utils/mapper';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { type DjiKmzData } from 'dji-kmz-parser';
 
 const log = createLogger('useDatabase');
 
@@ -65,7 +67,7 @@ export function useDatabase(orgId: string, projectId: string) {
       }));
     },
     [projectId]
-  ) || []; // Fallback to empty array
+  ) || [];
 
   const executionRoutesWithData = useLiveQuery(async (): Promise<FlightRoute[]> => {
     const headers = await db.flight_routes
@@ -77,62 +79,57 @@ export function useDatabase(orgId: string, projectId: string) {
       db.annotations.where('projectId').equals(projectId).toArray(),
       db.annotations_flags.where('projectId').equals(projectId).toArray()
     ]);
+
     const compromisedIds = new Set(flags.filter(f => f.isCompromised).map(f => String(f.id)));
-    const compromisedAnnotations = rawAnnotations.filter(a => compromisedIds.has(String(a.id)));
+    const compromisedAnnotations = rawAnnotations
+      .filter(a => compromisedIds.has(String(a.id)) && a.latitude && a.longitude);
+
     const fullRoutes = await Promise.all(
-      headers.map(async (header) => {
+      headers.map(async (header): Promise<FlightRoute> => {
         const data = await db.flight_route_data.get(header.id);
-        const originalWaypoints = data?.parsedWaypoints || [];
-        let safeWaypoints: Waypoint[] = [];
 
         let safetyStatus: RouteSafetyStatus = 'UNKNOWN';
+        let modifiedData: DjiKmzData | null = null;
 
         if (header.startLat != null && header.startLon != null && header.distance != null) {
           const isAreaCompromised = compromisedAnnotations.some(anno => {
-            if (!anno.latitude || !anno.longitude) return false;
-
-            const distanceToCenter = get3DDistanceInMeters(
+            const dist = get3DDistanceInMeters(
               header.startLat!, header.startLon!, 0,
               anno.latitude, anno.longitude, 0
             );
-
-            return distanceToCenter <= header.distance!;
+            return dist <= header.distance!;
           });
 
           if (!isAreaCompromised) {
-            // 🟢 100% CLEAR! No danger anywhere near this flight
             safetyStatus = 'SAFE';
-          }
-          else {
-            // 🟡 DANGER IN AREA! (We upgrade this to RED below if it hits the path)
+          } else {
             safetyStatus = 'AREA_WARNING';
 
-            // 3. MICRO-CHECK: If we have the detailed waypoints, check the exact path
-            if (originalWaypoints.length > 0) {
+            if (data?.originalData) {
+              const collisionResult = calculateRouteCollision(
+                data.originalData,
+                compromisedAnnotations,
+                CIRCLE_BUFFER
+              );
 
-              // Pass ONLY the annotations that breached the circle to save CPU power!
-              // const dangerousAnnotations = compromisedAnnotations.filter(anno => { /* optionally re-use the distance check to filter */ return true });
-
-              // Run your exact path math!
-              const validationResult = calculateRouteCollision(header.id, originalWaypoints, compromisedAnnotations, CIRCLE_BUFFER);
-
-              if (validationResult.compromised) {
-                // 🔴 DIRECT HIT! The actual drone path collides with the danger zone
-                safetyStatus = 'PATH_COMPROMISED';
-                safeWaypoints = validationResult.safe_waypoints
-              } else {
-                // Path successfully dodges the annotations in the area. Stays AREA_WARNING (or SAFE, depending on your business rules).
-                safetyStatus = 'AREA_WARNING';
-              }
+              safetyStatus = collisionResult.compromised ? 'PATH_COMPROMISED' : 'AREA_WARNING';
+              modifiedData = collisionResult.modifiedData;
             }
           }
         }
 
         return {
           ...header,
-          originalWaypoints,
-          safeWaypoints,
           safetyStatus,
+
+          originalWaypoints: data?.originalData ? toWaypointMini(data.originalData) : [],
+          modifiedWaypoints: modifiedData ? toWaypointMini(modifiedData) : [],
+
+          data: data ? {
+            routeId: data.routeId,
+            originalData: data.originalData,
+            modifiedData,
+          } : undefined,
         };
       })
     );
@@ -411,7 +408,7 @@ export function useDatabase(orgId: string, projectId: string) {
 
     log.info("DEBUG - What is topologiesList?", topologiesList);
 
-    
+
     const cacheKey = `topologies_${projectId}`;
     await db.transaction('rw', db.topologies, db.sync_metadata, async () => {
       await db.topologies.where('projectId').equals(projectId).delete();
@@ -512,7 +509,6 @@ export function useDatabase(orgId: string, projectId: string) {
   return {
     // Queries
     projectRoutes,
-    // pendingRoutes,
     projectTopologies,
     projectAnnotations,
     executionRoutesWithData,

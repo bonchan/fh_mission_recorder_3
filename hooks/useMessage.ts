@@ -1,10 +1,5 @@
-import { createLogger } from '@/utils/logger';
-
-import { getProjectAnnotationsStorageKey } from '@/utils/utils';
-// import { getCachedOrFetch } from '@/utils/storageCache';
-
-import { FIVE_MIN_MS } from '@/utils/constants';
 import { Annotation } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
 
 const log = createLogger('useMessage');
 
@@ -95,11 +90,6 @@ export function useMessage(orgId: string, projectId: string) {
     return await browser.tabs.sendMessage(targetTabId, { action: "GET_FLIGHT_ROUTE_DETAILS", orgId, projectId, waylineId });
   };
 
-  const downloadFlightRoute = async (fileUrl: string, tabId?: number) => {
-    const targetTabId = await getTargetTabId(tabId);
-    return await browser.tabs.sendMessage(targetTabId, { action: "DOWNLOAD_FLIGHT_ROUTE", orgId, projectId, fileUrl });
-  };
-
   const getStorageUploadCredentials = async (tabId?: number) => {
     const targetTabId = await getTargetTabId(tabId);
     // 1. Fetch fresh from the active tab
@@ -139,7 +129,6 @@ export function useMessage(orgId: string, projectId: string) {
 
     getFlightRoutes,
     getFlightRouteDetails,
-    downloadFlightRoute,
 
     getStorageUploadCredentials,
     duplicateNameStorageCheck,

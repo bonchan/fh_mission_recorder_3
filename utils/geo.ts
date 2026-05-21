@@ -1,4 +1,6 @@
-import { Mission, Waypoint } from '@/utils/interfaces';
+import { Mission, RouteCollisionResult, Waypoint, WaypointMini } from '@/utils/interfaces';
+import { toWaypointMini } from '@/utils/mapper';
+import { RouteEditor, type DjiKmzData } from 'dji-kmz-parser';
 
 // WGS84 Ellipsoid Constants
 const WGS84_A = 6378137.0; // Equatorial radius in meters
@@ -157,7 +159,7 @@ export const optimizeMissionPath = (mission: Mission | undefined): Mission | voi
 
   return updatedMission;
 };
-// --- COLLISION & BYPASS MATH ---
+
 /**
  * Calculates the shortest distance in meters from a point (circle center) to a line segment.
  */
@@ -263,7 +265,7 @@ export function calculateTangentBypass(
   }));
 }
 
-export function calculateRouteCollision(
+export function calculateRouteCollision1(
   routeId: string | number,
   waypoints: any[],
   annotations: any[],
@@ -326,3 +328,101 @@ export function calculateRouteCollision(
     safe_waypoints: safeWaypoints
   };
 }
+
+
+
+export function calculateRouteCollision(
+  originalData: DjiKmzData,
+  annotations: Annotation[],
+  circleBuffer: number
+): RouteCollisionResult {
+
+  const buffer5 = circleBuffer * 1.05;
+  const buffer15 = circleBuffer * 1.15;
+
+  // --- PASS 1: figure out what needs to happen, using WaypointMini for math ---
+  const waypoints = toWaypointMini(originalData);
+  const sortedWps = [...waypoints].sort((a, b) => a.index - b.index);
+
+  let isCompromised = false;
+  let lastSafeWp: WaypointMini | null = null;
+  let activeDangerZone: Annotation | null = null;
+
+  const indicesToRemove: number[] = [];
+  const bypassInsertions: { afterIndex: number; lat: number; lon: number }[] = [];
+
+  for (const wp of sortedWps) {
+    const hitZone = annotations.find(a => {
+      const dist = get3DDistanceInMeters(wp.latitude, wp.longitude, 0, a.latitude, a.longitude, 0);
+      return dist <= circleBuffer;
+    });
+
+    if (!hitZone) {
+      if (activeDangerZone && lastSafeWp) {
+        const distToCircle = getDistanceToSegment(
+          lastSafeWp.latitude, lastSafeWp.longitude,
+          wp.latitude, wp.longitude,
+          activeDangerZone.latitude, activeDangerZone.longitude
+        );
+
+        if (distToCircle < buffer5) {
+          const bypass = calculateTangentBypass(
+            lastSafeWp.latitude, lastSafeWp.longitude,
+            wp.latitude, wp.longitude,
+            activeDangerZone.latitude, activeDangerZone.longitude,
+            buffer15
+          );
+
+          // record where to insert bypass points — after lastSafeWp
+          bypass.forEach(bWp => bypassInsertions.push({
+            afterIndex: lastSafeWp!.index,
+            lat: bWp.latitude,
+            lon: bWp.longitude,
+          }));
+        }
+        activeDangerZone = null;
+      }
+
+      lastSafeWp = wp;
+    } else {
+      isCompromised = true;
+      activeDangerZone = hitZone;
+      indicesToRemove.push(wp.index);
+    }
+  }
+
+  if (!isCompromised) {
+    return { compromised: false, modifiedData: null };
+  }
+
+  // --- PASS 2: apply changes via RouteEditor ---
+  const editor = new RouteEditor(originalData); // structuredClone happens inside
+
+  // Remove compromised waypoints — highest index first to avoid reindex shifting
+  [...indicesToRemove].sort((a, b) => b - a).forEach(index => {
+    editor.removeWaypoint(index);
+  });
+
+  // Insert bypass points — you'll need to build minimal Waypoint objects the library expects
+  // Insert in order so indices stay predictable after each insertion
+  bypassInsertions.forEach(({ afterIndex, lat, lon }) => {
+    // const templateWp = buildBypassWaypoint(lat, lon);   // see note below
+    // const waylineWp  = buildBypassWaypoint(lat, lon);
+    // editor.addWaypoint(afterIndex + 1, templateWp, waylineWp);
+  });
+
+  return {
+    compromised: true,
+    modifiedData: editor.getData(),
+  };
+}
+
+// TODO COMPETE THIS FUNCTION
+// function buildBypassWaypoint(lat: number, lon: number): KmzWaypoint {
+//   return {
+//     'wpml:index': -1,          // reIndex() will fix this
+//     Point: { coordinates: `${lon},${lat}` },
+//     // copy any required fields with safe defaults — altitude, speed, etc.
+//     // no wpml:actionGroup
+//   };
+// }

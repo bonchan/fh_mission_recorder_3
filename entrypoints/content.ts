@@ -1,5 +1,5 @@
 import { fhApi } from '@/services/fhApi';
-import { getCurrentZoomLevel, clickZoomLevel, getRngValue, getPitchValue } from '@/utils/utils';
+import { clickZoomLevel, getCurrentZoomLevel, getPitchValue, getRngValue } from '@/utils/utils';
 
 export default defineContentScript({
   matches: ['https://fh.dji.com/*'],
@@ -10,50 +10,50 @@ export default defineContentScript({
 
       if (action === "GET_TOPOLOGIES") {
         handleGetTopologies(sendResponse, orgId, projectId);
-        return true
+        return true;
       }
 
       if (action === "GET_CURRENT_USER") {
         handleGetCurrentUser(sendResponse, orgId, projectId);
-        return true
+        return true;
       }
 
       if (action === "GET_ANNOTATIONS") {
         handleGetAnnotations(sendResponse, orgId, projectId);
-        return true
+        return true;
       }
 
       if (action === "GET_FLIGHT_ROUTES") {
         const { searchQuery, page, size } = message;
         handleGetFlightRoutes(sendResponse, orgId, projectId, searchQuery, page, size);
-        return true
+        return true;
       }
 
       if (action === "GET_FLIGHT_ROUTE_DETAILS") {
         const { waylineId } = message;
         handleGetFlightRouteDetails(sendResponse, orgId, projectId, waylineId);
-        return true
+        return true;
       }
 
-      if (action === "DOWNLOAD_FLIGHT_ROUTE") {
-        const { fileUrl } = message;
-        handleDownloadFlightRoute(sendResponse, fileUrl);
-        return true
-      }
+      // if (action === "DOWNLOAD_FLIGHT_ROUTE") {
+      //   const { fileUrl } = message;
+      //   handleDownloadFlightRoute(sendResponse, fileUrl);
+      //   return true;
+      // }
 
       if (action === "GET_STORAGE_UPLOAD_CREDENTIALS") {
         handleGetStorageUploadCredentials(sendResponse, orgId, projectId);
-        return true
+        return true;
       }
 
       if (action === "DUPLICATE_NAME_STORAGE_CHECK") {
         handleDuplicateNameStorageUpload(sendResponse, orgId, projectId, message.duplicateName);
-        return true
+        return true;
       }
 
       if (action === "IMPORT_CALLBACK_STORAGE") {
         handleImportCallbackStorageUpload(sendResponse, orgId, projectId, message.fileName, message.objectKey);
-        return true
+        return true;
       }
 
       if (action === "DISPATCH_KEY") {
@@ -103,10 +103,10 @@ export default defineContentScript({
       sendResponse({ flightRoutes, orgId, projectId });
     }
 
-    async function handleDownloadFlightRoute(sendResponse: any, fileUrl: string) {
-      const unzipped = await fhApi.downloadFlightRoute(fileUrl);
-      sendResponse({ unzipped });
-    }
+    // async function handleDownloadFlightRoute(sendResponse: any, fileUrl: string) {
+    //   const data = await fhApi.downloadFlightRoute(fileUrl);
+    //   sendResponse(data);
+    // }
 
     async function handleGetCockpitData(sendResponse: any) {
       const zoomFactor = getCurrentZoomLevel().value;
@@ -152,13 +152,11 @@ export default defineContentScript({
           );
         }
       };
-      // Handle the logic based on the requested type
+      
       if (type === 'keydown' || type === 'keyup') {
         fireEvent(type);
       } else if (type === 'tap') {
-        // 1. Press the key down
         fireEvent('keydown');
-        // 2. Wait 50 milliseconds, then release it
         setTimeout(() => {
           fireEvent('keyup');
         }, 50);
@@ -167,7 +165,7 @@ export default defineContentScript({
 
     function handleZoomStep(direction: 'in' | 'out') {
       const currentIndex = getCurrentZoomLevel().index;
-      if (currentIndex === -1) return; // Exit if DOM isn't ready/found
+      if (currentIndex === -1) return; 
 
       const targetIndex = direction === 'in' ? currentIndex + 1 : currentIndex - 1;
 
@@ -175,6 +173,5 @@ export default defineContentScript({
         clickZoomLevel(targetIndex);
       }
     }
-
   },
 });

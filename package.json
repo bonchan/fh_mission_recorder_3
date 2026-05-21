@@ -30,6 +30,7 @@
     "deck.gl": "^9.2.11",
     "dexie": "^4.4.2",
     "dexie-react-hooks": "^4.4.0",
+    "dji-kmz-parser": "link:..\\dji_kmz_parser",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^5.21.0",

@@ -1,25 +1,25 @@
-import React, { useRef, useState } from 'react';
-import { createLogger } from '@/utils/logger';
-import Button from '@/components/ui/Button';
-
 import MapDisplay from '@/components/flightroutes/MapDisplay';
-
+import Button from '@/components/ui/Button';
+import { FilterOption, MultiSelectFilter } from '@/components/ui/MultiSelectFilter';
 import { useDatabase } from '@/hooks/useDatabase';
-import { useMessage } from '@/hooks/useMessage';
-
-import { FlightRouteData } from '@/utils/interfaces';
-import { Waypoint } from '@/utils/interfaces';
-
-import { toDockDroneList } from '@/utils/mapper';
-
-import { getStatusColor } from '@/utils/utils';
-
-import { CIRCLE_BUFFER } from '@/utils/constants';
-
+import { useMissionActions } from '@/hooks/useMissionActions';
 import { useToast } from '@/providers/ToastProvider';
+import { CIRCLE_BUFFER } from '@/utils/constants';
+import { FlightRouteData, ROUTE_SAFETY_STATUSES, RouteSafetyStatus } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
+import { toDockDroneList } from '@/utils/mapper';
+import { getStatusColor } from '@/utils/utils';
+import { DjiParser, type DjiKmzData } from 'dji-kmz-parser';
+import React, { useRef, useState } from 'react';
 
 
 const log = createLogger('FlightRoutesDashboard');
+
+const STATUS_OPTIONS: FilterOption<RouteSafetyStatus>[] = ROUTE_SAFETY_STATUSES.map(status => ({
+  value: status,
+  // Helper to make them pretty: "PATH_COMPROMISED" -> "COMPROMISED" or "PATH COMPROMISED"
+  label: status === 'PATH_COMPROMISED' ? 'COMPROMISED' : status.replace('_', ' ')
+}));
 
 interface DashboardProps {
   orgId: string;
@@ -40,15 +40,23 @@ export function Dashboard({ orgId, projectId }: DashboardProps) {
 
   const [isValidating, setIsValidating] = useState(false);
 
+  const [selectedStatuses, setSelectedStatuses] = useState<RouteSafetyStatus[]>([]);
+
   const { showToast } = useToast()
 
-  const { downloadFlightRoute } = useMessage(orgId, projectId)
+  const { isUploading, uploadFlightRoute } = useMissionActions(orgId, projectId)
 
   const [focusedAnnoId, setFocusedAnnoId] = useState<string>('');
   const listRef = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Filter local DB data for the dashboard view
   const executionRoutes = projectRoutes.filter(r => r.isExecutionRoute);
+  const displayRoutes = (executionRoutesWithData || executionRoutes).filter(r => {
+    // If no pills are selected, show all routes
+    if (selectedStatuses.length === 0) return true;
+
+    // Otherwise, only keep the route if its status is in the selected array
+    return selectedStatuses.includes(r.safetyStatus || 'UNKNOWN');
+  });
   const compromisedAnnotations = projectAnnotations.filter(a => a.isCompromised);
 
   // Check if we need any action
@@ -62,61 +70,53 @@ export function Dashboard({ orgId, projectId }: DashboardProps) {
     log.info('executionRoutesWithData', executionRoutesWithData)
   }, [executionRoutesWithData]);
 
-
+  const handleExport = async (route: FlightRoute) => {
+    log.info('FlightRoute', route.data?.modifiedData);
+    uploadFlightRoute(route)
+  };
 
   const handleValidation = async () => {
-    if (executionRoutesWithData && executionRoutesWithData.length === 0) {
+    if (!executionRoutesWithData || executionRoutesWithData.length === 0) {
       showToast("", "No execution routes selected!", "warning");
       return;
     }
-    if (!executionRoutesWithData) return
+
     setIsValidating(true);
     let successCount = 0;
 
     try {
-
       for (const route of executionRoutesWithData) {
-        // 👇 Adjust parameters here if your hook expects (url, id) instead of just (id)
         log.info(`Downloading KMZ for:`, route);
 
-        if (route.safetyStatus == 'AREA_WARNING' && route.kmzWithoutResUrl && !(route.originalWaypoints?.length > 0)) {
-
-          const res = await downloadFlightRoute(route.kmzWithoutResUrl);
-          const unzipped = res.unzipped
-
-          log.info('unzipped', unzipped)
-
-          const parsedWaypoints = kmzParser.extractWaypoints(unzipped.templateKml);
-
-          const data: FlightRouteData = {
-            routeId: route.id,
-            rawTemplate: unzipped.templateKml,
-            rawWaylines: unzipped.waylinesWpml,
-            parsedWaypoints: parsedWaypoints
-          };
-
-          await processAndSaveRoute(route.id, data, route)
-
-
-
-          successCount++;
-
-
-
-        } else {
+        // Only download if we're in AREA_WARNING and don't have data yet
+        if (route.safetyStatus !== 'AREA_WARNING' || !route.kmzWithoutResUrl || route.data?.originalData) {
           log.warn(`Skipping ${route.name}`, route);
-          // await db.flight_routes.update(route.id, { syncStatus: 'FAILED' });
           continue;
         }
 
+        const fileResponse = await fetch(route.kmzWithoutResUrl);
+        if (!fileResponse.ok) {
+          throw new Error(`Storage download failed with status: ${fileResponse.status}`);
+        }
 
-        // break
+        const kmzBlob = await fileResponse.blob();
+        const parser = new DjiParser();
+        const originalData: DjiKmzData = await parser.parse(kmzBlob);
+
+        const data: FlightRouteData = {
+          routeId: route.id,
+          originalData,
+          modifiedData: null,
+        };
+
+        await processAndSaveRoute(route.id, data, route);
+        successCount++;
       }
-      showToast("", `Successfully downloaded ${successCount} KMZ files!`, "success")
+
+      showToast("", `Successfully downloaded ${successCount} KMZ files!`, "success");
     } catch (error) {
       log.error("Validation/Download failed:", error);
-      showToast("Error", `There was an error downloading some files. Check the console.`, "error")
-
+      showToast("Error", `There was an error downloading some files. Check the console.`, "error");
     } finally {
       setIsValidating(false);
     }
@@ -133,14 +133,20 @@ export function Dashboard({ orgId, projectId }: DashboardProps) {
           <div style={{ marginBottom: '15px', padding: '10px', background: '#fff3cd', borderRadius: '4px', border: '1px solid #ffeeba' }}>
             <p style={{ fontSize: '12px', margin: '0 0 10px 0', color: 'black' }}>Some routes require processing to calculate spatial data.</p>
           </div>
-        ) : (
+        ) : (<>
           <Button onClick={handleValidation}>Validate</Button>
+          <MultiSelectFilter
+            options={STATUS_OPTIONS}
+            selectedValues={selectedStatuses}
+            onChange={setSelectedStatuses}
+          />
+        </>
         )}
 
         {(!executionRoutesWithData || executionRoutesWithData.length === 0) ? (
           <p style={{ fontSize: '12px', color: '#888' }}>Go to "Routes" tab to select execution paths.</p>
         ) : (
-          executionRoutesWithData.map(r => {
+          displayRoutes.map(r => {
             // 👇 Dynamically grab the color based on the new status!
             const statusColor = getStatusColor(r.safetyStatus);
 
@@ -148,6 +154,15 @@ export function Dashboard({ orgId, projectId }: DashboardProps) {
               <div key={r.id} style={itemStyle(false, statusColor)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <strong>{r.name}</strong>
+                  {r.safetyStatus == 'PATH_COMPROMISED' &&
+                    <Button
+                      onClick={() => { handleExport(r as FlightRoute) }}
+                      disabled={isUploading}
+                    >
+                      export
+                    </Button>
+
+                  }
                   <span style={{
                     fontSize: '10px',
                     fontWeight: 'bold',

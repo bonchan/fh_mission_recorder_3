@@ -1,5 +1,6 @@
-import { Drone, Dock, Annotation, Waypoint, FlatDevice } from '@/utils/interfaces';
-import { extractNumber, prefixKeys } from '@/utils/utils'
+import { Annotation, Dock, Drone, FlatDevice, Waypoint, WaypointMini } from '@/utils/interfaces';
+import { extractNumber } from '@/utils/utils';
+import { type DjiKmzData } from 'dji-kmz-parser';
 
 
 export function toDockDroneList(topologies: any): any | null {
@@ -37,10 +38,6 @@ export function toFlatDeviceList(topologies: any): any | null {
 
     return deviceListSorted
 }
-
-
-
-
 
 export function toDock(djiItem: any): any | null {
     if (!djiItem.host || !djiItem.parents || djiItem.parents.length === 0) return null;
@@ -166,4 +163,34 @@ export function toAnnotation(djiItem: any, projectId: string): Annotation | null
         return annotation
     }
     return null
+}
+
+export function toWaypointMini(data: DjiKmzData | undefined | null): WaypointMini[] {
+    const waypointsMini: WaypointMini[] = [];
+    if (data == undefined || data == null) return waypointsMini
+
+    // 1. Dig into the template data to grab the folders
+    const folders = data.template.kml.Document.Folder;
+    // 2. Loop over the folders and their placemarks
+    folders.forEach((folder: any) => {
+        const placemarks = folder.Placemark;
+
+        placemarks.forEach((mark: any) => {
+            // DJI stores coordinates as a single string: "longitude,latitude"
+            // We split it by the comma and convert both to Numbers
+            const [lng, lat] = mark.Point.coordinates.split(',').map(Number);
+            const index = Number(mark["wpml:index"]);
+
+            // 3. Map the raw DJI tags to your clean extension Waypoint interface
+            const waypoint: WaypointMini = {
+                id: crypto.randomUUID(),
+                index: index,
+                longitude: lng,
+                latitude: lat,
+            };
+
+            waypointsMini.push(waypoint);
+        });
+    });
+    return waypointsMini
 }

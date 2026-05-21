@@ -1,5 +1,4 @@
 import { createLogger } from '@/utils/logger';
-import { kmzParser } from '@/utils/kmzParser';
 
 // Defining valid HTTP methods
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -131,19 +130,6 @@ export const fhApi = {
         const endpoint = `/wayline/api/v1/workspaces/${projectUUID}/waylines/${waylineId}`
         return this.call('GET', endpoint);
     },
-
-    async downloadFlightRoute(fileUrl: string): Promise<any> {
-        const fileResponse = await fetch(fileUrl);
-
-        if (!fileResponse.ok) {
-            throw new Error(`Storage download failed with status: ${fileResponse.status}`);
-        }
-        const kmzBlob = await fileResponse.blob();
-        log.info("KMZ Blob received! Size:", kmzBlob.size);
-
-        return await kmzParser.unzip(kmzBlob)
-    },
-
 
     async getStorageUploadCredentials(projectUUID: string): Promise<any> {
         const endpoint = `/storage/api/v1/workspaces/${projectUUID}/sts`;

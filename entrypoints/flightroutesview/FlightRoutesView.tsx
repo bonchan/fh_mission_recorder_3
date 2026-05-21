@@ -44,6 +44,8 @@ export function FlightRoutesView() {
           <Dashboard
             orgId={orgId}
             projectId={projectId}
+            sourceTabId={sourceTabId}
+            debugMode={debugMode}
           ></Dashboard>
         );
       default:

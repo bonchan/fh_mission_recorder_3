@@ -33,7 +33,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
   const [isSyncing, setIsSyncing] = useState(false);
 
   const perPage = 200;
-  const rejectedPrefixes = ['C-'];
+  const rejectedPrefixes = ['C-', 'Falla', 'P'];
 
   const fetchLatestHeadersByPrefix = async (prefixes: string[]) => {
     let allFetchedApiRoutes: any[] = [];
@@ -81,7 +81,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
     const rawNames = pastedText.split('\n').map(n => n.trim()).filter(n => n !== '');
     const uniqueSortedNames = Array.from(new Set(rawNames))
       .sort()
-      .filter(name => !rejectedPrefixes.some(prefix => name.startsWith(prefix)));
+      .filter(name => !rejectedPrefixes.some(prefix => name.toLowerCase().startsWith(prefix.toLowerCase())));
 
     if (uniqueSortedNames.length === 0) {
       setIsLoading(false);
@@ -219,7 +219,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
       </div>
 
       {/* THE ROUTE LIST */}
-      <div className="list-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div className="list-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px' , overflow: 'auto',maxHeight: '500px'}}>
         {projectRoutes.length === 0 && !isLoading && <p style={{ color: '#888' }}>No routes in the database. Paste a list to start.</p>}
 
         {projectRoutes.map(route => (

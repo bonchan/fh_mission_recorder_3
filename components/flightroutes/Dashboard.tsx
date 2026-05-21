@@ -3,6 +3,7 @@ import Button from '@/components/ui/Button';
 import { FilterOption, MultiSelectFilter } from '@/components/ui/MultiSelectFilter';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useMissionActions } from '@/hooks/useMissionActions';
+import { useSync } from '@/hooks/useSync';
 import { useToast } from '@/providers/ToastProvider';
 import { CIRCLE_BUFFER } from '@/utils/constants';
 import { FlightRouteData, ROUTE_SAFETY_STATUSES, RouteSafetyStatus } from '@/utils/interfaces';
@@ -24,19 +25,47 @@ const STATUS_OPTIONS: FilterOption<RouteSafetyStatus>[] = ROUTE_SAFETY_STATUSES.
 interface DashboardProps {
   orgId: string;
   projectId: string;
+  sourceTabId: number;
+  debugMode: boolean;
 }
 
-export function Dashboard({ orgId, projectId }: DashboardProps) {
+export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: DashboardProps) {
   // 1. Reactive Data from IndexedDB
   const {
     projectRoutes,
     projectTopologies,
     projectAnnotations,
     executionRoutesWithData,
+
     processAndSaveRoute,
     toggleExecutionRoute,
     deleteFlightRoute
   } = useDatabase(orgId, projectId);
+
+  const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
+
+
+  // TODO check this.. maybe it should go in a different place
+  const [isRunning, setIsRunning] = useState(false);
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    if (isRunning) {
+      intervalId = setInterval(() => {
+        syncTopologies(true) 
+      }, 1000);
+    }
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isRunning]);
+
+
+
+
+
+  
 
   const [isValidating, setIsValidating] = useState(false);
 
@@ -135,6 +164,7 @@ export function Dashboard({ orgId, projectId }: DashboardProps) {
           </div>
         ) : (<>
           <Button onClick={handleValidation}>Validate</Button>
+          <Button onClick={() => { setIsRunning(!isRunning) }}>{isRunning ? 'Stop refresh' : 'Start refresh'}</Button>
           <MultiSelectFilter
             options={STATUS_OPTIONS}
             selectedValues={selectedStatuses}

@@ -141,7 +141,6 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
       }
     }
 
-
     const routesToSync = projectRoutes.filter(
       r => r.isExecutionRoute && r.syncStatus === 'PENDING'
     );
@@ -155,7 +154,6 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
       setIsSyncing(false);
       return;
     }
-
 
     for (const route of routesToSync) {
       try {

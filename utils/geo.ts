@@ -1,10 +1,14 @@
 import { Mission, RouteCollisionResult, Waypoint, WaypointMini } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
 import { toWaypointMini } from '@/utils/mapper';
 import { RouteEditor, type DjiKmzData } from 'dji-kmz-parser';
 
 // WGS84 Ellipsoid Constants
 const WGS84_A = 6378137.0; // Equatorial radius in meters
 const WGS84_E2 = 0.00669437999014; // Eccentricity squared
+
+const log = createLogger('geo');
+
 
 // 1. Calculate the exact radius of curvature for a specific latitude
 function getWGS84Radii(latDeg: number) {
@@ -403,12 +407,34 @@ export function calculateRouteCollision(
     editor.removeWaypoint(index);
   });
 
-  // Insert bypass points — you'll need to build minimal Waypoint objects the library expects
-  // Insert in order so indices stay predictable after each insertion
-  bypassInsertions.forEach(({ afterIndex, lat, lon }) => {
-    // const templateWp = buildBypassWaypoint(lat, lon);   // see note below
-    // const waylineWp  = buildBypassWaypoint(lat, lon);
-    // editor.addWaypoint(afterIndex + 1, templateWp, waylineWp);
+  const baseOffset = editor.getHeightOffset();
+  const geoidUndulation = editor.getGeoidUndulation();
+  const desiredFlightHeight = 70;
+  const absoluteHeight = desiredFlightHeight + baseOffset;
+  const egm96Height = absoluteHeight - geoidUndulation; 
+
+  log.info("baseOffset", baseOffset);
+
+  // Sort insertions by afterIndex ascending so we process them in order
+  const sortedInsertions = [...bypassInsertions].sort((a, b) => a.afterIndex - b.afterIndex);
+
+  // Track how many waypoints we've inserted so far to offset the target index
+  let insertionOffset = 0;
+
+  // Also account for removed waypoints that come BEFORE the insertion point
+  sortedInsertions.forEach(({ afterIndex, lat, lon }) => {
+    // How many removed indices were <= afterIndex?
+    const removedBefore = indicesToRemove.filter(i => i <= afterIndex).length;
+
+    // Adjusted index in the mutated array
+    const adjustedIndex = afterIndex - removedBefore + insertionOffset;
+
+    const templateWp = editor.buildTemplateBypassWp(lat, lon, egm96Height, absoluteHeight);
+    const waylineWp = editor.buildWaylineBypassWp(lat, lon, absoluteHeight);
+
+    editor.addWaypoint(adjustedIndex + 1, templateWp, waylineWp);
+
+    insertionOffset++;
   });
 
   return {
@@ -416,13 +442,3 @@ export function calculateRouteCollision(
     modifiedData: editor.getData(),
   };
 }
-
-// TODO COMPETE THIS FUNCTION
-// function buildBypassWaypoint(lat: number, lon: number): KmzWaypoint {
-//   return {
-//     'wpml:index': -1,          // reIndex() will fix this
-//     Point: { coordinates: `${lon},${lat}` },
-//     // copy any required fields with safe defaults — altitude, speed, etc.
-//     // no wpml:actionGroup
-//   };
-// }

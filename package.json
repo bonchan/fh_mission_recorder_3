@@ -2,7 +2,7 @@
   "name": "panel-3",
   "description": "Panel 3",
   "private": true,
-  "version": "0.0.12-naughty",
+  "version": "0.0.13-naughty",
   "type": "module",
   "scripts": {
     "dev": "wxt",

@@ -1,18 +1,27 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastPosition = 'bottom-left' | 'bottom-center' | 'bottom-right';
 
-interface ToastMessage {
+export interface ToastOptions {
+  type?: ToastType;
+  duration?: number;
+  swarm?: boolean;
+  permanent?: boolean;
+  position?: ToastPosition;
+}
+
+interface ToastMessage extends ToastOptions {
   id: string;
   title: string;
   text: string;
   type: ToastType;
   duration: number;
-  isSwarm?: boolean;
+  position: ToastPosition;
 }
 
 interface ToastContextType {
-  showToast: (title: string, text: string, type?: ToastType, duration?: number, isSwarm?: boolean) => void;
+  showToast: (title: string, text: string, options?: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -21,23 +30,23 @@ const ToastContext = createContext<ToastContextType | null>(null);
 function ToastItem({ toast, onRemove, swarmResetKey }: { toast: ToastMessage; onRemove: (id: string) => void; swarmResetKey: number }) {
   const [isLeaving, setIsLeaving] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [timerKey, setTimerKey] = useState(0); // Used to force the CSS animation to restart
+  const [timerKey, setTimerKey] = useState(0);
 
   useEffect(() => {
-    if (toast.isSwarm && swarmResetKey > 0 && !isLeaving) {
+    if (toast.swarm && swarmResetKey > 0 && !isLeaving) {
       setTimerKey(prev => prev + 1);
     }
-  }, [swarmResetKey, toast.isSwarm]);
+  }, [swarmResetKey, toast.swarm]);
 
   useEffect(() => {
-    if (isHovered || isLeaving) return;
+    if (isHovered || isLeaving || toast.permanent) return;
 
     const leaveTimer = setTimeout(() => {
       setIsLeaving(true);
     }, toast.duration);
 
     return () => clearTimeout(leaveTimer);
-  }, [toast.duration, isHovered, isLeaving, timerKey]);
+  }, [toast.duration, isHovered, isLeaving, timerKey, toast.permanent]);
 
   useEffect(() => {
     if (isLeaving) {
@@ -50,7 +59,6 @@ function ToastItem({ toast, onRemove, swarmResetKey }: { toast: ToastMessage; on
 
   const handleMouseLeave = () => {
     setIsHovered(false);
-    // Incrementing the key forces the SVG circle to remount, restarting the CSS animation!
     setTimerKey(prev => prev + 1);
   };
 
@@ -61,7 +69,6 @@ function ToastItem({ toast, onRemove, swarmResetKey }: { toast: ToastMessage; on
     info: { border: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)', icon: 'i' },
   }[toast.type];
 
-  // SVG Math: A circle with radius 10 has a circumference of ~63 (2 * pi * 10)
   const CIRCUMFERENCE = 63;
 
   return (
@@ -80,33 +87,29 @@ function ToastItem({ toast, onRemove, swarmResetKey }: { toast: ToastMessage; on
           : 'toast-slide-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
       }}
     >
-      {/* --- TIME AWARE SVG ICON --- */}
       <div style={{ position: 'relative', width: '24px', height: '24px', flexShrink: 0 }}>
-        {/* Rotate -90deg so the countdown starts at 12 o'clock */}
         <svg width="24" height="24" viewBox="0 0 24 24" style={{ transform: 'rotate(-90deg)' }}>
-          {/* Faded background track */}
           <circle cx="12" cy="12" r="10" fill={theme.bg} stroke={theme.bg} strokeWidth="2" />
 
-          {/* Animated depletion track */}
-          <circle
-            key={timerKey} // React remounts this element when timerKey changes
-            cx="12" cy="12" r="10"
-            fill="none"
-            stroke={theme.border}
-            strokeWidth="2"
-            strokeDasharray={CIRCUMFERENCE}
-            strokeDashoffset="0"
-            strokeLinecap="round"
-            style={{
-              // If hovered or leaving, remove the animation so it stays/snaps to full
-              animation: isHovered || isLeaving
-                ? 'none'
-                : `toast-progress ${toast.duration}ms linear forwards`
-            }}
-          />
+          {!toast.permanent && (
+            <circle
+              key={timerKey}
+              cx="12" cy="12" r="10"
+              fill="none"
+              stroke={theme.border}
+              strokeWidth="2"
+              strokeDasharray={CIRCUMFERENCE}
+              strokeDashoffset="0"
+              strokeLinecap="round"
+              style={{
+                animation: isHovered || isLeaving
+                  ? 'none'
+                  : `toast-progress ${toast.duration}ms linear forwards`
+              }}
+            />
+          )}
         </svg>
 
-        {/* Centered Icon Text */}
         <div style={{
           position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -116,13 +119,11 @@ function ToastItem({ toast, onRemove, swarmResetKey }: { toast: ToastMessage; on
         </div>
       </div>
 
-      {/* Text Content */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>{toast.title}</span>
         <span style={{ color: '#aaa', fontSize: '13px', lineHeight: '1.4' }}>{toast.text}</span>
       </div>
 
-      {/* Close Button */}
       <button
         onClick={() => setIsLeaving(true)}
         style={{
@@ -137,25 +138,27 @@ function ToastItem({ toast, onRemove, swarmResetKey }: { toast: ToastMessage; on
 }
 
 // --- THE PROVIDER & CONTAINER ---
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children, position = 'bottom-center' }: { children: React.ReactNode, position?: ToastPosition }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [swarmResetKey, setSwarmResetKey] = useState(0);
 
-  const showToast = useCallback((title: string, text: string, type: ToastType = 'info', duration = 3000, isSwarm = false) => {
+  const showToast = useCallback((title: string, text: string, options?: ToastOptions) => {
     const newToast: ToastMessage = {
-      id: Math.random().toString(36).substring(2, 9), // Quick unique ID
+      id: crypto.randomUUID(),
       title,
       text,
-      type,
-      duration,
-      isSwarm,
+      // Provide defaults, but allow the options object to override them!
+      type: options?.type || 'info',
+      duration: options?.duration || 3000,
+      swarm: options?.swarm || false,
+      permanent: options?.permanent || false,
+      position: options?.position || 'bottom-center',
     };
 
-    if (isSwarm) {
+    if (newToast.swarm) {
       setSwarmResetKey(Date.now());
     }
 
-    // Add new toasts to the END of the array
     setToasts((prev) => [...prev, newToast]);
   }, []);
 
@@ -163,31 +166,38 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const getContainerStyles = (): React.CSSProperties => {
+    const base: React.CSSProperties = {
+      position: 'fixed',
+      bottom: '24px',
+      display: 'flex',
+      flexDirection: 'column-reverse',
+      gap: '10px',
+      zIndex: 9999,
+      pointerEvents: 'none',
+    };
+
+    switch (position) {
+      case 'bottom-left':
+        return { ...base, left: '24px', alignItems: 'flex-start' };
+      case 'bottom-right':
+        return { ...base, right: '24px', alignItems: 'flex-end' };
+      case 'bottom-center':
+      default:
+        return { ...base, left: '50%', transform: 'translateX(-50%)', alignItems: 'center' };
+    }
+  };
+
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      {/* The Stacking Container */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column-reverse', // Newest toasts push older ones UP
-          alignItems: 'center',
-          gap: '10px',
-          zIndex: 9999,
-          pointerEvents: 'none', // Lets you click the map *through* the invisible container gaps
-        }}
-      >
+      <div style={getContainerStyles()}>
         {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onRemove={removeToast} swarmResetKey={swarmResetKey}/>
+          <ToastItem key={toast.id} toast={toast} onRemove={removeToast} swarmResetKey={swarmResetKey} />
         ))}
       </div>
 
-      {/* Global Keyframes for the stack */}
       <style>{`
         @keyframes toast-slide-in {
           0% { transform: translateY(50px) scale(0.9); opacity: 0; }
@@ -199,7 +209,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         }
         @keyframes toast-progress {
           0% { stroke-dashoffset: 0; }
-          /* At 100%, the offset equals the circumference, making it invisible */
           100% { stroke-dashoffset: 63; } 
         }
       `}</style>
@@ -207,7 +216,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// --- THE HOOK ---
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) throw new Error("useToast must be used within ToastProvider");

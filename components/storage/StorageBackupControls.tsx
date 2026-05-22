@@ -36,11 +36,11 @@ export function StorageBackupControls({ orgId, projectId }: StorageBackupControl
       window.URL.revokeObjectURL(url);
 
       // 3. Optional: Show a success toast!
-      showToast("Backup downloaded successfully!", '', 'success');
+      showToast("Backup downloaded successfully!", '', { type: "success" })
 
     } catch (err) {
       log.error("Failed to backup IndexedDB:", err);
-      showToast("Failed to backup database:", String(err), 'error');
+      showToast("Failed to backup database:", String(err), { type: "error" })
     }
   };
 
@@ -54,7 +54,7 @@ export function StorageBackupControls({ orgId, projectId }: StorageBackupControl
       await doRestore(file);
 
       // 2. UI Logic: Success!
-      showToast("Database restored successfully! Reloading...", '', 'success');
+      showToast("Database restored successfully! Reloading...", '', { type: "success" })
 
       // 3. UI Logic: Delay the reload so they see the toast
       setTimeout(() => {
@@ -63,7 +63,7 @@ export function StorageBackupControls({ orgId, projectId }: StorageBackupControl
 
     } catch (err) {
       // 4. UI Logic: Failure!
-      showToast("Invalid backup file.", 'Make sure it is an IndexedDB backup.', 'error', 4000);
+      showToast("Invalid backup file.", 'Make sure it is an IndexedDB backup.', { type: "error", permanent: true })
     } finally {
       // 5. Always clear the input so they can try again with the same file if needed
       event.target.value = '';

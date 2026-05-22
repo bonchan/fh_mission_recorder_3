@@ -22,7 +22,7 @@ export function useMissionActions(orgId: string, projectId: string) {
   };
 
   const exportMission = async (mission: Mission) => {
-    if (mission.waypoints.length === 0) return showToast('Mission has no waypoints!', '', 'warning');
+    if (mission.waypoints.length === 0) return showToast('Mission has no waypoints!', '', { type: "warning" })
     const blob = await generateDJIMission(mission);
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -34,17 +34,17 @@ export function useMissionActions(orgId: string, projectId: string) {
   };
 
   const uploadMission = async (mission: Mission) => {
-    if (mission.waypoints.length === 0) return showToast('Mission has no waypoints!', '', 'warning');
-    if (!mission.orgId || !mission.projectId) return showToast('Mission has no orgId or projectId!', '', 'warning');
+    if (mission.waypoints.length === 0) return showToast('Mission has no waypoints!', '', { type: "warning" })
+    if (!mission.orgId || !mission.projectId) return showToast('Mission has no orgId or projectId!', '', { type: "warning" })
 
     const toastTTL = 3000;
     try {
       setIsUploading(true);
-      showToast('Getting storage credentials', '', 'info', toastTTL, true);
+      showToast('Getting storage credentials', '', { type: "info", swarm: true, duration: toastTTL })
       const stsResponse = await getStorageUploadCredentials();
       const { object_key_prefix } = stsResponse.credentials.data;
 
-      showToast('Generating mission file', '', 'info', toastTTL, true);
+      showToast('Generating mission file', '', { type: "info", swarm: true, duration: toastTTL })
       const blob = await generateDJIMission(mission);
       const cleanName = mission.name.replace(/[<>:"/|?*._\\]/g, '');
       const fileUUID = crypto.randomUUID();
@@ -52,22 +52,22 @@ export function useMissionActions(orgId: string, projectId: string) {
       const file = new File([blob], tempFileName, { type: 'application/zip' });
 
       const objectKey = `${object_key_prefix}/${tempFileName}`;
-      showToast('Uploading mission to FH', '', 'info', toastTTL, true);
+      showToast('Uploading mission to FH', '', { type: "info", swarm: true, duration: toastTTL })
       await uploadToCloudStorage(file, objectKey, stsResponse.credentials.data);
       await delay(500);
 
       let desiredFileName = `P3--${cleanName}.kmz`;
-      showToast('Checking file name', desiredFileName, 'info', toastTTL, true);
+      showToast('Checking file name', desiredFileName, { type: "info", swarm: true, duration: toastTTL })
       const nscResponse = await duplicateNameStorageCheck(desiredFileName);
       desiredFileName = nscResponse.dnResponse.data.index_name;
-      showToast('Final file name', desiredFileName, 'warning', toastTTL, true);
+      showToast('Final file name', desiredFileName, { type: "warning", swarm: true, duration: toastTTL })
 
       const icResponse = await importCallbackStorage(desiredFileName, objectKey);
       const finalFileName = icResponse.icResponse.data.name;
-      showToast('Mission uploaded to FlightHub', finalFileName, 'success', toastTTL, true);
+      showToast('Mission uploaded to FlightHub', finalFileName, { type: "success", swarm: true, duration: toastTTL })
     } catch (err) {
       log.error("Failed to upload mission sequence:", err);
-      showToast('Failed to upload mission sequence:', String(err), 'error', toastTTL, true);
+      showToast('Failed to upload mission sequence:', String(err), { type: "error", permanent: true })
     } finally {
       setIsUploading(false);
     }
@@ -78,11 +78,11 @@ export function useMissionActions(orgId: string, projectId: string) {
       const toastTTL = 3000;
       try {
         setIsUploading(true);
-        showToast('Getting storage credentials', '', 'info', toastTTL, true);
+        showToast('Getting storage credentials', '', { type: "info", swarm: true, duration: toastTTL })
         const stsResponse = await getStorageUploadCredentials();
         const { object_key_prefix } = stsResponse.credentials.data;
 
-        showToast('Generating mission file', '', 'info', toastTTL, true);
+        showToast('Generating mission file', '', { type: "info", swarm: true, duration: toastTTL })
 
         const date = new Date();
         const yyyy = date.getFullYear();
@@ -99,22 +99,22 @@ export function useMissionActions(orgId: string, projectId: string) {
         const file = new File([newKmzBinary.buffer as ArrayBuffer], tempFileName, { type: 'application/zip' });
 
         const objectKey = `${object_key_prefix}/${tempFileName}`;
-        showToast('Uploading mission to FH', '', 'info', toastTTL, true);
+        showToast('Uploading mission to FH', '', { type: "info", swarm: true, duration: toastTTL })
         await uploadToCloudStorage(file, objectKey, stsResponse.credentials.data);
         await delay(500);
 
         let desiredFileName = `P3--${cleanName}.kmz`;
-        showToast('Checking file name', desiredFileName, 'info', toastTTL, true);
+        showToast('Checking file name', desiredFileName, { type: "info", swarm: true, duration: toastTTL })
         const nscResponse = await duplicateNameStorageCheck(desiredFileName);
         desiredFileName = nscResponse.dnResponse.data.index_name;
-        showToast('Final file name', desiredFileName, 'warning', toastTTL, true);
+        showToast('Final file name', desiredFileName, { type: "warning", swarm: true, duration: toastTTL })
 
         const icResponse = await importCallbackStorage(desiredFileName, objectKey);
         const finalFileName = icResponse.icResponse.data.name;
-        showToast('Mission uploaded to FlightHub', finalFileName, 'success', toastTTL, true);
+        showToast('Mission uploaded to FlightHub', finalFileName, { type: "success", swarm: true, duration: toastTTL })
       } catch (err) {
         log.error("Failed to upload mission sequence:", err);
-        showToast('Failed to upload mission sequence:', String(err), 'error', toastTTL, true);
+        showToast('Failed to upload mission sequence:', String(err), { type: "error", swarm: true, duration: toastTTL })
       } finally {
         setIsUploading(false);
       }

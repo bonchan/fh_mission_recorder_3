@@ -51,7 +51,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
     let intervalId: NodeJS.Timeout;
     if (isRunning) {
       intervalId = setInterval(() => {
-        syncTopologies(true) 
+        syncTopologies(true)
       }, 1000);
     }
     return () => {
@@ -65,7 +65,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
 
 
 
-  
+
 
   const [isValidating, setIsValidating] = useState(false);
 
@@ -106,7 +106,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
 
   const handleValidation = async () => {
     if (!executionRoutesWithData || executionRoutesWithData.length === 0) {
-      showToast("", "No execution routes selected!", "warning");
+      showToast("", "No execution routes selected!", { type: "warning" });
       return;
     }
 
@@ -142,10 +142,10 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
         successCount++;
       }
 
-      showToast("", `Successfully downloaded ${successCount} KMZ files!`, "success");
+      showToast("", `Successfully downloaded ${successCount} KMZ files!`, { type: "success" });
     } catch (error) {
       log.error("Validation/Download failed:", error);
-      showToast("Error", `There was an error downloading some files. Check the console.`, "error");
+      showToast("Error", `There was an error downloading some files. Check the console.`, { type: "error" });
     } finally {
       setIsValidating(false);
     }

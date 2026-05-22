@@ -72,7 +72,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
     const pastedText = e.clipboardData.getData('text');
 
     if (pastedText.includes('\t')) {
-      showToast('Error', 'Please paste a single column of Flight Route names.', "error",)
+      showToast('Error', 'Please paste a single column of Flight Route names.', { type: "error" })
       return;
     }
 
@@ -114,7 +114,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
       showToast(
         'Sync Complete!',
         `Missing ${totalMissing.length} pasted routes in DJI:\n\n${totalMissing.slice(0, 10).join('\n')}${totalMissing.length > 10 ? '\n...' : ''}`,
-        "success"
+        { type: "success" }
       )
     }
   };
@@ -150,7 +150,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
       showToast(
         'Sync Complete!',
         'All execution routes are already up to date!',
-        "success"
+        { type: "success" }
       )
       setIsSyncing(false);
       return;
@@ -219,7 +219,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
       </div>
 
       {/* THE ROUTE LIST */}
-      <div className="list-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px' , overflow: 'auto',maxHeight: '500px'}}>
+      <div className="list-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'auto', maxHeight: '500px' }}>
         {projectRoutes.length === 0 && !isLoading && <p style={{ color: '#888' }}>No routes in the database. Paste a list to start.</p>}
 
         {projectRoutes.map(route => (

@@ -115,7 +115,7 @@ export function Annotations({ orgId, projectId, sourceTabId, debugMode }: Annota
         msg += `\n🚨 Duplicates Skipped (${duplicateNames.size}):\n`;
         msg += Array.from(duplicateNames).map(name => ` - ${name}`).join('\n');
       }
-      showToast("Paste Complete!", msg, 'warning');
+      showToast("Paste Complete!", msg, { type: 'warning' });
     }
   };
 

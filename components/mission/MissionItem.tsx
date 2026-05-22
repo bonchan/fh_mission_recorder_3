@@ -91,17 +91,17 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
       let paramError = false
 
       if (!originItem) {
-        showToast(`Error de template`, `el template no tiene origen`, 'error')
+        showToast(`Error de template`, `el template no tiene origen`, { type: "error" })
         return
       }
 
       if (!isInRange(originItem.pitch, cockpitData.pitch)) {
-        showToast(`PITCH ERROR`, `Pitch must be ${originItem.pitch}, not ${cockpitData.pitch}`, 'error')
+        showToast(`PITCH ERROR`, `Pitch must be ${originItem.pitch}, not ${cockpitData.pitch}`, { type: "error" })
         paramError = true
       }
 
       if (!isInRange(originItem.zoomFactor, cockpitData.zoomFactor)) {
-        showToast(`ZOOM ERROR`, `Zoom must be ${originItem.zoomFactor}, not ${cockpitData.zoomFactor}`, 'error')
+        showToast(`ZOOM ERROR`, `Zoom must be ${originItem.zoomFactor}, not ${cockpitData.zoomFactor}`, { type: "error" })
         paramError = true
       }
       if (paramError) return
@@ -113,7 +113,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
       const topologies = await syncTopologies(true)
 
       if (topologies == null) {
-        showToast('Error', 'Could not fetch drone data', 'error')
+        showToast('Error', 'Could not fetch drone data', { type: "error" })
         return
       }
 
@@ -143,7 +143,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
         if (template) {
           const cluster = generateWaypointsFromTemplate(newWaypoint, template);
           await createWaypoints(mission.id, cluster)
-          showToast(`Added (${cluster.length}) waypoints from template`, template.name, 'warning')
+          showToast(`Added (${cluster.length}) waypoints from template`, template.name, { type: "warning" })
 
         } else {
           await createWaypoints(mission.id, newWaypoint)
@@ -151,11 +151,11 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
         }
 
       } else {
-        showToast("Could not find active telemetry for this drone.", "Is it turned on?", 'warning');
+        showToast("Could not find active telemetry for this drone.", "Is it turned on?", { type: "warning" })
       }
     } catch (error) {
       log.error("Failed to fetch drone location:", error);
-      showToast('Error adding Waypoint:', (error as Error).message, 'error')
+      showToast('Error adding Waypoint:', (error as Error).message, { type: "error" })
     } finally {
       setIsFetchingLocation(false);
     }

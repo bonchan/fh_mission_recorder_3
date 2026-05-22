@@ -198,7 +198,7 @@ export function DashboardView() {
       const topologies = await syncTopologies(true)
 
       if (topologies == null) {
-        showToast('Error', 'Could not fetch drone data', 'error')
+        showToast('Error', 'Could not fetch drone data', { type: "error" })
         return
       }
 
@@ -233,11 +233,11 @@ export function DashboardView() {
         showToast('Added waypoint', ``)
 
       } else {
-        showToast("Could not find active telemetry for this sim drone.", "Is it turned on?", 'warning');
+        showToast("Could not find active telemetry for this sim drone.", "Is it turned on?", { type: "warning" })
       }
     } catch (error) {
       log.error("Failed to fetch drone location:", error);
-      showToast('Error adding Waypoint:', (error as Error).message, 'error')
+      showToast('Error adding Waypoint:', (error as Error).message, { type: "error" })
     }
 
 

@@ -32,39 +32,35 @@ function shouldLog(componentName: string, level: LogLevel): boolean {
 export function createLogger(componentName: string) {
   // Adding some colors makes the console infinitely easier to read
   const prefix = `%c[${componentName}]`;
-  const style = 'color: #0066ff; font-weight: bold;'; // Nice DJI blue!
+  const infoStyle = 'color: #0066ff; font-weight: bold;'; // Nice DJI blue!
+  const warnStyle = 'color: #ff9900; font-weight: bold;';
+  const errorStyle = 'color: #ff0000; font-weight: bold;';
 
   return {
-    debug: (message: string, ...args: any[]) => {
-      if (shouldLog(componentName, LogLevel.DEBUG)) {
-        console.debug(prefix, style, message, ...args);
-      }
+    get debug() {
+      if (!shouldLog(componentName, LogLevel.DEBUG)) return () => { };
+      return console.debug.bind(console, prefix, infoStyle);
     },
-    info: (message: string, ...args: any[]) => {
-      if (shouldLog(componentName, LogLevel.INFO)) {
-        console.info(prefix, style, message, ...args);
-      }
+    get info() {
+      if (!shouldLog(componentName, LogLevel.INFO)) return () => { };
+      return console.info.bind(console, prefix, infoStyle);
     },
-    warn: (message: string, ...args: any[]) => {
-      if (shouldLog(componentName, LogLevel.WARN)) {
-        console.warn(prefix, 'color: #ff9900; font-weight: bold;', message, ...args);
-      }
+    get warn() {
+      if (!shouldLog(componentName, LogLevel.WARN)) return () => { };
+      return console.warn.bind(console, prefix, warnStyle);
     },
-    error: (message: string, ...args: any[]) => {
-      if (shouldLog(componentName, LogLevel.ERROR)) {
-        console.error(prefix, 'color: #ff0000; font-weight: bold;', message, ...args);
-      }
+    get error() {
+      if (!shouldLog(componentName, LogLevel.ERROR)) return () => { };
+      return console.error.bind(console, prefix, errorStyle);
     },
-    table: (obj: any) => {
-      if (shouldLog(componentName, LogLevel.DEBUG)) {
-        console.table(obj)
-      }
+    get table() {
+      if (!shouldLog(componentName, LogLevel.DEBUG)) return () => { };
+      // table doesn't support %c prefixing well, so we just bind it directly
+      return console.table.bind(console);
     },
-    clear: () => {
-      console.clear()
-    }
-  };
-}
+    clear: () => console.clear()
+  }
+};
 
 // Optional: Export a way to change settings at runtime from the browser console!
 export const setLoggerConfig = (components: '*' | string[], level?: LogLevel) => {

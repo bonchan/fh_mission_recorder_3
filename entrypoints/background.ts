@@ -16,7 +16,7 @@ export default defineBackground(() => {
     const cockpit_match = DJI_COCKPIT_REGEX.exec(url);
 
     if (cockpit_match) {
-      const [ , orgId, projectId, droneSn, dockSn ] = cockpit_match;
+      const [, orgId, projectId, droneSn, dockSn] = cockpit_match;
 
       await browser.action.setIcon({ tabId, path: ICONS_ON });
 
@@ -27,7 +27,7 @@ export default defineBackground(() => {
         enabled: true
       });
     } else if (project_match) {
-      const [ , orgId, projectId ] = project_match;
+      const [, orgId, projectId] = project_match;
 
       await browser.action.setIcon({ tabId, path: ICONS_ON });
 
@@ -90,7 +90,7 @@ export default defineBackground(() => {
       return;
     }
 
-    if (message.type === 'OPEN_ADMIN_DASHBOARD') {
+    else if (message.type === 'OPEN_ADMIN_DASHBOARD') {
       const { orgId, projectId, sourceTabId, debugMode } = message;
       const url = browser.runtime.getURL(`/adminview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
 
@@ -99,7 +99,7 @@ export default defineBackground(() => {
       return;
     }
 
-    if (message.type === 'OPEN_SETTINGS_DASHBOARD') {
+    else if (message.type === 'OPEN_SETTINGS_DASHBOARD') {
       const { orgId, projectId, sourceTabId, debugMode } = message;
       const url = browser.runtime.getURL(`/settingsview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
 
@@ -108,7 +108,7 @@ export default defineBackground(() => {
       return;
     }
 
-    if (message.type === 'OPEN_FLIGT_ROUTES_DASHBOARD') {
+    else if (message.type === 'OPEN_FLIGT_ROUTES_DASHBOARD') {
       const { orgId, projectId, sourceTabId, debugMode } = message;
       const url = browser.runtime.getURL(`/flightroutesview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`);
 
@@ -120,12 +120,12 @@ export default defineBackground(() => {
     // 2. Handling Debugger Toggles
     // Note: message.tabId here should be the sourceTabId (FlightHub) 
     // passed from your Dashboard's URL parameters
-    if (message.action === 'ENABLE_WS_DEBUG') {
+    else if (message.action === 'ENABLE_WS_DEBUG') {
       const fhTabId = message.tabId;
       if (fhTabId) attachDebugger(fhTabId);
     }
 
-    if (message.action === 'DISABLE_WS_DEBUG') {
+    else if (message.action === 'DISABLE_WS_DEBUG') {
       const fhTabId = message.tabId;
       if (fhTabId) detachDebugger(fhTabId);
     }

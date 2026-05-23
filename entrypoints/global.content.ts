@@ -4,6 +4,12 @@ import { clickZoomLevel, getCurrentZoomLevel, getPitchValue, getRngValue } from 
 export default defineContentScript({
   matches: ['https://fh.dji.com/*'],
   async main() {
+
+    if (DJI_COCKPIT_REGEX.test(window.location.href)) {
+          console.log("cockpit.content")
+        }
+
+
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       const { action, orgId, projectId } = message;

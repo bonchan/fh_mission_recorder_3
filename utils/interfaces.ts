@@ -1,4 +1,5 @@
 import { type DjiKmzData } from 'dji-kmz-parser';
+import { ControllerModel } from '@/components/controller/ControllerDriver';
 
 
 export enum ViewContext {
@@ -15,6 +16,12 @@ export enum MissionType {
 export interface SyncMetadata {
   id: string;
   lastUpdated: number;
+}
+
+export interface AppSettings {
+  id: string;
+  circleBuffer: number;
+  selectedRemote: ControllerModel;
 }
 
 export interface Dock {

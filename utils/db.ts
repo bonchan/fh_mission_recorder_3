@@ -1,9 +1,10 @@
+import { Annotation, AnnotationFlag, AppSettings, FlightRouteData, FlightRouteHeader, Mission, SyncMetadata } from '@/utils/interfaces';
 import Dexie, { Table } from 'dexie';
-import { SyncMetadata, FlightRouteHeader, FlightRouteData, Mission, Annotation, AnnotationFlag } from '@/utils/interfaces';
 
 
 export class AppDatabase extends Dexie {
   sync_metadata!: Table<SyncMetadata, string>;
+  settings!: Table<AppSettings, string>;
 
   annotations!: Table<Annotation, string>;
   annotations_flags!: Table<AnnotationFlag, string>;
@@ -19,6 +20,7 @@ export class AppDatabase extends Dexie {
 
     this.version(1).stores({
       sync_metadata: 'id',
+      settings: 'id',
 
       annotations: 'id, projectId',
       annotations_flags: 'id, projectId',

@@ -1,11 +1,12 @@
 import { CIRCLE_BUFFER, FIVE_MIN_MS } from '@/utils/constants';
 import { db } from '@/utils/db';
 import { get3DDistanceInMeters } from '@/utils/geo';
-import { AnnotationFlag, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint } from '@/utils/interfaces';
+import { AnnotationFlag, AppSettings, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { toWaypointMini } from '@/utils/mapper';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { type DjiKmzData } from 'dji-kmz-parser';
+import { ControllerModel } from '@/components/controller/ControllerDriver';
 
 const log = createLogger('useDatabase');
 
@@ -26,6 +27,11 @@ export function useDatabase(orgId: string, projectId: string) {
   // ==========================================
   // REACTIVE QUERIES
   // ==========================================
+
+  const settings = useLiveQuery(
+    () => db.settings.get(projectId),
+    [projectId]
+  );
 
   const projectRoutes = useLiveQuery(
     () => db.flight_routes
@@ -136,6 +142,32 @@ export function useDatabase(orgId: string, projectId: string) {
 
     return fullRoutes;
   }, [projectId]);
+
+  // ==========================================
+  // SETTINGS
+  // ==========================================
+
+  const getSettings = async () => {
+    db.settings.get(projectId).then(settings => {
+      return settings;
+    });
+  }
+
+  const updateSettings = async (updates: Partial<AppSettings>) => {
+    try {
+      const current = await db.settings.get(projectId);
+      await db.settings.put({
+        id: projectId,
+        circleBuffer: 100,
+        selectedRemote: ControllerModel.RCP2,
+        ...current,
+        ...updates
+      });
+      log.info('Settings saved', updates);
+    } catch (error) {
+      log.error('Failed to save settings:', error);
+    }
+  };
 
   // ==========================================
   // LIVE MISSIONS
@@ -405,10 +437,6 @@ export function useDatabase(orgId: string, projectId: string) {
   // ==========================================
 
   const saveTopologiesCache = async (topologiesList: Drone[]) => {
-
-    log.info("DEBUG - What is topologiesList?", topologiesList);
-
-
     const cacheKey = `topologies_${projectId}`;
     await db.transaction('rw', db.topologies, db.sync_metadata, async () => {
       await db.topologies.where('projectId').equals(projectId).delete();
@@ -503,20 +531,32 @@ export function useDatabase(orgId: string, projectId: string) {
     });
   };
 
+  useEffect(() => {
+    if (settings === undefined) return;
+    if (settings === null) {
+      updateSettings({});
+    }
+  }, [settings]);
+
   // ==========================================
   // RETURN
   // ==========================================
   return {
     // Queries
+    settings,
     projectRoutes,
     projectTopologies,
     projectAnnotations,
     executionRoutesWithData,
     projectMissions,
 
-    //Cache
+    // Cache
     checkIsCacheFresh,
     markCacheUpdated,
+
+    // Settings
+    getSettings,
+    updateSettings,
 
     // Routes
     getMissionData,

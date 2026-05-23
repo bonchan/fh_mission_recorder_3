@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { createLogger } from '@/utils/logger';
-
-// Adjust the import path based on where you saved it
-import { StorageBackupControls } from '@/components/storage/StorageBackupControls';
-
 import VisualController from '@/components/controller/VisualController';
+import { StorageBackupControls } from '@/components/storage/StorageBackupControls';
+import { useDatabase } from '@/hooks/useDatabase';
+import { createLogger } from '@/utils/logger';
+import React, { useState } from 'react';
+import { ControllerModel } from '@/components/controller/ControllerDriver';
 
 const log = createLogger('SettingsView');
+
 
 export function SettingsView() {
   // 1. Extract URL Parameters
@@ -18,7 +18,21 @@ export function SettingsView() {
 
   // 2. Local State for Settings
   const [debugMode, setDebugMode] = useState(initialDebugMode);
-  const [circleBuffer, setCircleBuffer] = useState<number>(100);
+  // const [circleBuffer, setCircleBuffer] = useState<number>(100);
+
+  const { settings, updateSettings } = useDatabase(orgId, projectId)
+
+
+  const handleBufferBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value);
+    const safeVal = Math.max(100, val); // Force minimum of 100
+    updateSettings({ circleBuffer: safeVal });
+  };
+
+  if (settings == undefined) {
+    updateSettings({})
+    return null
+  }
 
   return (
     <div style={containerStyle}>
@@ -44,8 +58,9 @@ export function SettingsView() {
           <label style={labelStyle}>Compromised Zone Buffer (meters)</label>
           <input
             type="number"
-            value={circleBuffer}
-            onChange={(e) => setCircleBuffer(Number(e.target.value))}
+            value={settings.circleBuffer}
+
+            onChange={(e) => updateSettings({ circleBuffer: Number(e.target.value) })}
             style={inputStyle}
           />
         </div>
@@ -78,6 +93,8 @@ export function SettingsView() {
         <h3 style={sectionHeaderStyle}>RC</h3>
         <div style={formRowStyle}>
           <VisualController
+            rcType={settings.selectedRemote}
+            setRcType={updateSettings}
             isLoading={false}
             size="normal"
             layout='real'

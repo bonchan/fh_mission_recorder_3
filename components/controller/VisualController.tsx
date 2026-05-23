@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
-import './VisualController.css';
+import { ControllerModel } from '@/components/controller/ControllerDriver';
 import Button from '@/components/ui/Button'; // Assuming your custom Button path
-import VisualStick from './VisualStick';
-import VisualButton from './VisualButton';
 import { useDJIController } from '@/hooks/useDJIController';
 import { useFlightHubKeyboard } from '@/hooks/useFlightHubKeyboard';
+import { useToast } from '@/providers/ToastProvider';
+import { useState } from 'react';
+import VisualButton from './VisualButton';
+import './VisualController.css';
+import VisualStick from './VisualStick';
 
-// Adjust these imports based on where you put your driver classes
-import { ControllerModel } from '@/components/controller/ControllerDriver';
-import { AdbControllerDriver } from '@/drivers/AdbControllerDriver';
-import { HidControllerDriver } from '@/drivers/HidControllerDriver';
 
 // Mocking ViewContext if you have it imported elsewhere
 type ViewContext = any;
@@ -23,22 +21,27 @@ interface VisualControllerProps {
   showWheels?: boolean;
   showTouch?: boolean;
   showButtons?: boolean;
+  rcType: ControllerModel | undefined;
+  setRcType: (value: any) => void;
 }
 
 export default function VisualController({
   isLoading,
   viewContext,
   size = 'normal',
-  layout = 'normal', // Default to normal
+  layout = 'normal',
   showSticks = true,
   showWheels = true,
   showTouch = true,
-  showButtons = true
+  showButtons = true,
+  rcType = ControllerModel.RCP2,
+  setRcType,
 }: VisualControllerProps) {
 
   const [isExpanded, setIsExpanded] = useState(false);
-  const [rcType, setRcType] = useState<ControllerModel>(ControllerModel.RCP2);
   const { isConnected, connect, disconnect, sticks, touch, buttons } = useDJIController();
+  const { showToast } = useToast()
+  const isMounted = useRef(false);
 
   useFlightHubKeyboard(sticks, buttons, isConnected);
 
@@ -46,18 +49,16 @@ export default function VisualController({
   const touchY = touch.active ? touch.y : 0;
 
   const handleConnect = () => {
-    let driver;
-    switch (rcType) {
-      case ControllerModel.RCP2:
-        driver = new AdbControllerDriver();
-        break;
-      case ControllerModel.RC3:
-      default:
-        driver = new HidControllerDriver();
-        break;
-    }
-    connect(driver);
+    connect(rcType);
   };
+
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    showToast(`${rcType}`, isConnected ? 'Connected' : 'Disonnected', { 'type': isConnected ? 'success' : 'warning' })
+  }, [isConnected])
 
   return (
     <>
@@ -91,7 +92,7 @@ export default function VisualController({
               <p className="section-title">Controller Setup</p>
               <select
                 value={rcType}
-                onChange={(e) => setRcType(e.target.value as ControllerModel)}
+                onChange={(e) => setRcType({ selectedRemote: e.target.value as ControllerModel })}
                 style={{
                   width: '100%',
                   padding: '8px',

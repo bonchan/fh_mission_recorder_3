@@ -2,6 +2,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ControllerDriver } from '@/components/controller/ControllerDriver';
 import { createLogger } from '@/utils/logger'; 
+import { AdbControllerDriver } from '@/drivers/AdbControllerDriver';
+import { HidControllerDriver } from '@/drivers/HidControllerDriver';
+import { ControllerModel } from '@/components/controller/ControllerDriver';
+
 
 const INITIAL_STICKS = { throttle: 0, yaw: 0, pitch: 0, roll: 0, wheel_l: 0, wheel_r: 0 };
 const INITIAL_TOUCH = { x: 0, y: 0, active: false };
@@ -40,10 +44,21 @@ export function useDJIController() {
     return () => { disconnect(); };
   }, [disconnect]);
 
-  const connect = async (driver: ControllerDriver) => {
+  const connect = async (rcType: ControllerModel) => {
     try {
       if (driverRef.current) {
         await driverRef.current.disconnect();
+      }
+
+      let driver: ControllerDriver;
+      switch (rcType) {
+        case ControllerModel.RCP2:
+          driver = new AdbControllerDriver();
+          break;
+        case ControllerModel.RC3:
+        default:
+          driver = new HidControllerDriver();
+          break;
       }
       
       driverRef.current = driver;

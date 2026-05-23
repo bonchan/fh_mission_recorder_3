@@ -1,17 +1,14 @@
-import { useState, useEffect } from 'react';
-import { createLogger } from '@/utils/logger';
-import { useToast } from '@/providers/ToastProvider';
-import { ViewContext, Mission, Drone, Annotation } from '@/utils/interfaces';
+import VisualController from '@/components/controller/VisualController';
 import { MissionsContainer } from '@/components/mission/MissionsContainer';
-import { CockpitOverlay } from '@/components/cockpitoverlay/CockpitOverlay';
 import Button from '@/components/ui/Button';
-import VisualController from '@/components/controller/VisualController'
-
-import { useSync } from '@/hooks/useSync';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useMessage } from '@/hooks/useMessage';
-
+import { useSync } from '@/hooks/useSync';
+import { useToast } from '@/providers/ToastProvider';
+import { ViewContext } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
 import { toDockDroneList } from '@/utils/mapper';
+import { useEffect } from 'react';
 
 const log = createLogger('SidePanelView');
 
@@ -37,7 +34,7 @@ export default function SidePanelView() {
     )
   }
   log.info("log", orgId, projectId)
-  const { projectTopologies, projectAnnotations } = useDatabase(orgId, projectId)
+  const { settings, updateSettings, projectTopologies, projectAnnotations } = useDatabase(orgId, projectId)
   const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
 
   const { openPage } = useMessage(orgId, projectId)
@@ -94,6 +91,8 @@ export default function SidePanelView() {
           </>
         )}
         <VisualController
+          rcType={settings?.selectedRemote}
+          setRcType={updateSettings}
           isLoading={isFetching}
           size="compact"
           layout='real'

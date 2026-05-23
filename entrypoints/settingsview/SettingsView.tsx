@@ -1,9 +1,9 @@
 import VisualController from '@/components/controller/VisualController';
 import { StorageBackupControls } from '@/components/storage/StorageBackupControls';
 import { useDatabase } from '@/hooks/useDatabase';
+import { useToast } from '@/providers/ToastProvider';
 import { createLogger } from '@/utils/logger';
 import React, { useState } from 'react';
-import { ControllerModel } from '@/components/controller/ControllerDriver';
 
 const log = createLogger('SettingsView');
 
@@ -16,23 +16,22 @@ export function SettingsView() {
   const sourceTabId = parseInt(params.get('sourceTabId') || '0');
   const initialDebugMode = params.get('debugMode') === 'true';
 
-  // 2. Local State for Settings
   const [debugMode, setDebugMode] = useState(initialDebugMode);
-  // const [circleBuffer, setCircleBuffer] = useState<number>(100);
-
   const { settings, updateSettings } = useDatabase(orgId, projectId)
+  const { showToast } = useToast()
 
-
-  const handleBufferBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
-    const safeVal = Math.max(100, val); // Force minimum of 100
-    updateSettings({ circleBuffer: safeVal });
+  const handleBufferChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = Number(e.target.value);
+    if (val > 100) {
+      showToast('Oops', 'Circle buffer limited to 100m', { type: 'warning' })
+      val = Math.min(100, val);
+    }
+    if (val < 1) {
+      showToast('Oops', 'Circle buffer should be more than 0m', { type: 'warning' })
+      val = Math.max(1, val);
+    }
+    updateSettings({ circleBuffer: val });
   };
-
-  if (settings == undefined) {
-    updateSettings({})
-    return null
-  }
 
   return (
     <div style={containerStyle}>
@@ -58,9 +57,8 @@ export function SettingsView() {
           <label style={labelStyle}>Compromised Zone Buffer (meters)</label>
           <input
             type="number"
-            value={settings.circleBuffer}
-
-            onChange={(e) => updateSettings({ circleBuffer: Number(e.target.value) })}
+            value={settings?.circleBuffer}
+            onChange={handleBufferChange}
             style={inputStyle}
           />
         </div>
@@ -93,7 +91,7 @@ export function SettingsView() {
         <h3 style={sectionHeaderStyle}>RC</h3>
         <div style={formRowStyle}>
           <VisualController
-            rcType={settings.selectedRemote}
+            rcType={settings?.selectedRemote}
             setRcType={updateSettings}
             isLoading={false}
             size="normal"

@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { createLogger } from '@/utils/logger';
-
-import { useMessage } from '@/hooks/useMessage';
+import Button from '@/components/ui/Button';
 import { useDatabase } from '@/hooks/useDatabase';
-
+import { useMessage } from '@/hooks/useMessage';
 import { useToast } from '@/providers/ToastProvider';
+import { createLogger } from '@/utils/logger';
+import React, { useState } from 'react';
 
 const log = createLogger('FlightRoutes');
 
@@ -19,6 +18,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
   const {
     projectRoutes,
     toggleExecutionRoute,
+    clearAllExecutionRoutes,
     syncPastedExecutionRoutes,
     syncRouteDetails,
     markRouteFailed,
@@ -123,7 +123,6 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
   const handleSyncAll = async () => {
     setIsSyncing(true);
 
-
     // 1. Group existing DB routes to find their prefixes
     const prefixesToVerify = Array.from(new Set(
       projectRoutes.filter(r => r.isExecutionRoute).map(r => r.name.substring(0, 3).toUpperCase())
@@ -186,7 +185,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
           onChange={() => { }}
           disabled={isLoading || isSyncing}
           style={{
-            flex: 1, // 👈 Takes up remaining space
+            flex: 1,
             padding: '15px',
             border: '2px dashed #007bff',
             borderRadius: '4px',
@@ -197,10 +196,11 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
           }}
         />
 
-        <button
+        <Button
           onClick={handleSyncAll}
           disabled={isSyncing || isLoading}
           style={{
+            maxWidth: '150px',
             padding: '0 20px',
             backgroundColor: isSyncing ? '#6c757d' : '#28a745',
             color: 'white',
@@ -208,11 +208,31 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
             borderRadius: '4px',
             cursor: isSyncing || isLoading ? 'not-allowed' : 'pointer',
             fontWeight: 'bold',
-            whiteSpace: 'nowrap' // 👈 Prevents the button text from wrapping
+            whiteSpace: 'nowrap'
           }}
         >
           {isSyncing ? 'Syncing Details...' : 'Sync All Execution'}
-        </button>
+        </Button>
+
+        <Button
+          variant="sad"
+          requireConfirm={true}
+          confirmText="sure?"
+          confirmVariant="danger"
+          onClick={clearAllExecutionRoutes}
+          disabled={isSyncing || isLoading}
+          style={{
+            maxWidth: '150px',
+            padding: '0 20px',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Remove All Execution
+        </Button>
 
       </div>
 

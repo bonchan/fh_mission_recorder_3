@@ -311,6 +311,14 @@ export function useDatabase(orgId: string, projectId: string) {
     }
   };
 
+  const clearAllExecutionRoutes = async () => {
+    try {
+      await db.flight_routes.toCollection().modify({ isExecutionRoute: false });
+    } catch (error) {
+      log.error('Failed to clear execution routes', error);
+    }
+  };
+
   const markRouteFailed = async (routeId: string) => {
     try {
       await db.flight_routes.update(routeId, { syncStatus: 'FAILED' });
@@ -480,6 +488,10 @@ export function useDatabase(orgId: string, projectId: string) {
     await db.annotations_flags.delete(id);
   };
 
+  const deleteAllCompromisedAnnotations = async () => {
+    await db.annotations_flags.clear();
+  };
+
   // ==========================================
   // BACKUP RESTORE
   // ==========================================
@@ -566,6 +578,7 @@ export function useDatabase(orgId: string, projectId: string) {
     addRouteHeader,
     processAndSaveRoute,
     toggleExecutionRoute,
+    clearAllExecutionRoutes,
     markRouteFailed,
     markRouteStale,
     syncPastedExecutionRoutes,
@@ -579,6 +592,7 @@ export function useDatabase(orgId: string, projectId: string) {
     saveAnnotationsCache,
     saveCompromisedAnnotation,
     deleteCompromisedAnnotation,
+    deleteAllCompromisedAnnotations,
 
     // Missions
     createMission,

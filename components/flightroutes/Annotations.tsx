@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { createLogger } from '@/utils/logger';
-import SearchInput from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
-
-import { useSync } from '@/hooks/useSync';
+import SearchInput from '@/components/ui/SearchInput';
 import { useDatabase } from '@/hooks/useDatabase';
-
+import { useSync } from '@/hooks/useSync';
 import { useToast } from '@/providers/ToastProvider';
+import { createLogger } from '@/utils/logger';
+import React, { useEffect, useMemo, useState } from 'react';
 
 
 const log = createLogger('Annotations');
@@ -19,7 +17,7 @@ interface AnnotationsProps {
 }
 
 export function Annotations({ orgId, projectId, sourceTabId, debugMode }: AnnotationsProps) {
-  const { projectAnnotations, saveCompromisedAnnotation, deleteCompromisedAnnotation } = useDatabase(orgId, projectId);
+  const { projectAnnotations, saveCompromisedAnnotation, deleteCompromisedAnnotation, deleteAllCompromisedAnnotations } = useDatabase(orgId, projectId);
   const { isSyncingAnnotations, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
 
   const compromisedAnnotations = projectAnnotations.filter(a => a.isCompromised);
@@ -125,24 +123,43 @@ export function Annotations({ orgId, projectId, sourceTabId, debugMode }: Annota
       <section className="saved-list">
         <h2>Compromised ({compromisedAnnotations.length})</h2>
 
-        <input
-          type="text"
-          placeholder="Click here and paste (Ctrl+V) from Sheets..."
-          onPaste={handlePaste}
-          value=""
-          onChange={() => { }}
-          style={{
-            width: '100%',
-            padding: '10px',
-            marginBottom: '15px',
-            border: '2px dashed #007bff',
-            borderRadius: '4px',
-            textAlign: 'center',
-            outline: 'none',
-            background: 'transparent',
-            color: 'white'
-          }}
-        />
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <input
+            type="text"
+            placeholder="Click here and paste (Ctrl+V) from Sheets..."
+            onPaste={handlePaste}
+            value=""
+            onChange={() => { }}
+            style={{
+              flex: 1,
+              padding: '15px',
+              border: '2px dashed #007bff',
+              borderRadius: '4px',
+              textAlign: 'center',
+              outline: 'none',
+              background: 'transparent',
+            }}
+          />
+          <Button
+            variant="sad"
+            requireConfirm={true}
+            confirmText="sure?"
+            confirmVariant="danger"
+            // style={{ maxWidth: '25px', padding: '4px 4px' }}
+            onClick={deleteAllCompromisedAnnotations}
+            style={{
+              maxWidth: '150px',
+              padding: '0 20px',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Delete all
+          </Button>
+        </div>
 
         <div className="list-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {compromisedAnnotations.length === 0 && <p style={{ color: '#888' }}>No active annotations. Add from the right or paste above.</p>}

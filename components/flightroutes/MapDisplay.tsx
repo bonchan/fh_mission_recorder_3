@@ -1,13 +1,12 @@
-import { createLogger } from '@/utils/logger';
-import React, { useEffect, useRef, useState } from 'react';
-
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Circle, LayerGroup, LayersControl, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
-
 import { FlightRoute } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
 import { dockEmptyIcon, dockFullIcon, getRotatedDroneIcon } from '@/utils/mapIcons';
 import { getStatusColor } from '@/utils/utils';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import React, { useEffect, useRef, useState } from 'react';
+import { Circle, LayerGroup, LayersControl, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import Button from '../ui/Button';
 
 const log = createLogger('MapDisplay');
 
@@ -58,6 +57,8 @@ interface MapDisplayProps {
   compromisedAnnotations: Annotation[];
   focusedAnnoId: string | number | null;
   setFocusedAnnoId: (id: string | number | null) => void;
+  liveData: boolean;
+  toggleLiveData: () => void;
 }
 
 // Logic for initial "Fit All" view
@@ -122,7 +123,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   annotations,
   compromisedAnnotations,
   focusedAnnoId,
-  setFocusedAnnoId
+  setFocusedAnnoId,
+  liveData,
+  toggleLiveData,
 }) => {
   const MAX_ANNOTATIONS = 500
   const START_ZOOM = 9
@@ -157,6 +160,17 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
   return (
     <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, overflow: 'hidden' }}>
+
+      <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 1000 }}>
+        <Button
+          onClick={toggleLiveData}
+          variant={liveData ? 'success' : 'sad'}
+        >
+          Live
+        </Button>
+      </div>
+
+
       <MapContainer
         center={defaultCenter}
         zoom={currentZoom}

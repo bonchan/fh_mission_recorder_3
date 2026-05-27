@@ -166,7 +166,6 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
           </div>
         ) : (<>
           <Button onClick={handleValidation}>Validate</Button>
-          <Button onClick={() => { setIsRunning(!isRunning) }}>{isRunning ? 'Stop refresh' : 'Start refresh'}</Button>
           <MultiSelectFilter
             options={STATUS_OPTIONS}
             selectedValues={selectedStatuses}
@@ -190,6 +189,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
                     <Button
                       onClick={() => { handleExport(r as FlightRoute) }}
                       disabled={isUploading}
+                      style={{ maxWidth: '50px', padding: '4px 4px' }}
                     >
                       export
                     </Button>
@@ -214,7 +214,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
 
       {/* Column 2: Compromised Annotations */}
       <div style={columnStyle}>
-        <h4 style={{ marginTop: 0 }}>⚠️ Compromised ({compromisedAnnotations.length})</h4>
+        <h4 style={{ marginTop: 0 }}>⚠️ Compromised ({compromisedAnnotations.length}) | ⭕ Circle Buffer {settings.circleBuffer}m</h4>
         {compromisedAnnotations.map(a => (
           <div
             key={a.id}
@@ -242,6 +242,9 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
           annotations={projectAnnotations}
           focusedAnnoId={focusedAnnoId}
           setFocusedAnnoId={() => { }}
+
+          liveData={isRunning}
+          toggleLiveData={() => { setIsRunning(!isRunning) }}
 
           settings={{ circleBuffer: settings.circleBuffer }}
         />

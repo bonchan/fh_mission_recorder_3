@@ -70,7 +70,7 @@ export function SettingsView() {
           <label style={labelStyle}>Compromised Zone Buffer (meters)</label>
           <input
             type="number"
-            value={settings?.circleBuffer}
+            value={settings.circleBuffer}
             onChange={handleBufferChange}
             style={inputStyle}
           />
@@ -79,7 +79,7 @@ export function SettingsView() {
           <label style={labelStyle}>Security Points Safe Height (meters)</label>
           <input
             type="number"
-            value={settings?.safeSecurityHeight}
+            value={settings.safeSecurityHeight}
             onChange={handleSafeSecurityHeightChange}
             style={inputStyle}
           />
@@ -110,7 +110,7 @@ export function SettingsView() {
         <h3 style={sectionHeaderStyle}>RC</h3>
         <div style={formRowStyle}>
           <VisualController
-            rcType={settings?.selectedRemote}
+            rcType={settings.selectedRemote}
             setRcType={updateSettings}
             isLoading={false}
             size="normal"

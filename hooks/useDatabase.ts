@@ -12,6 +12,12 @@ const log = createLogger('useDatabase');
 
 export function useDatabase(orgId: string, projectId: string) {
 
+  const DEFAULT_SETTINGS: AppSettings = {
+    id: projectId,
+    circleBuffer: 100,
+    safeSecurityHeight: 70,
+    selectedRemote: ControllerModel.RCP2,
+  };
 
   const RESET_ROUTE_PAYLOAD = {
     syncStatus: 'PENDING' as const,
@@ -29,9 +35,16 @@ export function useDatabase(orgId: string, projectId: string) {
   // ==========================================
 
   const settings = useLiveQuery(
-    () => db.settings.get(projectId),
+    async () => {
+      const stored = await db.settings.get(projectId);
+      if (!stored) {
+        await db.settings.put(DEFAULT_SETTINGS);
+        return DEFAULT_SETTINGS;
+      }
+      return stored;
+    },
     [projectId]
-  );
+  ) ?? DEFAULT_SETTINGS;
 
   const projectRoutes = useLiveQuery(
     () => db.flight_routes
@@ -76,6 +89,7 @@ export function useDatabase(orgId: string, projectId: string) {
   ) || [];
 
   const executionRoutesWithData = useLiveQuery(async (): Promise<FlightRoute[]> => {
+    log.info('executionRoutesWithData')
     const headers = await db.flight_routes
       .where('projectId').equals(projectId)
       .filter(r => r.isExecutionRoute)
@@ -111,15 +125,12 @@ export function useDatabase(orgId: string, projectId: string) {
           } else {
             safetyStatus = 'AREA_WARNING';
 
-            const circleBuffer = settings?.circleBuffer ?? 100;
-            const safeSecurityHeight = settings?.safeSecurityHeight ?? 70;
-
             if (data?.originalData) {
               const collisionResult = calculateRouteCollision(
                 data.originalData,
                 compromisedAnnotations,
-                circleBuffer,
-                safeSecurityHeight
+                settings.circleBuffer,
+                settings.safeSecurityHeight
               );
 
               safetyStatus = collisionResult.compromised ? 'PATH_COMPROMISED' : 'AREA_WARNING';
@@ -145,7 +156,7 @@ export function useDatabase(orgId: string, projectId: string) {
     );
 
     return fullRoutes;
-  }, [projectId]);
+  }, [projectId, settings.circleBuffer, settings.safeSecurityHeight]);
 
   // ==========================================
   // SETTINGS
@@ -155,10 +166,7 @@ export function useDatabase(orgId: string, projectId: string) {
     try {
       const current = await db.settings.get(projectId);
       await db.settings.put({
-        id: projectId,
-        circleBuffer: 100,
-        safeSecurityHeight: 70,
-        selectedRemote: ControllerModel.RCP2,
+        ...DEFAULT_SETTINGS,
         ...current,
         ...updates
       });
@@ -326,7 +334,6 @@ export function useDatabase(orgId: string, projectId: string) {
     }
   };
 
-
   const createBaseRouteHeader = (id: string, name: string, updateTime: number, isExecution: boolean): FlightRouteHeader => ({
     id,
     projectId,
@@ -381,7 +388,6 @@ export function useDatabase(orgId: string, projectId: string) {
     }
   };
 
-  // The details call (step 2): fills coords/distance, rechecks update_time
   const syncRouteDetails = async (routeId: string, apiData: any) => {
     const ext = apiData?.ext || {};
     const apiUpdateTime = apiData?.update_time || apiData?.updateTime;
@@ -429,6 +435,10 @@ export function useDatabase(orgId: string, projectId: string) {
       log.error(`syncRouteDetails failed for ${routeId}`, error);
       await db.flight_routes.update(routeId, { syncStatus: 'FAILED' });
     }
+  };
+
+  const touchRouteValidation = async (routeId: string) => {
+    await db.flight_routes.update(routeId, { lastValidated: Date.now() });
   };
 
   // ==========================================
@@ -530,13 +540,6 @@ export function useDatabase(orgId: string, projectId: string) {
     });
   };
 
-  useEffect(() => {
-    if (settings === undefined) return;
-    if (settings === null) {
-      updateSettings({});
-    }
-  }, [settings]);
-
   // ==========================================
   // RETURN
   // ==========================================
@@ -567,6 +570,7 @@ export function useDatabase(orgId: string, projectId: string) {
     markRouteStale,
     syncPastedExecutionRoutes,
     syncRouteDetails,
+    touchRouteValidation,
 
     // Topologies
     saveTopologiesCache,

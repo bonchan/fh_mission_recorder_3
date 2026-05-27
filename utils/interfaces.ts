@@ -83,6 +83,7 @@ export interface FlightRouteHeader {
   projectId: string;
   name: string;
   updateTime: number;
+  lastValidated?: number;
   syncStatus: 'PENDING' | 'SYNCED' | 'READY' | 'FAILED';
   safetyStatus: RouteSafetyStatus;
   isExecutionRoute: boolean | false;

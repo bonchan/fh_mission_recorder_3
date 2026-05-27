@@ -38,6 +38,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
     executionRoutesWithData,
 
     processAndSaveRoute,
+    touchRouteValidation,
     toggleExecutionRoute,
     deleteFlightRoute
   } = useDatabase(orgId, projectId);
@@ -120,6 +121,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
         // Only download if we're in AREA_WARNING and don't have data yet
         if (route.safetyStatus !== 'AREA_WARNING' || !route.kmzWithoutResUrl || route.data?.originalData) {
           log.warn(`Skipping ${route.name}`, route);
+          await touchRouteValidation(route.id);
           continue;
         }
 
@@ -150,8 +152,6 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
       setIsValidating(false);
     }
   };
-
-  const circleBuffer = settings?.circleBuffer ?? 100;
 
   return (
     <div style={{ display: 'flex', height: '100%', width: '100%', fontFamily: 'sans-serif' }}>
@@ -243,7 +243,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
           focusedAnnoId={focusedAnnoId}
           setFocusedAnnoId={() => { }}
 
-          settings={{ circleBuffer: circleBuffer }}
+          settings={{ circleBuffer: settings.circleBuffer }}
         />
       </div>
     </div>

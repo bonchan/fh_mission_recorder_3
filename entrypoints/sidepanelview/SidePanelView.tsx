@@ -91,7 +91,7 @@ export default function SidePanelView() {
           </>
         )}
         <VisualController
-          rcType={settings?.selectedRemote}
+          rcType={settings.selectedRemote}
           setRcType={updateSettings}
           isLoading={isFetching}
           size="compact"

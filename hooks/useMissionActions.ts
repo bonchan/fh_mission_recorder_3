@@ -78,25 +78,24 @@ export function useMissionActions(orgId: string, projectId: string) {
       const toastTTL = 3000;
       try {
         setIsUploading(true);
-        showToast('Getting storage credentials', '', { type: "info", swarm: true, duration: toastTTL })
-        const stsResponse = await getStorageUploadCredentials();
-        const { object_key_prefix } = stsResponse.credentials.data;
-
         showToast('Generating mission file', '', { type: "info", swarm: true, duration: toastTTL })
-
         const date = new Date();
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
         const fileName = `NO VOLAR ${route.name} ${yyyy}-${mm}-${dd}`;
-
+        
         const cleanName = fileName.replace(/[<>:"/|?*._\\]/g, '');
         const fileUUID = crypto.randomUUID();
         const tempFileName = `${fileUUID}.kmz`;
-
+        
         const builder = new RouteBuilder();
         const newKmzBinary = await builder.buildKmz(route.data.modifiedData);
         const file = new File([newKmzBinary.buffer as ArrayBuffer], tempFileName, { type: 'application/zip' });
+
+        showToast('Getting storage credentials', '', { type: "info", swarm: true, duration: toastTTL })
+        const stsResponse = await getStorageUploadCredentials();
+        const { object_key_prefix } = stsResponse.credentials.data;
 
         const objectKey = `${object_key_prefix}/${tempFileName}`;
         showToast('Uploading mission to FH', '', { type: "info", swarm: true, duration: toastTTL })

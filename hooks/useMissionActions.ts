@@ -5,7 +5,7 @@ import { Mission } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { delay } from '@/utils/time';
 import { generateDJIMission } from '@/utils/wpml-generator';
-import { RouteBuilder } from 'dji-kmz-parser';
+import { RouteBuilder, type DjiKmlRoot } from 'dji-kmz-parser';
 import { useState } from 'react';
 
 
@@ -84,11 +84,14 @@ export function useMissionActions(orgId: string, projectId: string) {
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
         const fileName = `NO VOLAR ${route.name} ${yyyy}-${mm}-${dd}`;
-        
+
         const cleanName = fileName.replace(/[<>:"/|?*._\\]/g, '');
         const fileUUID = crypto.randomUUID();
         const tempFileName = `${fileUUID}.kmz`;
-        
+
+        sanitizeSpotCheckData(route.data.modifiedData.template);
+        sanitizeSpotCheckData(route.data.modifiedData.waylines);
+
         const builder = new RouteBuilder();
         const newKmzBinary = await builder.buildKmz(route.data.modifiedData);
         const file = new File([newKmzBinary.buffer as ArrayBuffer], tempFileName, { type: 'application/zip' });
@@ -119,6 +122,69 @@ export function useMissionActions(orgId: string, projectId: string) {
       }
     }
   };
+
+
+  /**
+   * Scrubs AI Spot-Check photo references from the flight plan.
+   * If these are left in but the `res` folder is missing, FlightHub will reject the upload.
+   */
+  function sanitizeSpotCheckData(data: DjiKmlRoot): void {
+    // Helper to ensure we can iterate safely
+    const ensureArray = (item: any) => Array.isArray(item) ? item : (item ? [item] : []);
+
+    // AI Spot-Check actions only exist in the template file
+    const folders = ensureArray(data.kml.Document.Folder);
+
+    folders.forEach((folder: any) => {
+      const placemarks = ensureArray(folder.Placemark);
+
+      placemarks.forEach((placemark: any) => {
+        const actionGroups = ensureArray(placemark['wpml:actionGroup']);
+
+        actionGroups.forEach((actionGroup: any) => {
+          const actions = ensureArray(actionGroup['wpml:action']);
+
+          actions.forEach((action: any) => {
+            // Only target the orientedShoot actions
+            if (action['wpml:actionActuatorFunc'] === 'orientedShoot') {
+              const params = action['wpml:actionActuatorFuncParam'];
+              if (params) {
+                // 1. Delete the problematic file references
+                delete params['wpml:orientedCameraType'];
+                delete params['wpml:orientedFilePath'];
+                delete params['wpml:orientedFileMD5'];
+                delete params['wpml:orientedFileSize'];
+                delete params['wpml:orientedFileSuffix'];
+
+                delete params['wpml:orientedCameraApertue'];
+                delete params['wpml:orientedCameraLuminance'];
+                delete params['wpml:orientedCameraShutterTime'];
+
+                // 2. AGGRESSIVELY OVERWRITE AI TARGETING DATA
+                params['wpml:accurateFrameValid'] = 0;
+                params['wpml:focusX'] = 0;
+                params['wpml:focusY'] = 0;
+                params['wpml:focusRegionWidth'] = 0;
+                params['wpml:focusRegionHeight'] = 0;
+                params['wpml:imageWidth'] = 0;
+                params['wpml:imageHeight'] = 0;
+                params['wpml:targetAngle'] = 0;
+                params['wpml:AFPos'] = 0;
+
+                // 3. Generate a brand new UUID
+                // This permanently breaks the link between this action and FlightHub's old image records
+                params['wpml:actionUUID'] = crypto.randomUUID();
+
+                // Note: We leave pitch, yaw, aircraftHeading, focalLength, 
+                // and payloadLensIndex untouched so the drone still takes the shot properly!
+              }
+            }
+          });
+        });
+      });
+    });
+  }
+
 
   return {
     debugMission,

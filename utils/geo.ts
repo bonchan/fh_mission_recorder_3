@@ -256,9 +256,10 @@ export function calculateTangentBypass(
   const midAngle = ang1 + (Math.atan2(Math.sin(ang2 - ang1), Math.cos(ang2 - ang1)) / 2);
 
   // Generate the 3 bypass points (Entry tangent, Midpoint pushed out by 2m, Exit tangent)
+  const apexPush = Math.max(2, radiusM * 0.1); // at least 10% of radius
   const pts = [
     { x: radiusM * Math.cos(ang1), y: radiusM * Math.sin(ang1) },
-    { x: (radiusM + 2) * Math.cos(midAngle), y: (radiusM + 2) * Math.sin(midAngle) },
+    { x: (radiusM + apexPush) * Math.cos(midAngle), y: (radiusM + apexPush) * Math.sin(midAngle) },
     { x: radiusM * Math.cos(ang2), y: radiusM * Math.sin(ang2) }
   ];
 

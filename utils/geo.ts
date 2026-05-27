@@ -269,76 +269,11 @@ export function calculateTangentBypass(
   }));
 }
 
-export function calculateRouteCollision1(
-  routeId: string | number,
-  waypoints: any[],
-  annotations: any[],
-  circleBuffer: number
-) {
-  let isCompromised = false;
-  const safeWaypoints: any[] = [];
-  let lastSafeWp: any = null;
-  let activeDangerZone: any = null;
-
-  const buffer5 = circleBuffer * 1.05;
-  const buffer15 = circleBuffer * 1.15;
-
-  // Sort waypoints by index to ensure chronological order
-  const sortedWps = [...waypoints].sort((a, b) => a.index - b.index);
-
-  for (const wp of sortedWps) {
-    // 1. Check if waypoint is inside an annotation circle
-    const hitZone = annotations.find(a => {
-      if (!a.latitude || !a.longitude) return false;
-      const dist = get3DDistanceInMeters(wp.latitude, wp.longitude, 0, a.latitude, a.longitude, 0);
-      return dist <= circleBuffer;
-    });
-
-    if (!hitZone) {
-      if (activeDangerZone && lastSafeWp) {
-        // 2. Check if the straight line between last safe point and current safe point clips the circle
-        const distToCircle = getDistanceToSegment(
-          lastSafeWp.latitude, lastSafeWp.longitude,
-          wp.latitude, wp.longitude,
-          activeDangerZone.latitude, activeDangerZone.longitude
-        );
-
-        if (distToCircle < buffer5) {
-          // 3. Generate the 3-point bypass route
-          const bypass = calculateTangentBypass(
-            lastSafeWp.latitude, lastSafeWp.longitude,
-            wp.latitude, wp.longitude,
-            activeDangerZone.latitude, activeDangerZone.longitude,
-            buffer15
-          );
-
-          // Add bypass points to the safe route
-          bypass.forEach(bWp => safeWaypoints.push({ ...bWp }));
-        }
-        activeDangerZone = null;
-      }
-
-      safeWaypoints.push(wp);
-      lastSafeWp = wp;
-    } else {
-      isCompromised = true;
-      activeDangerZone = hitZone;
-    }
-  }
-
-  return {
-    flight_route_id: routeId,
-    compromised: isCompromised,
-    safe_waypoints: safeWaypoints
-  };
-}
-
-
-
 export function calculateRouteCollision(
   originalData: DjiKmzData,
   annotations: Annotation[],
-  circleBuffer: number
+  circleBuffer: number,
+  safeHeight: number
 ): RouteCollisionResult {
 
   const buffer5 = circleBuffer * 1.05;
@@ -370,12 +305,25 @@ export function calculateRouteCollision(
         );
 
         if (distToCircle < buffer5) {
-          const bypass = calculateTangentBypass(
+          let bypass = calculateTangentBypass(
             lastSafeWp.latitude, lastSafeWp.longitude,
             wp.latitude, wp.longitude,
             activeDangerZone.latitude, activeDangerZone.longitude,
             buffer15
           );
+
+          // If the tangent generates 3 points, check the horizontal span. 
+          // If the obstacle is smaller than 60 meters across, keep only the apex!
+          if (bypass.length === 3) {
+            const spanDist = get3DDistanceInMeters(
+              bypass[0].latitude, bypass[0].longitude, 0,
+              bypass[2].latitude, bypass[2].longitude, 0
+            );
+
+            if (spanDist < 60) {
+              bypass = [bypass[1]]; // Drop entry/exit, keep middle point
+            }
+          }
 
           // record where to insert bypass points — after lastSafeWp
           bypass.forEach(bWp => bypassInsertions.push({
@@ -400,37 +348,88 @@ export function calculateRouteCollision(
   }
 
   // --- PASS 2: apply changes via RouteEditor ---
-  const editor = new RouteEditor(originalData); // structuredClone happens inside
+  const editor = new RouteEditor(originalData);
 
-  // Remove compromised waypoints — highest index first to avoid reindex shifting
+  // Remove compromised waypoints
   [...indicesToRemove].sort((a, b) => b - a).forEach(index => {
     editor.removeWaypoint(index);
   });
 
   const baseOffset = editor.getHeightOffset();
   const geoidUndulation = editor.getGeoidUndulation();
-  const desiredFlightHeight = 70;
-  const absoluteHeight = desiredFlightHeight + baseOffset;
-  const egm96Height = absoluteHeight - geoidUndulation; 
+  const ensureArray = (item: any) => Array.isArray(item) ? item : (item ? [item] : []);
 
-  log.info("baseOffset", baseOffset);
+  const origWaylineFolders = ensureArray(originalData.waylines.kml.Document.Folder);
+  const safeOrigWaylinePlacemarks = ensureArray(origWaylineFolders[0]?.Placemark);
 
-  // Sort insertions by afterIndex ascending so we process them in order
+  // 🚨 THE ALTITUDE FIX 🚨
+  // Check the actual execution mode so we know what Math to apply
+  const executeMode = origWaylineFolders[0]?.['wpml:executeHeightMode'] || 'relativeToStartPoint';
+  const takeoffMSL = baseOffset - geoidUndulation;
+
+  let minimumSafeExecHeight: number;
+  switch (executeMode) {
+    case 'WGS84':
+      // executeHeight is ellipsoid height; floor is takeoff WGS84 + safeHeight
+      minimumSafeExecHeight = baseOffset + safeHeight;
+      break;
+    case 'EGM96':
+      // executeHeight is MSL altitude; floor is takeoff MSL + safeHeight
+      minimumSafeExecHeight = takeoffMSL + safeHeight;
+      break;
+    case 'relativeToStartPoint':
+    default:
+      // executeHeight is meters above takeoff; floor is just safeHeight
+      minimumSafeExecHeight = safeHeight;
+      break;
+  }
+
+  // Sort insertions by afterIndex ascending
   const sortedInsertions = [...bypassInsertions].sort((a, b) => a.afterIndex - b.afterIndex);
-
-  // Track how many waypoints we've inserted so far to offset the target index
   let insertionOffset = 0;
 
-  // Also account for removed waypoints that come BEFORE the insertion point
   sortedInsertions.forEach(({ afterIndex, lat, lon }) => {
-    // How many removed indices were <= afterIndex?
-    const removedBefore = indicesToRemove.filter(i => i <= afterIndex).length;
+    // 1. Get the neighbors from the WAYLINES file
+    const prevWl = safeOrigWaylinePlacemarks.find((p: any) => p['wpml:index'] === afterIndex);
+    const nextWl = safeOrigWaylinePlacemarks.find((p: any) => p['wpml:index'] === afterIndex + 1);
 
-    // Adjusted index in the mutated array
+    const prevExecHeight = prevWl ? Number(prevWl['wpml:executeHeight'] || 0) : 0;
+    const nextExecHeight = nextWl ? Number(nextWl['wpml:executeHeight'] || 0) : 0;
+
+    // 2. Find the highest execution altitude of the neighbors
+    const maxNeighborExecHeight = Math.max(prevExecHeight, nextExecHeight);
+
+    // 3. Final execute height respects both neighbors and our hard 70m floor
+    let finalExecuteHeight = Math.max(maxNeighborExecHeight, minimumSafeExecHeight);
+
+    let ellipsoidHeight: number;  // WGS84 absolute — for ellipsoidHeight field in template
+    let height: number;           // EGM96 MSL — for height field in template
+    let relativeHeight: number;   // relative to takeoff — for relativeHeight field in template
+
+    switch (executeMode) {
+      case 'WGS84':
+        ellipsoidHeight = finalExecuteHeight;
+        height = finalExecuteHeight - geoidUndulation;           // WGS84 → EGM96
+        relativeHeight = finalExecuteHeight - baseOffset;        // WGS84 → relative
+        break;
+      case 'EGM96':
+        height = finalExecuteHeight;
+        ellipsoidHeight = finalExecuteHeight + geoidUndulation;  // EGM96 → WGS84
+        relativeHeight = ellipsoidHeight - baseOffset;           // WGS84 → relative
+        break;
+      case 'relativeToStartPoint':
+      default:
+        relativeHeight = finalExecuteHeight;
+        ellipsoidHeight = baseOffset + finalExecuteHeight;       // relative → WGS84
+        height = ellipsoidHeight - geoidUndulation;              // WGS84 → EGM96
+        break;
+    }
+
+    const removedBefore = indicesToRemove.filter(i => i <= afterIndex).length;
     const adjustedIndex = afterIndex - removedBefore + insertionOffset;
 
-    const templateWp = editor.buildTemplateBypassWp(lat, lon, egm96Height, absoluteHeight);
-    const waylineWp = editor.buildWaylineBypassWp(lat, lon, absoluteHeight);
+    const templateWp = editor.buildTemplateBypassWp(lat, lon, relativeHeight, ellipsoidHeight);
+    const waylineWp = editor.buildWaylineBypassWp(lat, lon, finalExecuteHeight);
 
     editor.addWaypoint(adjustedIndex + 1, templateWp, waylineWp);
 

@@ -21,6 +21,7 @@ export interface SyncMetadata {
 export interface AppSettings {
   id: string;
   circleBuffer: number;
+  safeSecurityHeight: number;
   selectedRemote: ControllerModel;
 }
 

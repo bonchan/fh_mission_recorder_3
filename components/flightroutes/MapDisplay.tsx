@@ -311,7 +311,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                 <Circle
                   key={anno.id}
                   center={[anno.latitude, anno.longitude]}
-                  radius={100}
+                  radius={circleBuffer}
                   pathOptions={{
                     color: anno.color || 'red',
                     fillColor: anno.color || 'red',

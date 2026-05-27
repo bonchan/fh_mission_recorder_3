@@ -1,4 +1,4 @@
-import { CIRCLE_BUFFER, FIVE_MIN_MS } from '@/utils/constants';
+import { FIVE_MIN_MS } from '@/utils/constants';
 import { db } from '@/utils/db';
 import { get3DDistanceInMeters } from '@/utils/geo';
 import { AnnotationFlag, AppSettings, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint } from '@/utils/interfaces';
@@ -111,11 +111,15 @@ export function useDatabase(orgId: string, projectId: string) {
           } else {
             safetyStatus = 'AREA_WARNING';
 
+            const circleBuffer = settings?.circleBuffer ?? 100;
+            const safeSecurityHeight = settings?.safeSecurityHeight ?? 70;
+
             if (data?.originalData) {
               const collisionResult = calculateRouteCollision(
                 data.originalData,
                 compromisedAnnotations,
-                CIRCLE_BUFFER
+                circleBuffer,
+                safeSecurityHeight
               );
 
               safetyStatus = collisionResult.compromised ? 'PATH_COMPROMISED' : 'AREA_WARNING';
@@ -147,18 +151,13 @@ export function useDatabase(orgId: string, projectId: string) {
   // SETTINGS
   // ==========================================
 
-  const getSettings = async () => {
-    db.settings.get(projectId).then(settings => {
-      return settings;
-    });
-  }
-
   const updateSettings = async (updates: Partial<AppSettings>) => {
     try {
       const current = await db.settings.get(projectId);
       await db.settings.put({
         id: projectId,
         circleBuffer: 100,
+        safeSecurityHeight: 70,
         selectedRemote: ControllerModel.RCP2,
         ...current,
         ...updates
@@ -555,7 +554,6 @@ export function useDatabase(orgId: string, projectId: string) {
     markCacheUpdated,
 
     // Settings
-    getSettings,
     updateSettings,
 
     // Routes

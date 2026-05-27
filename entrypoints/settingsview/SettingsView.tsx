@@ -22,15 +22,28 @@ export function SettingsView() {
 
   const handleBufferChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = Number(e.target.value);
-    if (val > 100) {
+    if (val > 200) {
       showToast('Oops', 'Circle buffer limited to 100m', { type: 'warning' })
-      val = Math.min(100, val);
+      val = Math.min(200, val);
     }
-    if (val < 1) {
-      showToast('Oops', 'Circle buffer should be more than 0m', { type: 'warning' })
-      val = Math.max(1, val);
+    if (val < 50) {
+      showToast('Oops', 'Circle buffer should be more than 50m', { type: 'warning' })
+      val = Math.max(50, val);
     }
     updateSettings({ circleBuffer: val });
+  };
+
+  const handleSafeSecurityHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = Number(e.target.value);
+    if (val > 120) {
+      showToast('Oops', 'Safe Security Height limited to 120m', { type: 'warning' })
+      val = Math.min(120, val);
+    }
+    if (val < 70) {
+      showToast('Oops', 'Safe Security Height should be more than 70m', { type: 'warning' })
+      val = Math.max(70, val);
+    }
+    updateSettings({ safeSecurityHeight: val });
   };
 
   return (
@@ -62,9 +75,15 @@ export function SettingsView() {
             style={inputStyle}
           />
         </div>
-        <p style={helpTextStyle}>
-          This defines the size of the danger zone around a compromised point on the dashboard map.
-        </p>
+        <div style={formRowStyle}>
+          <label style={labelStyle}>Security Points Safe Height (meters)</label>
+          <input
+            type="number"
+            value={settings?.safeSecurityHeight}
+            onChange={handleSafeSecurityHeightChange}
+            style={inputStyle}
+          />
+        </div>
       </section>
 
       {/* --- Section 3: Developer Options --- */}

@@ -5,7 +5,6 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { useMissionActions } from '@/hooks/useMissionActions';
 import { useSync } from '@/hooks/useSync';
 import { useToast } from '@/providers/ToastProvider';
-import { CIRCLE_BUFFER } from '@/utils/constants';
 import { FlightRouteData, ROUTE_SAFETY_STATUSES, RouteSafetyStatus } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { toDockDroneList } from '@/utils/mapper';
@@ -32,6 +31,7 @@ interface DashboardProps {
 export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: DashboardProps) {
   // 1. Reactive Data from IndexedDB
   const {
+    settings,
     projectRoutes,
     projectTopologies,
     projectAnnotations,
@@ -151,6 +151,8 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
     }
   };
 
+  const circleBuffer = settings?.circleBuffer ?? 100;
+
   return (
     <div style={{ display: 'flex', height: '100%', width: '100%', fontFamily: 'sans-serif' }}>
       {/* Column 1: Execution Routes */}
@@ -241,7 +243,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
           focusedAnnoId={focusedAnnoId}
           setFocusedAnnoId={() => { }}
 
-          settings={{ circleBuffer: CIRCLE_BUFFER }}
+          settings={{ circleBuffer: circleBuffer }}
         />
       </div>
     </div>

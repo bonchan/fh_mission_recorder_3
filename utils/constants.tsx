@@ -5,8 +5,6 @@ export const DJI_COCKPIT_URL_REGEX = /^https:\/\/fh\.dji\.com\/organization\/([^
 export const FIVE_MIN_MS = 5 * 60 * 1000;
 export const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
-export const CIRCLE_BUFFER = 100
-
 export const ICONS_ON = {
     "128": "icon/128-on.png",
     "96": "icon/96-on.png",

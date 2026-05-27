@@ -125,6 +125,7 @@ export function Annotations({ orgId, projectId, sourceTabId, debugMode }: Annota
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <input
+            id="annotations-input"
             type="text"
             placeholder="Click here and paste (Ctrl+V) from Sheets..."
             onPaste={handlePaste}
@@ -150,6 +151,7 @@ export function Annotations({ orgId, projectId, sourceTabId, debugMode }: Annota
             style={{
               maxWidth: '150px',
               padding: '0 20px',
+              marginBottom: '0px',
               color: 'white',
               border: 'none',
               borderRadius: '4px',

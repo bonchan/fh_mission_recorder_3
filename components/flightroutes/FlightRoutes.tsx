@@ -178,6 +178,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
 
         <input
+          id="flight-routes-input"
           type="text"
           placeholder={isLoading ? "Processing API sync..." : "Click and paste (Ctrl+V) execution routes here..."}
           onPaste={handlePaste}
@@ -202,6 +203,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
           style={{
             maxWidth: '150px',
             padding: '0 20px',
+            marginBottom: '0px',
             backgroundColor: isSyncing ? '#6c757d' : '#28a745',
             color: 'white',
             border: 'none',
@@ -224,6 +226,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
           style={{
             maxWidth: '150px',
             padding: '0 20px',
+            marginBottom: '0px',
             color: 'white',
             border: 'none',
             borderRadius: '4px',

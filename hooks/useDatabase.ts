@@ -30,18 +30,32 @@ export function useDatabase(orgId: string, projectId: string) {
     waylinePointNums: null,
   };
 
+
+  useEffect(() => {
+    if (!projectId) return;
+
+    const initializeSettings = async () => {
+      try {
+        const stored = await db.settings.get(projectId);
+        if (!stored) {
+          await db.settings.put(DEFAULT_SETTINGS);
+        }
+      } catch (error) {
+        log.error('Failed to initialize settings:', error);
+      }
+    };
+
+    initializeSettings();
+  }, [projectId]);
+
+
   // ==========================================
   // REACTIVE QUERIES
   // ==========================================
-
   const settings = useLiveQuery(
     async () => {
       const stored = await db.settings.get(projectId);
-      if (!stored) {
-        await db.settings.put(DEFAULT_SETTINGS);
-        return DEFAULT_SETTINGS;
-      }
-      return stored;
+      return stored || DEFAULT_SETTINGS;
     },
     [projectId]
   ) ?? DEFAULT_SETTINGS;

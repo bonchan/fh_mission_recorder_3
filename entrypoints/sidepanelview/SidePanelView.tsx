@@ -72,6 +72,15 @@ export default function SidePanelView() {
                 Flight Routes
               </Button>
               <Button
+  onClick={() => {
+    openPage('OPEN_MANAGER_ROUTE', undefined, sourceTabId)
+  }}
+  variant="primary"
+  style={{ width: '100%' }}
+>
+  Manager Route
+</Button>
+              <Button
                 onClick={() => { openPage('OPEN_SETTINGS_DASHBOARD', undefined, sourceTabId) }}
                 variant="sad"
                 style={{

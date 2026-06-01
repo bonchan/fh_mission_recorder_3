@@ -117,6 +117,19 @@ export default defineBackground(() => {
       return;
     }
 
+   else if (message.type === 'OPEN_MANAGER_ROUTE') {
+  const { orgId, projectId, sourceTabId, debugMode } = message;
+
+  const url = browser.runtime.getURL(
+    `/managerrouteview.html?orgId=${orgId}&projectId=${projectId}&sourceTabId=${sourceTabId}&debugMode=${debugMode}`
+  );
+
+  const tab = await browser.tabs.create({ url });
+  registry.set(sourceTabId, tab.id!);
+  return;
+}
+
+
     // 2. Handling Debugger Toggles
     // Note: message.tabId here should be the sourceTabId (FlightHub) 
     // passed from your Dashboard's URL parameters

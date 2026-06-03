@@ -4,7 +4,6 @@ import {
   TileLayer,
   Marker,
   Popup,
-  Polyline,
   useMap,
   useMapEvents,
 } from 'react-leaflet';
@@ -87,12 +86,22 @@ function MapController({
               handleMarkerDragEnd(index, marker.getLatLng());
             },
           }}
-          icon={L.icon({
-            iconUrl: `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40"><circle cx="16" cy="12" r="10" fill="%234285F4"/><path d="M16 22 L9 35 Q16 40 16 40 Q16 40 23 35 Z" fill="%234285F4"/><text x="16" y="16" font-size="14" font-weight="bold" text-anchor="middle" fill="white">${index + 1}</text></svg>`,
-            iconSize: [32, 40],
-            iconAnchor: [16, 40],
-            popupAnchor: [0, -40],
-          })}
+          icon={(() => {
+            const label = point.name;
+            const charW = 7.5;
+            const padX = 12;
+            const w = Math.max(40, Math.ceil(label.length * charW + padX * 2));
+            const h = 28;
+            const tipH = 8;
+            const total = h + tipH;
+            const cx = w / 2;
+            return L.icon({
+              iconUrl: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${total}"><rect x="0" y="0" width="${w}" height="${h}" rx="5" fill="#4285F4"/><path d="M${cx} ${h} L${cx - 6} ${h} Q${cx} ${total} ${cx} ${total} Q${cx} ${total} ${cx + 6} ${h} Z" fill="#4285F4"/><text x="${cx}" y="${h * 0.68}" font-size="12" font-weight="600" font-family="system-ui,sans-serif" text-anchor="middle" fill="white">${label}</text></svg>`)}`,
+              iconSize: [w, total],
+              iconAnchor: [cx, total],
+              popupAnchor: [0, -total],
+            });
+          })()}
         >
           <Popup>
             <div className="marker-popup">
@@ -112,15 +121,6 @@ function MapController({
         </Marker>
       ))}
 
-      {points.length > 1 && (
-        <Polyline
-          positions={points.map(p => [p.latitude, p.longitude])}
-          color="#FF6B6B"
-          weight={3}
-          opacity={0.7}
-          dashArray="5, 5"
-        />
-      )}
     </>
   );
 }
@@ -135,28 +135,12 @@ export function RouteMap({
 }: RouteMapProps) {
   const center: [number, number] = [0, 0];
   const totalDistance = calculateTotalDistance(points);
-  const exceedsDistance = totalDistance / 1000 > settings.maxDistanceKm;
-  const exceedsPoints = points.length > settings.maxPoints;
 
   return (
     <div className="route-map-container">
       <div className="map-header">
         <div>
           <h2>Route Map</h2>
-          {(exceedsDistance || exceedsPoints) && (
-            <div className="map-warnings">
-              {exceedsDistance && (
-                <div className="warning-badge">
-                  ⚠️ Distance exceeds {settings.maxDistanceKm} km limit
-                </div>
-              )}
-              {exceedsPoints && (
-                <div className="warning-badge">
-                  ⚠️ Route has {points.length} points (max: {settings.maxPoints})
-                </div>
-              )}
-            </div>
-          )}
         </div>
         <div className="map-stats">
           <span>📍 Points: {points.length}</span>

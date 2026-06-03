@@ -9,6 +9,7 @@ import { generateRoutes, Route } from '@/utils/routeSplitter';
 import { generateDJIMission } from '@/utils/wpml-generator';
 import { Mission, MissionType, Waypoint, Drone, Dock } from '@/utils/interfaces';
 import { useMissionActions } from '@/hooks/useMissionActions';
+import { dockEmptyIcon } from '@/utils/mapIcons';
 
 const log = createLogger('RouteExporter');
 
@@ -90,18 +91,34 @@ function buildZenithalMission(
   };
 }
 
-function RoutesMapController({ routes }: { routes: Route[] }) {
+function RoutesMapController({ routes, dock }: { routes: Route[], dock: Dock | null }) {
   const map = useMap();
 
   useEffect(() => {
     const allPoints = routes.flatMap(r => r.points);
     if (allPoints.length === 0) return;
-    const bounds = L.latLngBounds(allPoints.map(p => [p.latitude, p.longitude] as [number, number]));
+    const coords: [number, number][] = allPoints.map(p => [p.latitude, p.longitude]);
+    if (dock) coords.push([dock.latitude, dock.longitude]);
+    const bounds = L.latLngBounds(coords);
     map.fitBounds(bounds, { padding: [40, 40] });
-  }, [routes, map]);
+  }, [routes, dock, map]);
 
   return (
     <>
+      {dock && (
+        <Marker
+          position={[dock.latitude, dock.longitude]}
+          icon={dockEmptyIcon}
+        >
+          <Popup>
+            <div>
+              <strong>{dock.deviceOrganizationCallsign || dock.deviceProjectCallsign}</strong><br />
+              {dock.deviceModelName}<br />
+              {dock.latitude.toFixed(6)}, {dock.longitude.toFixed(6)}
+            </div>
+          </Popup>
+        </Marker>
+      )}
       {routes.map((route, routeIdx) => {
         const color = ROUTE_COLORS[routeIdx % ROUTE_COLORS.length];
         const positions = route.points.map(p => [p.latitude, p.longitude] as [number, number]);
@@ -154,7 +171,7 @@ export function RouteExporter({
 
   const [selectedDeviceIdx, setSelectedDeviceIdx] = useState<number | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState(DRONE_PRESETS[0].id);
-  const [flightHeight, setFlightHeight] = useState(40);
+  const [flightHeight, setFlightHeight] = useState(70);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [customDeviceModelKey, setCustomDeviceModelKey] = useState('');
   const [customPayloadIndex, setCustomPayloadIndex] = useState('');
@@ -162,6 +179,8 @@ export function RouteExporter({
   const [editableRoutes, setEditableRoutes] = useState<Route[] | null>(null);
   const [editingRouteId, setEditingRouteId] = useState<string | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<{ routeId: string; idx: number } | null>(null);
+  const [showResumen, setShowResumen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { uploadMission, isUploading } = useMissionActions(orgId, projectId);
 
@@ -416,7 +435,7 @@ export function RouteExporter({
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <RoutesMapController routes={routes} />
+            <RoutesMapController routes={routes} dock={selectedDock} />
           </MapContainer>
         </div>
       )}
@@ -490,7 +509,7 @@ export function RouteExporter({
               const droneLabel = device.deviceOrganizationCallsign || device.deviceProjectCallsign || device.deviceModelName;
               return (
                 <option key={idx} value={idx}>
-                  #{device.parent?.index ?? idx + 1} - {dockLabel} · {droneLabel}
+                  {dockLabel} · {droneLabel}
                 </option>
               );
             })}
@@ -586,6 +605,65 @@ export function RouteExporter({
           </button>
         </div>
       </div>
+
+      {/* ── 4. Resumen para planilla ── */}
+      {routes.length > 0 && (
+        <div style={{ marginTop: '8px' }}>
+          <button
+            className="btn-secondary"
+            onClick={() => setShowResumen(v => !v)}
+            style={{ width: '100%', fontSize: '12px', textAlign: 'left' }}
+          >
+            {showResumen ? '▲' : '▼'} Resumen para planilla
+          </button>
+
+          {showResumen && (() => {
+            const header = 'Tipo de ruta\tRuta\tPozo\tActivos';
+            const rows = routes.flatMap((route, idx) =>
+              route.points.map(pt => `Cenital\t${getMissionName(idx)}\t${pt.name}\t`)
+            );
+            const tsv = [header, ...rows].join('\n');
+            return (
+              <div style={{ marginTop: '8px', background: '#111', borderRadius: '8px', border: '1px solid #222', padding: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', color: '#888' }}>
+                    {rows.length} filas · listo para pegar en Excel / Sheets
+                  </span>
+                  <button
+                    className="btn-primary"
+                    style={{ fontSize: '11px', padding: '4px 12px' }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(tsv);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                  >
+                    {copied ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  value={tsv}
+                  onClick={e => (e.target as HTMLTextAreaElement).select()}
+                  style={{
+                    width: '100%',
+                    height: `${Math.min(rows.length + 1, 12) * 22 + 8}px`,
+                    background: '#0a0a0a',
+                    color: '#ccc',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: '4px',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    padding: '8px',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {debugMode && (
         <div className="debug-info">

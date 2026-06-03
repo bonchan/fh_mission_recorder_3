@@ -66,7 +66,7 @@ export function PointList({
   return (
     <div className="point-list-container">
       <div className="points-header">
-        <h2>Route Points {points.length > settings.maxPoints && <span className="limit-warning">⚠️ Exceeds limit</span>}</h2>
+        <h2>Route Points</h2>
         <button className="btn-add" onClick={() => setShowAddForm(!showAddForm)}>
           {showAddForm ? '✕ Cancel' : '➕ Add Point'}
         </button>

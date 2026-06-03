@@ -78,7 +78,7 @@ export default function SidePanelView() {
   variant="primary"
   style={{ width: '100%' }}
 >
-  Manager Route
+  Manager Routes
 </Button>
               <Button
                 onClick={() => { openPage('OPEN_SETTINGS_DASHBOARD', undefined, sourceTabId) }}

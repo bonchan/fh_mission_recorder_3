@@ -9,7 +9,9 @@ import { RoutesPanel } from './RoutesPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { RoutePoint } from '@/utils/routeOptimizer';
 import { useSavedRouteSets } from '@/hooks/useSavedRouteSets';
-import { SavedRouteSet } from '@/utils/interfaces';
+import { SavedRouteSet, Drone } from '@/utils/interfaces';
+import { useDatabase } from '@/hooks/useDatabase';
+import { toDockDroneList } from '@/utils/mapper';
 
 const log = createLogger('ManagerRoute');
 
@@ -37,6 +39,8 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
   const [routePrefix, setRoutePrefix] = useState('');
 
   const { savedSets, saveSet, deleteSet } = useSavedRouteSets(projectId);
+  const { projectTopologies } = useDatabase(orgId, projectId);
+  const devices: Drone[] = toDockDroneList(projectTopologies);
 
   const handlePointsChanged = (newPoints: RoutePoint[]) => {
     setPoints(newPoints);
@@ -135,6 +139,7 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
             routePrefix={routePrefix}
             onRoutePrefixChange={setRoutePrefix}
             onSaveSession={handleSaveSession}
+            devices={devices}
             debugMode={debugMode}
           />
         );
@@ -155,7 +160,7 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
     <div className="app-container">
       <header className="header">
         <div className="title-section">
-          <h1>Manager Route</h1>
+          <h1>Manager Routes</h1>
           <nav className="tabs-nav">
             <button
               className={`tab-button ${activeTab === 'import' ? 'active' : ''}`}

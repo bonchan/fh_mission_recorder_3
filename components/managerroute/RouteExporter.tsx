@@ -7,7 +7,7 @@ import { RoutePoint, calculateDistance } from '@/utils/routeOptimizer'; // calcu
 import { RouteSettings } from './ManagerRoute';
 import { generateRoutes, Route } from '@/utils/routeSplitter';
 import { generateDJIMission } from '@/utils/wpml-generator';
-import { Mission, MissionType, Waypoint, Drone } from '@/utils/interfaces';
+import { Mission, MissionType, Waypoint, Drone, Dock } from '@/utils/interfaces';
 import { useMissionActions } from '@/hooks/useMissionActions';
 
 const log = createLogger('RouteExporter');
@@ -32,6 +32,7 @@ export interface RouteExporterProps {
   onRoutePrefixChange: (prefix: string) => void;
   onSaveSession: (name: string) => Promise<void>;
   settings: RouteSettings;
+  devices: Drone[];
   debugMode?: boolean;
 }
 
@@ -43,6 +44,7 @@ function buildZenithalMission(
   deviceModelKey: string,
   payloadIndex: string,
   flightHeight: number,
+  dock: Dock | null = null,
 ): Mission {
   const waypoints: Waypoint[] = route.points.map((pt) => ({
     id: crypto.randomUUID(),
@@ -72,7 +74,7 @@ function buildZenithalMission(
     longitude: 0,
     latitude: 0,
     yaw: 0,
-    parent: null,
+    parent: dock,
   };
 
   return {
@@ -142,6 +144,7 @@ export function RouteExporter({
   routePrefix,
   onRoutePrefixChange,
   onSaveSession,
+  devices,
   debugMode,
 }: RouteExporterProps) {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -149,6 +152,7 @@ export function RouteExporter({
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedDeviceIdx, setSelectedDeviceIdx] = useState<number | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState(DRONE_PRESETS[0].id);
   const [flightHeight, setFlightHeight] = useState(40);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -236,11 +240,14 @@ export function RouteExporter({
 
   const getMissionName = (index: number) => `${routePrefix}${index + 1}`;
 
+  const selectedDock = selectedDeviceIdx !== null ? (devices[selectedDeviceIdx]?.parent ?? null) : null;
+
   const buildMissions = () =>
     routes.map((route, i) =>
       buildZenithalMission(
         route, getMissionName(i), orgId, projectId,
-        effectiveDeviceModelKey, effectivePayloadIndex, flightHeight
+        effectiveDeviceModelKey, effectivePayloadIndex, flightHeight,
+        selectedDock,
       )
     );
 
@@ -467,6 +474,35 @@ export function RouteExporter({
               </label>
             ))}
           </div>
+        </div>
+
+        {/* Dock selector */}
+        <div className="form-group">
+          <label>Dock de despegue</label>
+          <select
+            value={selectedDeviceIdx ?? ''}
+            onChange={e => setSelectedDeviceIdx(e.target.value === '' ? null : Number(e.target.value))}
+            style={{ background: '#111', color: '#fff', border: '1px solid #333', borderRadius: '4px', padding: '8px 10px', fontSize: '13px' }}
+          >
+            <option value="">Sin dock asignado</option>
+            {devices.map((device, idx) => {
+              const dockLabel = device.parent?.deviceOrganizationCallsign || device.parent?.deviceProjectCallsign || `Dock ${idx + 1}`;
+              const droneLabel = device.deviceOrganizationCallsign || device.deviceProjectCallsign || device.deviceModelName;
+              return (
+                <option key={idx} value={idx}>
+                  #{device.parent?.index ?? idx + 1} - {dockLabel} · {droneLabel}
+                </option>
+              );
+            })}
+          </select>
+          {selectedDeviceIdx !== null && devices[selectedDeviceIdx]?.parent && (
+            <small style={{ color: '#888' }}>
+              {devices[selectedDeviceIdx].parent!.deviceModelName} — {devices[selectedDeviceIdx].parent!.latitude.toFixed(5)}, {devices[selectedDeviceIdx].parent!.longitude.toFixed(5)}
+            </small>
+          )}
+          {devices.length === 0 && (
+            <small style={{ color: '#666' }}>No hay docks en caché — abrí FlightHub para sincronizar</small>
+          )}
         </div>
 
         {/* Flight height */}

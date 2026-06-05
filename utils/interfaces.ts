@@ -192,6 +192,34 @@ export interface Waypoint {
 
 export type MissionMap = Record<string, Mission[]>;
 
+export interface PointGroup {
+  id: string;
+  name: string;
+  batchId: number;
+}
+
+export interface SavedRoutePoint {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  altitude?: number;
+  description?: string;
+  groupId?: string;
+  groupName?: string;
+}
+
+export interface SavedRouteSet {
+  id: string;
+  projectId: string;
+  name: string;
+  createdDate: number;
+  points: SavedRoutePoint[];
+  maxDistanceKm: number;
+  maxPoints: number;
+  routePrefix: string;
+}
+
 export interface SimulatorConnectParams {
   dockSn?: string;
   droneSn?: string;

@@ -4,8 +4,10 @@ import { Mission, Waypoint } from '@/utils/interfaces';
 import { formatXML } from '@/utils/utils';
 import pkg from '@/package.json';
 
-export async function generateDJIMission(mission: Mission) {
-  const { template, waylines } = await generateDJIMissionFiles(mission)
+export type HeightMode = 'relativeToStartPoint' | 'aboveGroundLevel' | 'EGM96';
+
+export async function generateDJIMission(mission: Mission, options?: { heightMode?: HeightMode }) {
+  const { template, waylines } = await generateDJIMissionFiles(mission, options)
   const zip = new JSZip();
   const wpmzFolder = zip.folder("wpmz");
   wpmzFolder?.file("template.kml", template);
@@ -14,7 +16,8 @@ export async function generateDJIMission(mission: Mission) {
   return content;
 }
 
-export async function generateDJIMissionFiles(mission: Mission) {
+export async function generateDJIMissionFiles(mission: Mission, options?: { heightMode?: HeightMode }) {
+  const heightMode: HeightMode = options?.heightMode ?? 'relativeToStartPoint';
 
   const activeDrone = mission.device
 
@@ -30,7 +33,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
     exitOnRCLost: 'executeLostAction',
     executeRCLostAction: 'goBack',
     takeOffSecurityHeight: 40,
-    globalTransitionalSpeed: 10,
+    globalTransitionalSpeed: 15,
     globalRTHHeight: 60,
     takeOffRefPoint: `${activeDrone?.parent?.latitude},${activeDrone?.parent?.longitude},${activeDrone?.parent?.height}`,
     takeOffRefPointAGLHeight: 20, //`${activeDrone?.parent?.height}`,
@@ -212,7 +215,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
       <wpml:templateId>0</wpml:templateId>
       <wpml:waylineCoordinateSysParam>
         <wpml:coordinateMode>WGS84</wpml:coordinateMode>
-        <wpml:heightMode>relativeToStartPoint</wpml:heightMode>
+        <wpml:heightMode>${heightMode}</wpml:heightMode>
       </wpml:waylineCoordinateSysParam>
       <wpml:autoFlightSpeed>10</wpml:autoFlightSpeed>
       <wpml:globalHeight>100</wpml:globalHeight>
@@ -247,7 +250,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
   const waylinesFolderXml = `
     <Folder>
     <wpml:templateId>0</wpml:templateId>
-    <wpml:executeHeightMode>relativeToStartPoint</wpml:executeHeightMode>
+    <wpml:executeHeightMode>${heightMode}</wpml:executeHeightMode>
     <wpml:waylineId>0</wpml:waylineId>
     <wpml:autoFlightSpeed>10</wpml:autoFlightSpeed>
     <wpml:realTimeFollowSurfaceByFov>0</wpml:realTimeFollowSurfaceByFov>

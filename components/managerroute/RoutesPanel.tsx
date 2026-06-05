@@ -2,10 +2,11 @@ import React from 'react';
 import { RoutePoint } from '@/utils/routeOptimizer';
 import { RouteSettings } from './ManagerRoute';
 import { RouteExporter } from './RouteExporter';
-import { Drone } from '@/utils/interfaces';
+import { Drone, PointGroup } from '@/utils/interfaces';
 
 interface RoutesPanelProps {
   points: RoutePoint[];
+  groups: PointGroup[];
   settings: RouteSettings;
   orgId: string;
   projectId: string;
@@ -16,10 +17,11 @@ interface RoutesPanelProps {
   debugMode?: boolean;
 }
 
-export function RoutesPanel({ points, settings, orgId, projectId, routePrefix, onRoutePrefixChange, onSaveSession, devices, debugMode }: RoutesPanelProps) {
+export function RoutesPanel({ points, groups, settings, orgId, projectId, routePrefix, onRoutePrefixChange, onSaveSession, devices, debugMode }: RoutesPanelProps) {
   return (
     <RouteExporter
       points={points}
+      groups={groups}
       orgId={orgId}
       projectId={projectId}
       settings={settings}

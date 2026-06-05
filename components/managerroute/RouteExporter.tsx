@@ -7,13 +7,14 @@ import { RoutePoint, calculateDistance } from '@/utils/routeOptimizer'; // calcu
 import { RouteSettings } from './ManagerRoute';
 import { generateRoutes, Route } from '@/utils/routeSplitter';
 import { generateDJIMission } from '@/utils/wpml-generator';
-import { Mission, MissionType, Waypoint, Drone, Dock } from '@/utils/interfaces';
+import { Mission, MissionType, Waypoint, Drone, Dock, PointGroup } from '@/utils/interfaces';
 import { useMissionActions } from '@/hooks/useMissionActions';
 import { dockEmptyIcon } from '@/utils/mapIcons';
 
 const log = createLogger('RouteExporter');
 
-const CENITAL_TAG_ID = 'ccdefa98-fbd4-4db6-952d-6622f848f111';
+//TODO bring
+const CENITAL_TAG_ID = 'ccdefa98-fbd4-4db6-952d-6622f848f111';  
 
 const ROUTE_COLORS = [
   '#4285F4', '#EA4335', '#FBBC04', '#34A853',
@@ -27,6 +28,7 @@ const DRONE_PRESETS = [
 
 export interface RouteExporterProps {
   points: RoutePoint[];
+  groups: PointGroup[];
   orgId: string;
   projectId: string;
   routePrefix: string;
@@ -155,6 +157,7 @@ function RoutesMapController({ routes, dock }: { routes: Route[], dock: Dock | n
 
 export function RouteExporter({
   points,
+  groups,
   orgId,
   projectId,
   settings,
@@ -181,13 +184,71 @@ export function RouteExporter({
   const [dragOverIdx, setDragOverIdx] = useState<{ routeId: string; idx: number } | null>(null);
   const [showResumen, setShowResumen] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Keys: `r{routeIdx}` for route-level, `r{routeIdx}p{ptIdx}` for point-level
+  const [activoOverrides, setActivoOverrides] = useState<Record<string, string>>({});
+  // Per-batch name prefix (only relevant when multiple batches)
+  const [batchPrefixes, setBatchPrefixes] = useState<Record<number, string>>({});
 
   const { uploadMission, isUploading } = useMissionActions(orgId, projectId);
 
-  const computedRoutes = useMemo(() => {
+  const selectedDock = selectedDeviceIdx !== null ? (devices[selectedDeviceIdx]?.parent ?? null) : null;
+  const [optimizationDock, setOptimizationDock] = useState<Dock | null>(null);
+
+  // Returns [{batchId, routes}] — one entry per batch, sorted by batchId
+  const computedBatches = useMemo(() => {
     if (points.length === 0) return [];
-    return generateRoutes(points, settings.maxDistanceKm, settings.maxPoints);
-  }, [points, settings.maxDistanceKm, settings.maxPoints]);
+
+    const batchMap = new Map<number, RoutePoint[]>();
+    for (const p of points) {
+      const batchId = groups.find(g => g.id === p.groupId)?.batchId ?? 1;
+      if (!batchMap.has(batchId)) batchMap.set(batchId, []);
+      batchMap.get(batchId)!.push(p);
+    }
+
+    return Array.from(batchMap.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([batchId, batchPoints]) => {
+        let startPointId: string | undefined;
+        if (optimizationDock) {
+          const dockAsPoint = { id: '__dock__', name: '', latitude: optimizationDock.latitude, longitude: optimizationDock.longitude };
+          let maxDist = -1;
+          for (const p of batchPoints) {
+            const d = calculateDistance(p, dockAsPoint);
+            if (d > maxDist) { maxDist = d; startPointId = p.id; }
+          }
+        }
+        return { batchId, routes: generateRoutes(batchPoints, settings.maxDistanceKm, settings.maxPoints, startPointId) };
+      });
+  }, [points, groups, settings.maxDistanceKm, settings.maxPoints, optimizationDock]);
+
+  // Flat list of routes (for rendering, editing, map)
+  const computedRoutes = useMemo(() => computedBatches.flatMap(b => b.routes), [computedBatches]);
+
+  // Cumulative boundaries: for each batch, start/end flat index
+  const batchBoundaries = useMemo(() => {
+    let offset = 0;
+    return computedBatches.map(b => {
+      const start = offset;
+      offset += b.routes.length;
+      return { batchId: b.batchId, start, end: offset };
+    });
+  }, [computedBatches]);
+
+  // Which batch + within-batch index does a flat route index belong to?
+  const getRouteContext = (flatIdx: number): { batchId: number; idxWithinBatch: number } => {
+    for (const b of batchBoundaries) {
+      if (flatIdx >= b.start && flatIdx < b.end) {
+        return { batchId: b.batchId, idxWithinBatch: flatIdx - b.start };
+      }
+    }
+    return { batchId: 1, idxWithinBatch: flatIdx };
+  };
+
+  // Prefix to use for a given batchId
+  const getPrefix = (batchId: number) => {
+    if (batchBoundaries.length <= 1) return routePrefix;
+    return batchPrefixes[batchId] ?? '';
+  };
 
   // Clear manual edits when source points change
   useEffect(() => {
@@ -257,9 +318,32 @@ export function RouteExporter({
   const effectiveDeviceModelKey = showAdvanced ? customDeviceModelKey || selectedPreset.deviceModelKey : selectedPreset.deviceModelKey;
   const effectivePayloadIndex = showAdvanced ? customPayloadIndex || selectedPreset.payloadIndex : selectedPreset.payloadIndex;
 
-  const getMissionName = (index: number) => `${routePrefix}${index + 1}`;
+  const getMissionName = (flatIdx: number) => {
+    const { batchId, idxWithinBatch } = getRouteContext(flatIdx);
+    return `${getPrefix(batchId)}${idxWithinBatch + 1}`;
+  };
 
-  const selectedDock = selectedDeviceIdx !== null ? (devices[selectedDeviceIdx]?.parent ?? null) : null;
+  // Autodetect activo type from route name
+  const ACTIVO_RULES: { pattern: RegExp; options: string[]; perPoint?: boolean }[] = [
+    { pattern: /\bBM\b/i,   options: ['Bombeo Mecánico'] },
+    { pattern: /\bBES\b/i,  options: ['BES', 'PCP', 'Surgente'], perPoint: true },
+    { pattern: /\bPCP\b/i,  options: ['PCP'] },
+    { pattern: /\bSURG/i,   options: ['Surgente'] },
+    { pattern: /-M-/i,      options: ['Manifold Productor', 'Manifold Inyector'] },
+    { pattern: /\bBAT\b/i,  options: ['Batería'] },
+    { pattern: /\bPAD\b/i,  options: ['Pad'] },
+    { pattern: /\bINY\b/i,  options: ['Inyector'] },
+    { pattern: /\bNA\b/i,   options: ['No Activo'] },
+  ];
+
+  const detectActivo = (routeName: string): { value: string; options: string[]; perPoint: boolean } => {
+    for (const rule of ACTIVO_RULES) {
+      if (rule.pattern.test(routeName)) {
+        return { value: rule.options[0], options: rule.options, perPoint: rule.perPoint ?? false };
+      }
+    }
+    return { value: '', options: [], perPoint: false };
+  };
 
   const buildMissions = () =>
     routes.map((route, i) =>
@@ -444,32 +528,82 @@ export function RouteExporter({
       <div className="export-form">
         <h3>Export KMZ Cenital</h3>
 
-        {/* Route name prefix */}
+        {/* Route name prefix — single or per-batch */}
         <div className="form-group">
-          <label>Prefijo del nombre de ruta</label>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              type="text"
-              placeholder="Ej: C-BM-CHU-"
-              value={routePrefix}
-              onChange={(e) => onRoutePrefixChange(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button
-              className="btn-secondary"
-              disabled={isBusy || isSaving || routes.length === 0}
-              onClick={async () => {
-                const name = routePrefix.trim() || `Sesión ${new Date().toLocaleString()}`;
-                setIsSaving(true);
-                try { await onSaveSession(name); } finally { setIsSaving(false); }
-              }}
-              style={{ whiteSpace: 'nowrap', fontSize: '12px' }}
-              title="Guarda los puntos y configuración para recuperarlos después"
-            >
-              {isSaving ? 'Guardando...' : 'Guardar sesión'}
-            </button>
-          </div>
-          {routePrefix && routes.length > 0 && (
+          <label>Nombre de rutas</label>
+
+          {batchBoundaries.length <= 1 ? (
+            /* Single batch: one prefix input (same as before) */
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Ej: C-BM-CHU-"
+                value={routePrefix}
+                onChange={(e) => onRoutePrefixChange(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <button
+                className="btn-secondary"
+                disabled={isBusy || isSaving || routes.length === 0}
+                onClick={async () => {
+                  const name = routePrefix.trim() || `Sesión ${new Date().toLocaleString()}`;
+                  setIsSaving(true);
+                  try { await onSaveSession(name); } finally { setIsSaving(false); }
+                }}
+                style={{ whiteSpace: 'nowrap', fontSize: '12px' }}
+                title="Guarda los puntos y configuración para recuperarlos después"
+              >
+                {isSaving ? 'Guardando...' : 'Guardar sesión'}
+              </button>
+            </div>
+          ) : (
+            /* Multiple batches: one prefix input per batch */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {batchBoundaries.map(({ batchId, start, end }) => {
+                const batchGroups = groups.filter(g => g.batchId === batchId);
+                const batchLabel = batchGroups.length > 0
+                  ? batchGroups.map(g => g.name).join(' + ')
+                  : `Lote ${batchId}`;
+                const routeCount = end - start;
+                const prefix = batchPrefixes[batchId] ?? '';
+                return (
+                  <div key={batchId}>
+                    <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>
+                      Lote {batchId} · <span style={{ color: '#aaa' }}>{batchLabel}</span>
+                      <span style={{ color: '#555' }}> ({routeCount} ruta{routeCount !== 1 ? 's' : ''})</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder={`Ej: C-BM-CHU-`}
+                      value={prefix}
+                      onChange={e => setBatchPrefixes(prev => ({ ...prev, [batchId]: e.target.value }))}
+                      style={{ width: '100%' }}
+                    />
+                    {prefix && (
+                      <small style={{ color: '#aaa' }}>
+                        {Array.from({ length: routeCount }, (_, i) => `${prefix}${i + 1}`).join(', ')}
+                      </small>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                className="btn-secondary"
+                disabled={isBusy || isSaving || routes.length === 0}
+                onClick={async () => {
+                  const name = Object.values(batchPrefixes).filter(Boolean).join(' / ') || `Sesión ${new Date().toLocaleString()}`;
+                  setIsSaving(true);
+                  try { await onSaveSession(name); } finally { setIsSaving(false); }
+                }}
+                style={{ whiteSpace: 'nowrap', fontSize: '12px', alignSelf: 'flex-start' }}
+                title="Guarda los puntos y configuración para recuperarlos después"
+              >
+                {isSaving ? 'Guardando...' : 'Guardar sesión'}
+              </button>
+            </div>
+          )}
+
+          {batchBoundaries.length <= 1 && routePrefix && routes.length > 0 && (
             <small style={{ color: '#aaa' }}>
               Se generarán: {routes.map((_, i) => getMissionName(i)).join(', ')}
             </small>
@@ -514,9 +648,41 @@ export function RouteExporter({
               );
             })}
           </select>
-          {selectedDeviceIdx !== null && devices[selectedDeviceIdx]?.parent && (
-            <small style={{ color: '#888' }}>
-              {devices[selectedDeviceIdx].parent!.deviceModelName} — {devices[selectedDeviceIdx].parent!.latitude.toFixed(5)}, {devices[selectedDeviceIdx].parent!.longitude.toFixed(5)}
+          {selectedDock && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <small style={{ color: '#888', flex: 1 }}>
+                {selectedDock.deviceModelName} — {selectedDock.latitude.toFixed(5)}, {selectedDock.longitude.toFixed(5)}
+              </small>
+              <button
+                className="btn-primary"
+                style={{ fontSize: '11px', padding: '4px 10px', whiteSpace: 'nowrap' }}
+                onClick={() => {
+                  setOptimizationDock(selectedDock);
+                  setEditableRoutes(null);
+                  setEditingRouteId(null);
+                }}
+              >
+                ⟳ Reoptimizar
+              </button>
+              {optimizationDock && (
+                <button
+                  className="btn-secondary"
+                  style={{ fontSize: '11px', padding: '4px 8px', whiteSpace: 'nowrap' }}
+                  title="Quitar optimización por dock"
+                  onClick={() => {
+                    setOptimizationDock(null);
+                    setEditableRoutes(null);
+                    setEditingRouteId(null);
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
+          {optimizationDock && (
+            <small style={{ color: '#f59e0b' }}>
+              ⟳ Rutas optimizadas desde {optimizationDock.deviceOrganizationCallsign || optimizationDock.deviceProjectCallsign}
             </small>
           )}
           {devices.length === 0 && (
@@ -618,17 +784,87 @@ export function RouteExporter({
           </button>
 
           {showResumen && (() => {
+            const getActivo = (routeIdx: number, ptIdx: number) => {
+              const ptKey = `r${routeIdx}p${ptIdx}`;
+              const rKey = `r${routeIdx}`;
+              if (activoOverrides[ptKey] !== undefined) return activoOverrides[ptKey];
+              if (activoOverrides[rKey] !== undefined) return activoOverrides[rKey];
+              return detectActivo(getMissionName(routeIdx)).value;
+            };
+
             const header = 'Tipo de ruta\tRuta\tPozo\tActivos';
             const rows = routes.flatMap((route, idx) =>
-              route.points.map(pt => `Cenital\t${getMissionName(idx)}\t${pt.name}\t`)
+              route.points.map((pt, ptIdx) => `Cenital\t${getMissionName(idx)}\t${pt.name}\t${getActivo(idx, ptIdx)}`)
             );
             const tsv = [header, ...rows].join('\n');
+
             return (
               <div style={{ marginTop: '8px', background: '#111', borderRadius: '8px', border: '1px solid #222', padding: '12px' }}>
+
+                {/* Activo selectors */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                  {routes.map((route, rIdx) => {
+                    const detected = detectActivo(getMissionName(rIdx));
+                    const rKey = `r${rIdx}`;
+
+                    if (detected.perPoint) {
+                      // Per-point selectors
+                      return (
+                        <div key={rIdx}>
+                          <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }}>{getMissionName(rIdx)}</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingLeft: '8px', borderLeft: '2px solid #2a2a2a' }}>
+                            {route.points.map((pt, ptIdx) => {
+                              const ptKey = `r${rIdx}p${ptIdx}`;
+                              const val = activoOverrides[ptKey] ?? detected.value;
+                              return (
+                                <div key={ptIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontSize: '11px', color: '#888', minWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pt.name}</span>
+                                  <select
+                                    value={val}
+                                    onChange={e => setActivoOverrides(prev => ({ ...prev, [ptKey]: e.target.value }))}
+                                    style={{ flex: 1, fontSize: '11px', background: '#1a1a1a', color: '#fff', border: '1px solid #333', borderRadius: '4px', padding: '3px 6px' }}
+                                  >
+                                    {detected.options.map(o => <option key={o} value={o}>{o}</option>)}
+                                  </select>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Per-route selector
+                    const val = activoOverrides[rKey] ?? detected.value;
+                    return (
+                      <div key={rIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#aaa', minWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {getMissionName(rIdx)}
+                        </span>
+                        {detected.options.length > 1 ? (
+                          <select
+                            value={val}
+                            onChange={e => setActivoOverrides(prev => ({ ...prev, [rKey]: e.target.value }))}
+                            style={{ flex: 1, fontSize: '12px', background: '#1a1a1a', color: '#fff', border: '1px solid #333', borderRadius: '4px', padding: '4px 8px' }}
+                          >
+                            {detected.options.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={val}
+                            onChange={e => setActivoOverrides(prev => ({ ...prev, [rKey]: e.target.value }))}
+                            placeholder="Tipo de activo"
+                            style={{ flex: 1, fontSize: '12px', background: '#1a1a1a', color: '#fff', border: '1px solid #333', borderRadius: '4px', padding: '4px 8px' }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#888' }}>
-                    {rows.length} filas · listo para pegar en Excel / Sheets
-                  </span>
+                  <span style={{ fontSize: '12px', color: '#888' }}>{rows.length} filas · listo para pegar en Excel / Sheets</span>
                   <button
                     className="btn-primary"
                     style={{ fontSize: '11px', padding: '4px 12px' }}

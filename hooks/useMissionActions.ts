@@ -4,7 +4,7 @@ import { uploadToCloudStorage } from '@/services/cloudStorage';
 import { Mission } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { delay } from '@/utils/time';
-import { generateDJIMission } from '@/utils/wpml-generator';
+import { generateDJIMission, HeightMode } from '@/utils/wpml-generator';
 import { RouteBuilder, type DjiKmlRoot } from 'dji-kmz-parser';
 import { useState } from 'react';
 
@@ -33,7 +33,7 @@ export function useMissionActions(orgId: string, projectId: string) {
     window.URL.revokeObjectURL(url);
   };
 
-  const uploadMission = async (mission: Mission) => {
+  const uploadMission = async (mission: Mission, options?: { heightMode?: HeightMode }) => {
     if (mission.waypoints.length === 0) return showToast('Mission has no waypoints!', '', { type: "warning" })
     if (!mission.orgId || !mission.projectId) return showToast('Mission has no orgId or projectId!', '', { type: "warning" })
 
@@ -45,7 +45,7 @@ export function useMissionActions(orgId: string, projectId: string) {
       const { object_key_prefix } = stsResponse.credentials.data;
 
       showToast('Generating mission file', '', { type: "info", swarm: true, duration: toastTTL })
-      const blob = await generateDJIMission(mission);
+      const blob = await generateDJIMission(mission, options);
       const cleanName = mission.name.replace(/[<>:"/|?*._\\]/g, '');
       const fileUUID = crypto.randomUUID();
       const tempFileName = `${fileUUID}.kmz`;

@@ -10,6 +10,8 @@ export interface RoutePoint {
   longitude: number;
   altitude?: number;
   description?: string;
+  groupId?: string;
+  groupName?: string;
 }
 
 export interface OptimizationResult {

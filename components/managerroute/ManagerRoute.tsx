@@ -9,9 +9,10 @@ import { RoutesPanel } from './RoutesPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { RoutePoint } from '@/utils/routeOptimizer';
 import { useSavedRouteSets } from '@/hooks/useSavedRouteSets';
-import { SavedRouteSet, Drone } from '@/utils/interfaces';
+import { SavedRouteSet, Drone, PointGroup } from '@/utils/interfaces';
 import { useDatabase } from '@/hooks/useDatabase';
 import { toDockDroneList } from '@/utils/mapper';
+import { PolygonCoords, isPointInPolygon } from '@/utils/polygonFilter';
 
 const log = createLogger('ManagerRoute');
 
@@ -30,6 +31,7 @@ export interface RouteSettings {
 
 export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRouteProps) {
   const [points, setPoints] = useState<RoutePoint[]>([]);
+  const [groups, setGroups] = useState<PointGroup[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>('import');
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [settings, setSettings] = useState<RouteSettings>({
@@ -37,13 +39,16 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
     maxPoints: 12,
   });
   const [routePrefix, setRoutePrefix] = useState('');
+  const [polygon, setPolygon] = useState<PolygonCoords | null>(null);
+  const [excludedPoints, setExcludedPoints] = useState<{ points: RoutePoint[]; groups: PointGroup[] } | null>(null);
 
   const { savedSets, saveSet, deleteSet } = useSavedRouteSets(projectId);
   const { projectTopologies } = useDatabase(orgId, projectId);
   const devices: Drone[] = toDockDroneList(projectTopologies);
 
-  const handlePointsChanged = (newPoints: RoutePoint[]) => {
+  const handlePointsChanged = (newPoints: RoutePoint[], newGroups?: PointGroup[]) => {
     setPoints(newPoints);
+    if (newGroups !== undefined) setGroups(newGroups);
   };
 
   const handlePointsReordered = (reorderedPoints: RoutePoint[]) => {
@@ -60,6 +65,36 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
 
   const handleSettingsChanged = (newSettings: RouteSettings) => {
     setSettings(newSettings);
+  };
+
+  const handleFilterByPolygon = () => {
+    if (!polygon || polygon.length < 3) return;
+    const inside = points.filter(p => isPointInPolygon(p.latitude, p.longitude, polygon));
+    const outside = points.filter(p => !isPointInPolygon(p.latitude, p.longitude, polygon));
+    const outsideIds = new Set(outside.map(p => p.id));
+    const outsideGroups = groups.filter(g => outside.some(p => p.groupId === g.id));
+    const insideGroups = groups.filter(g => inside.some(p => p.groupId === g.id));
+    setExcludedPoints(prev => ({
+      points: [...(prev?.points ?? []), ...outside],
+      groups: [...(prev?.groups.filter(g => !outsideGroups.some(og => og.id === g.id)) ?? []), ...outsideGroups],
+    }));
+    setPoints(inside);
+    setGroups(insideGroups);
+    log.info(`Filter: kept ${inside.length}, excluded ${outside.length}`);
+  };
+
+  const handleRestoreExcluded = () => {
+    if (!excludedPoints) return;
+    const confirmMsg = `¿Restaurar ${excludedPoints.points.length} puntos excluidos? Se agregarán a los ${points.length} actuales.`;
+    if (!window.confirm(confirmMsg)) return;
+    setPoints(prev => [...prev, ...excludedPoints.points]);
+    setGroups(prev => {
+      const existingIds = new Set(prev.map(g => g.id));
+      const toAdd = excludedPoints.groups.filter(g => !existingIds.has(g.id));
+      return [...prev, ...toAdd];
+    });
+    setExcludedPoints(null);
+    log.info(`Restored ${excludedPoints.points.length} excluded points`);
   };
 
   const handleSaveSession = async (name: string) => {
@@ -86,6 +121,7 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
 
   const handleLoadSession = (set: SavedRouteSet) => {
     setPoints(set.points as RoutePoint[]);
+    setGroups([]);
     setSettings({ maxDistanceKm: set.maxDistanceKm, maxPoints: set.maxPoints });
     setRoutePrefix(set.routePrefix);
     setActiveTab('import');
@@ -98,12 +134,20 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
         return (
           <ImportPanel
             points={points}
+            groups={groups}
             onPointsChanged={handlePointsChanged}
+            onGroupsChanged={setGroups}
             onGoToRoutes={() => setActiveTab('routes')}
+            onGoToMap={() => setActiveTab('mappoints')}
             settings={settings}
             savedSets={savedSets}
             onLoadSession={handleLoadSession}
             onDeleteSession={deleteSet}
+            polygon={polygon}
+            onPolygonChanged={setPolygon}
+            onFilterByPolygon={handleFilterByPolygon}
+            excludedCount={excludedPoints?.points.length ?? 0}
+            onRestoreExcluded={handleRestoreExcluded}
             debugMode={debugMode}
           />
         );
@@ -115,6 +159,9 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
               selectedPointId={selectedPointId}
               onPointSelected={setSelectedPointId}
               onPointsReordered={handlePointsReordered}
+              polygon={polygon}
+              onPolygonChanged={setPolygon}
+              onFilterByPolygon={handleFilterByPolygon}
               settings={settings}
               debugMode={debugMode}
             />
@@ -133,6 +180,7 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
         return (
           <RoutesPanel
             points={points}
+            groups={groups}
             settings={settings}
             orgId={orgId}
             projectId={projectId}

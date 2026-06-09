@@ -1,13 +1,16 @@
 import { fhApi } from '@/services/fhApi';
+import { createLogger } from '@/utils/logger';
 import { clickZoomLevel, getCurrentZoomLevel, getPitchValue, getRngValue } from '@/utils/utils';
+
+const log = createLogger('global.content');
 
 export default defineContentScript({
   matches: ['https://fh.dji.com/*'],
   async main() {
 
     if (DJI_COCKPIT_REGEX.test(window.location.href)) {
-          console.log("cockpit.content")
-        }
+      log.info("cockpit.content")
+    }
 
 
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -35,9 +38,21 @@ export default defineContentScript({
         return true;
       }
 
+      if (action === "GET_ALL_ROUTES_FOR_PREFIX") {
+        const { searchQuery } = message;
+        handleGetAllRoutesForPrefix(sendResponse, orgId, projectId, searchQuery);
+        return true;
+      }
+
       if (action === "GET_FLIGHT_ROUTE_DETAILS") {
         const { waylineId } = message;
         handleGetFlightRouteDetails(sendResponse, orgId, projectId, waylineId);
+        return true;
+      }
+
+      if (action === "GET_BATCHED_ROUTE_DETAILS") {
+        const { routeIds } = message;
+        handleGetBatchedRouteDetails(sendResponse, projectId, routeIds);
         return true;
       }
 
@@ -103,10 +118,71 @@ export default defineContentScript({
       sendResponse({ flightRoutes, orgId, projectId });
     }
 
+    async function handleGetAllRoutesForPrefix(sendResponse: any, orgId: string, projectId: string, searchQuery: string) {
+      if (!projectId) return sendResponse({ error: "Missing projectId" });
+
+      const perPage = 50;
+
+      try {
+        let allRoutes = [];
+        let currentPage = 1;
+        let totalPages = 1;
+
+        while (currentPage <= totalPages) {
+          // Fetch the page directly from the API
+          log.info('handleGetAllRoutesForPrefix', { searchQuery, currentPage, perPage, totalPages })
+          const response = await fhApi.getFlightRoutes(projectId, searchQuery, currentPage, perPage);
+          const data = response?.data;
+
+          if (data?.list) {
+            allRoutes.push(...data.list);
+          }
+
+          const totalItems = data?.pagination?.total || 0;
+          totalPages = Math.ceil(totalItems / perPage);
+          currentPage++;
+        }
+
+        // Send the massive, completed array back to React all at once
+        sendResponse({ success: true, routes: allRoutes });
+
+      } catch (error: any) {
+        log.error(`🚨 API Crash on Prefix [${searchQuery}]:`, error);
+        // Safely reply with the error so the channel closes cleanly
+        sendResponse({ success: false, error: error.message });
+      }
+    }
+
     async function handleGetFlightRouteDetails(sendResponse: any, orgId: string, projectId: string, searchQuery: string) {
       if (!projectId) return sendResponse({ error: "Missing projectId" });
       const flightRoutes = await fhApi.getFlightRouteDetails(projectId, searchQuery);
       sendResponse({ flightRoutes, orgId, projectId });
+    }
+
+    async function handleGetBatchedRouteDetails(sendResponse: any, projectId: string, routeIds: string[]) {
+      const results = [];
+
+      // Loop through and fetch all details directly on the webpage side
+      for (const routeId of routeIds) {
+        try {
+          const res = await fhApi.getFlightRouteDetails(projectId, routeId);
+          results.push({
+            routeId,
+            success: true,
+            data: res?.data || res
+          });
+        } catch (error: any) {
+          log.error(`🚨 Failed to fetch details for ${routeId}:`, error);
+          results.push({
+            routeId,
+            success: false,
+            error: error.message
+          });
+        }
+      }
+
+      // Send the entire batch of results back to React at once!
+      sendResponse({ success: true, results });
     }
 
     // async function handleDownloadFlightRoute(sendResponse: any, fileUrl: string) {
@@ -158,7 +234,7 @@ export default defineContentScript({
           );
         }
       };
-      
+
       if (type === 'keydown' || type === 'keyup') {
         fireEvent(type);
       } else if (type === 'tap') {
@@ -171,7 +247,7 @@ export default defineContentScript({
 
     function handleZoomStep(direction: 'in' | 'out') {
       const currentIndex = getCurrentZoomLevel().index;
-      if (currentIndex === -1) return; 
+      if (currentIndex === -1) return;
 
       const targetIndex = direction === 'in' ? currentIndex + 1 : currentIndex - 1;
 

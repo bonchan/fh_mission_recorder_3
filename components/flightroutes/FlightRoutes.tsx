@@ -25,37 +25,32 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
     markRouteStale,
   } = useDatabase(orgId, projectId);
 
-  const { getFlightRoutes, getFlightRouteDetails } = useMessage(orgId, projectId);
+  const { getFlightRoutes, getAllRoutesForPrefix, getFlightRouteDetails, getBatchedRouteDetails } = useMessage(orgId, projectId);
 
   const { showToast } = useToast()
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const perPage = 200;
-  const rejectedPrefixes = ['C-', 'Falla', 'P'];
+  const acceptedPrefixes = ['D-', 'BP-', 'GR-'];
+  const prefixLength = 4
 
   const fetchLatestHeadersByPrefix = async (prefixes: string[]) => {
     let allFetchedApiRoutes: any[] = [];
     const failedPrefixes: string[] = [];
 
     for (const prefix of prefixes) {
-      let currentPage = 1;
-      let totalPages = 1;
+      log.info(`Fetching ALL routes for prefix [${prefix}]...`);
 
       try {
-        while (currentPage <= totalPages) {
-          log.info(`Fetching prefix [${prefix}] - Page ${currentPage}`);
-          const res = await getFlightRoutes(prefix, currentPage, perPage, sourceTabId);
-          const data = res?.flightRoutes?.data;
+        const res = await getAllRoutesForPrefix(prefix, sourceTabId);
 
-          if (data?.list) {
-            allFetchedApiRoutes.push(...data.list);
-          }
+        if (!res.success) {
+          throw new Error(res.error);
+        }
 
-          const totalItems = data?.pagination?.total || 0;
-          totalPages = Math.ceil(totalItems / perPage);
-          currentPage++;
+        if (res.routes) {
+          allFetchedApiRoutes.push(...res.routes);
         }
       } catch (error) {
         log.error(`Failed fetching for prefix: ${prefix}`, error);
@@ -81,7 +76,9 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
     const rawNames = pastedText.split('\n').map(n => n.trim()).filter(n => n !== '');
     const uniqueSortedNames = Array.from(new Set(rawNames))
       .sort()
-      .filter(name => !rejectedPrefixes.some(prefix => name.toLowerCase().startsWith(prefix.toLowerCase())));
+      .filter(name =>
+        acceptedPrefixes.some(prefix => name.toLowerCase().startsWith(prefix.toLowerCase()))
+      );
 
     if (uniqueSortedNames.length === 0) {
       setIsLoading(false);
@@ -90,7 +87,7 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
 
     const buckets: Record<string, string[]> = {};
     uniqueSortedNames.forEach(name => {
-      const prefix = name.substring(0, 3).toUpperCase();
+      const prefix = name.substring(0, prefixLength).toUpperCase();
       if (!buckets[prefix]) buckets[prefix] = [];
       buckets[prefix].push(name);
     });
@@ -119,52 +116,81 @@ export function FlightRoutes({ orgId, projectId, sourceTabId, debugMode }: Fligh
     }
   };
 
+  const chunkArray = <T,>(array: T[], size: number): T[][] => {
+    const result: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      result.push(array.slice(i, i + size));
+    }
+    return result;
+  };
+
   // --- THE SYNC ALL DETAILS HANDLER ---
   const handleSyncAll = async () => {
     setIsSyncing(true);
 
-    // 1. Group existing DB routes to find their prefixes
     const prefixesToVerify = Array.from(new Set(
-      projectRoutes.filter(r => r.isExecutionRoute).map(r => r.name.substring(0, 3).toUpperCase())
+      projectRoutes.filter(r => r.isExecutionRoute).map(r => r.name.substring(0, prefixLength).toUpperCase())
     ));
-
     const { allFetchedApiRoutes } = await fetchLatestHeadersByPrefix(prefixesToVerify);
 
     for (const apiRoute of allFetchedApiRoutes) {
       const dbRoute = projectRoutes.find(r => r.name === apiRoute.name);
       const apiUpdateTime = apiRoute.update_time || apiRoute.updateTime;
 
-      if (dbRoute && apiUpdateTime > dbRoute.updateTime) {
-        log.warn(`${dbRoute.name} is stale! Reverting to PENDING.`);
+      if (dbRoute) {
         await markRouteStale(dbRoute.id, apiUpdateTime);
       }
     }
 
-    const routesToSync = projectRoutes.filter(
-      r => r.isExecutionRoute && r.syncStatus === 'PENDING'
-    );
+    const routesToSync = projectRoutes.filter(r => r.isExecutionRoute);
 
     if (routesToSync.length === 0) {
       showToast(
         'Sync Complete!',
-        'All execution routes are already up to date!',
+        'No execution routes found to sync.',
         { type: "success" }
-      )
+      );
       setIsSyncing(false);
       return;
     }
 
-    for (const route of routesToSync) {
+    log.info(`Batch fetching details for ALL ${routesToSync.length} routes...`);
+
+    const routeIdsToFetch = routesToSync.map(r => r.id);
+    const chunks = chunkArray(routeIdsToFetch, 5);
+
+    let processedCount = 0;
+
+    for (const chunk of chunks) {
+      log.info(`Syncing chunk... (${processedCount} / ${routeIdsToFetch.length})`);
+
       try {
-        log.info(`Fetching details for route: ${route.name}`);
-        const res = await getFlightRouteDetails(route.id, sourceTabId);
-        const data = res?.flightRoutes?.data || res;
-        await syncRouteDetails(route.id, data);
+        const res = await getBatchedRouteDetails(chunk, sourceTabId);
+
+        if (res?.success && res.results) {
+          for (const result of res.results) {
+            if (result.success && result.data) {
+              await syncRouteDetails(result.routeId, result.data);
+            } else {
+              log.error(`Content script failed to fetch details for ${result.routeId}`);
+              await markRouteFailed(result.routeId);
+            }
+          }
+        }
       } catch (error) {
-        log.error(`Network error fetching details for ${route.name}`, error);
-        await markRouteFailed(route.id);
+        log.error("Fatal error processing chunk. Moving to next.", error);
       }
+
+      processedCount += chunk.length;
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
+
+    showToast(
+      'Force Sync Complete!',
+      `Successfully updated ${routeIdsToFetch.length} routes.`,
+      { type: "success" }
+    );
 
     setIsSyncing(false);
   };

@@ -158,7 +158,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
       {/* Column 1: Execution Routes */}
       <div style={columnStyle}>
         {/* We use executionRoutesWithData.length if available, fallback to the basic list */}
-        <h4 style={{ marginTop: 0 }}>✈️ Execution Routes ({executionRoutesWithData?.length || executionRoutes.length})</h4>
+        <h4 style={{ marginTop: 0 }}>{`✈️ Execution Routes (${displayRoutes.length} of ${executionRoutesWithData?.length || executionRoutes.length})`}</h4>
 
         {hasPending ? (
           <div style={{ marginBottom: '15px', padding: '10px', background: '#fff3cd', borderRadius: '4px', border: '1px solid #ffeeba' }}>

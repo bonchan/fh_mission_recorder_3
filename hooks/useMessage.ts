@@ -85,9 +85,24 @@ export function useMessage(orgId: string, projectId: string) {
     return await browser.tabs.sendMessage(targetTabId, { action: "GET_FLIGHT_ROUTES", orgId, projectId, searchQuery, page, size });
   };
 
+  const getAllRoutesForPrefix = async (searchQuery: string, tabId?: number) => {
+    const targetTabId = await getTargetTabId(tabId);
+    return await browser.tabs.sendMessage(targetTabId, { action: "GET_ALL_ROUTES_FOR_PREFIX", orgId, projectId, searchQuery });
+  };
+
   const getFlightRouteDetails = async (waylineId: string, tabId?: number) => {
     const targetTabId = await getTargetTabId(tabId);
     return await browser.tabs.sendMessage(targetTabId, { action: "GET_FLIGHT_ROUTE_DETAILS", orgId, projectId, waylineId });
+  };
+
+  const getBatchedRouteDetails = async (routeIds: string[], tabId?: number) => {
+    const targetTabId = await getTargetTabId(tabId);
+    return await browser.tabs.sendMessage(targetTabId, {
+      action: "GET_BATCHED_ROUTE_DETAILS",
+      orgId,
+      projectId,
+      routeIds
+    });
   };
 
   const getStorageUploadCredentials = async (tabId?: number) => {
@@ -128,7 +143,9 @@ export function useMessage(orgId: string, projectId: string) {
     getAnnotations,
 
     getFlightRoutes,
+    getAllRoutesForPrefix,
     getFlightRouteDetails,
+    getBatchedRouteDetails,
 
     getStorageUploadCredentials,
     duplicateNameStorageCheck,

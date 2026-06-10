@@ -9,7 +9,7 @@ import { generateRoutes, Route } from '@/utils/routeSplitter';
 import { generateDJIMission } from '@/utils/wpml-generator';
 import { Mission, MissionType, Waypoint, Drone, Dock, PointGroup } from '@/utils/interfaces';
 import { useMissionActions } from '@/hooks/useMissionActions';
-import { dockEmptyIcon } from '@/utils/mapIcons';
+import { dockFullIcon } from '@/utils/mapIcons';
 
 const log = createLogger('RouteExporter');
 
@@ -93,34 +93,45 @@ function buildZenithalMission(
   };
 }
 
-function RoutesMapController({ routes, dock }: { routes: Route[], dock: Dock | null }) {
+function RoutesMapController({ routes, routeDocks }: { routes: Route[], routeDocks: (Dock | null)[] }) {
   const map = useMap();
 
   useEffect(() => {
     const allPoints = routes.flatMap(r => r.points);
     if (allPoints.length === 0) return;
     const coords: [number, number][] = allPoints.map(p => [p.latitude, p.longitude]);
-    if (dock) coords.push([dock.latitude, dock.longitude]);
+    routeDocks.forEach(d => { if (d) coords.push([d.latitude, d.longitude]); });
     const bounds = L.latLngBounds(coords);
     map.fitBounds(bounds, { padding: [40, 40] });
-  }, [routes, dock, map]);
+  }, [routes, routeDocks, map]);
+
+  // Group routes by dock (using lat/lon as key to deduplicate)
+  const dockGroups = new Map<string, { dock: Dock; routeIndices: number[] }>();
+  routeDocks.forEach((dock, idx) => {
+    if (!dock) return;
+    const key = `${dock.latitude},${dock.longitude}`;
+    if (!dockGroups.has(key)) dockGroups.set(key, { dock, routeIndices: [] });
+    dockGroups.get(key)!.routeIndices.push(idx + 1);
+  });
 
   return (
     <>
-      {dock && (
+      {Array.from(dockGroups.values()).map(({ dock, routeIndices }) => (
         <Marker
+          key={`${dock.latitude},${dock.longitude}`}
           position={[dock.latitude, dock.longitude]}
-          icon={dockEmptyIcon}
+          icon={dockFullIcon}
         >
           <Popup>
             <div>
               <strong>{dock.deviceOrganizationCallsign || dock.deviceProjectCallsign}</strong><br />
               {dock.deviceModelName}<br />
-              {dock.latitude.toFixed(6)}, {dock.longitude.toFixed(6)}
+              {dock.latitude.toFixed(6)}, {dock.longitude.toFixed(6)}<br />
+              <span style={{ color: '#666' }}>Rutas: {routeIndices.join(', ')}</span>
             </div>
           </Popup>
         </Marker>
-      )}
+      ))}
       {routes.map((route, routeIdx) => {
         const color = ROUTE_COLORS[routeIdx % ROUTE_COLORS.length];
         const positions = route.points.map(p => [p.latitude, p.longitude] as [number, number]);
@@ -188,6 +199,10 @@ export function RouteExporter({
   const [activoOverrides, setActivoOverrides] = useState<Record<string, string>>({});
   // Per-batch name prefix (only relevant when multiple batches)
   const [batchPrefixes, setBatchPrefixes] = useState<Record<number, string>>({});
+  // Per-route dock override: routeId → device index (undefined = use global)
+  const [routeDockOverrides, setRouteDockOverrides] = useState<Record<string, number | null>>({});
+  // Loading state while routes are being computed
+  const [isReady, setIsReady] = useState(false);
 
   const { uploadMission, isUploading } = useMissionActions(orgId, projectId);
 
@@ -254,7 +269,15 @@ export function RouteExporter({
   useEffect(() => {
     setEditableRoutes(null);
     setEditingRouteId(null);
+    setRouteDockOverrides({});
   }, [points]);
+
+  // Show loading indicator while routes are being computed
+  useEffect(() => {
+    setIsReady(false);
+    const t = setTimeout(() => setIsReady(true), 0);
+    return () => clearTimeout(t);
+  }, [computedBatches]);
 
   const routes = editableRoutes ?? computedRoutes;
 
@@ -314,6 +337,15 @@ export function RouteExporter({
     setEditableRoutes(updated);
   };
 
+  const handleDeleteRoute = (routeId: string) => {
+    if (!window.confirm('¿Eliminar esta ruta? Los puntos siguen cargados, solo se elimina esta ruta generada.')) return;
+    const current = ensureEditable();
+    const updated = current.filter(r => r.id !== routeId);
+    updated.forEach((r, i) => { r.id = `route-${i + 1}`; });
+    if (editingRouteId === routeId) setEditingRouteId(null);
+    setEditableRoutes(updated);
+  };
+
   const selectedPreset = DRONE_PRESETS.find(p => p.id === selectedPresetId) ?? DRONE_PRESETS[0];
   const effectiveDeviceModelKey = showAdvanced ? customDeviceModelKey || selectedPreset.deviceModelKey : selectedPreset.deviceModelKey;
   const effectivePayloadIndex = showAdvanced ? customPayloadIndex || selectedPreset.payloadIndex : selectedPreset.payloadIndex;
@@ -345,12 +377,18 @@ export function RouteExporter({
     return { value: '', options: [], perPoint: false };
   };
 
+  const getRouteDock = (routeId: string): Dock | null => {
+    const override = routeDockOverrides[routeId];
+    if (override !== undefined) return override !== null ? (devices[override]?.parent ?? null) : null;
+    return selectedDock;
+  };
+
   const buildMissions = () =>
     routes.map((route, i) =>
       buildZenithalMission(
         route, getMissionName(i), orgId, projectId,
         effectiveDeviceModelKey, effectivePayloadIndex, flightHeight,
-        selectedDock,
+        getRouteDock(route.id),
       )
     );
 
@@ -405,45 +443,92 @@ export function RouteExporter({
     );
   }
 
+  if (!isReady) {
+    return (
+      <div className="route-exporter-container">
+        <div className="empty-state"><p>Calculando rutas...</p></div>
+      </div>
+    );
+  }
+
   const isBusy = isDownloading || isUploading;
 
   return (
     <div className="route-exporter-container">
 
-      {/* ── 1. Routes summary ── */}
-      <div className="routes-summary" style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <h3 style={{ margin: 0 }}>Generated Routes ({routes.length})</h3>
-          {editableRoutes && (
-            <button
-              className="btn-tertiary"
-              onClick={() => { setEditableRoutes(null); setEditingRouteId(null); }}
-              style={{ fontSize: '11px', padding: '4px 10px' }}
-            >
-              Restaurar auto
-            </button>
-          )}
-        </div>
+      {/* ── 1+2. Routes list (left) + Map (right) ── */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'flex-start' }}>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Left: routes list */}
+        <div style={{ width: '480px', flexShrink: 0, display: 'flex', flexDirection: 'column', height: '700px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '14px' }}>Rutas generadas ({routes.length})</h3>
+            {editableRoutes && (
+              <button
+                className="btn-tertiary"
+                onClick={() => { setEditableRoutes(null); setEditingRouteId(null); }}
+                style={{ fontSize: '11px', padding: '4px 8px' }}
+              >
+                ↺ auto
+              </button>
+            )}
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '4px', direction: 'rtl' }}>
+          <div style={{ direction: 'ltr', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {routes.map((route, idx) => {
             const color = ROUTE_COLORS[idx % ROUTE_COLORS.length];
             const isEditing = editingRouteId === route.id;
+            const missionName = getMissionName(idx);
             return (
-              <div key={route.id} style={{ borderRadius: '8px', border: `2px solid ${color}`, background: '#1e1e1e', overflow: 'hidden' }}>
+              <div key={route.id} style={{ borderRadius: '6px', border: `2px solid ${color}`, background: '#1a1a1a', overflow: 'hidden', flexShrink: 0 }}>
                 {/* Route header row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}>
-                  <span style={{ fontWeight: 'bold', fontSize: '16px', color, minWidth: '20px' }}>{idx + 1}</span>
-                  <span style={{ fontSize: '12px', color: '#ccc' }}>{route.pointCount} puntos</span>
-                  <span style={{ fontSize: '11px', color: '#888' }}>{route.totalDistance.toFixed(2)} km</span>
-                  {route.exceedsLimits && <span style={{ fontSize: '10px', color: '#f59e0b' }}>⚠ excede</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 8px' }}>
+                  <span style={{ fontWeight: 'bold', fontSize: '13px', color, minWidth: '16px' }}>{idx + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '12px', color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {missionName || <span style={{ color: '#555' }}>sin nombre</span>}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#666' }}>
+                      {route.pointCount} pts · {route.totalDistance.toFixed(1)} km
+                      {route.exceedsLimits && <span style={{ color: '#f59e0b' }}> ⚠</span>}
+                    </div>
+                    {/* Per-route dock selector (only when multiple docks available) */}
+                    {devices.length > 0 && (
+                      <select
+                        value={routeDockOverrides[route.id] !== undefined ? (routeDockOverrides[route.id] ?? 'none') : 'global'}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setRouteDockOverrides(prev => ({
+                            ...prev,
+                            [route.id]: val === 'global' ? undefined as any : val === 'none' ? null : Number(val),
+                          }));
+                        }}
+                        style={{ marginTop: '3px', width: '100%', fontSize: '10px', background: '#111', color: routeDockOverrides[route.id] !== undefined ? '#60a5fa' : '#666', border: `1px solid ${routeDockOverrides[route.id] !== undefined ? '#60a5fa44' : '#222'}`, borderRadius: '3px', padding: '2px 4px' }}
+                      >
+                        <option value="global">
+                          🔗 {selectedDock ? (selectedDock.deviceOrganizationCallsign || selectedDock.deviceProjectCallsign || 'Dock global') : 'Sin dock (global)'}
+                        </option>
+                        <option value="none">Sin dock</option>
+                        {devices.map((device, dIdx) => {
+                          const dockLabel = device.parent?.deviceOrganizationCallsign || device.parent?.deviceProjectCallsign || `Dock ${dIdx + 1}`;
+                          return <option key={dIdx} value={dIdx}>{dockLabel}</option>;
+                        })}
+                      </select>
+                    )}
+                  </div>
                   <button
                     className="btn-secondary"
                     onClick={() => setEditingRouteId(isEditing ? null : route.id)}
-                    style={{ marginLeft: 'auto', fontSize: '11px', padding: '3px 10px', whiteSpace: 'nowrap' }}
+                    style={{ fontSize: '11px', padding: '2px 6px', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
-                    {isEditing ? 'Listo ✓' : '✏ Editar'}
+                    {isEditing ? '✓' : '✏'}
                   </button>
+                  <button
+                    onClick={() => handleDeleteRoute(route.id)}
+                    title="Eliminar ruta"
+                    style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '14px', padding: '0 2px', lineHeight: 1 }}
+                  >✕</button>
                 </div>
 
                 {/* Expanded point editor */}
@@ -508,21 +593,24 @@ export function RouteExporter({
               </div>
             );
           })}
+          </div>{/* end direction:ltr inner */}
+          </div>{/* end scrollable */}
         </div>
-      </div>
 
-      {/* ── 2. Map ── */}
-      {routes.length > 0 && (
-        <div style={{ height: '360px', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px', border: '1px solid #333' }}>
+        {/* Right: map */}
+        <div style={{ flex: 1, height: '700px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #333', minWidth: 0, alignSelf: 'stretch' }}>
           <MapContainer center={[0, 0]} zoom={2} style={{ height: '100%', width: '100%' }}>
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={20}
+              maxNativeZoom={17}
             />
-            <RoutesMapController routes={routes} dock={selectedDock} />
+            <RoutesMapController routes={routes} routeDocks={routes.map(r => getRouteDock(r.id))} />
           </MapContainer>
         </div>
-      )}
+
+      </div>{/* end flex row */}
 
       {/* ── 3. Export config ── */}
       <div className="export-form">

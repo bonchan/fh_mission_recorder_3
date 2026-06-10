@@ -44,6 +44,8 @@ export function ImportPanel({
   const [error, setError] = useState<string | null>(null);
   const [polygonName, setPolygonName] = useState<string | null>(null);
   const [polygonError, setPolygonError] = useState<string | null>(null);
+  // Yacimiento filter: keyed by value, true = keep
+  const [yacimientoFilter, setYacimientoFilter] = useState<Record<string, boolean>>({});
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -132,6 +134,30 @@ export function ImportPanel({
 
   const handleBatchChange = (groupId: string, batchId: number) => {
     onGroupsChanged(groups.map(g => g.id === groupId ? { ...g, batchId } : g));
+  };
+
+  // Unique yacimiento values present in loaded points
+  const uniqueYacimientos = Array.from(
+    new Set(points.map(p => p.yacimiento).filter((y): y is string => !!y))
+  ).sort();
+
+  // Initialize missing entries as true (included) when new values appear
+  const yacimientoFilterResolved: Record<string, boolean> = {};
+  for (const y of uniqueYacimientos) {
+    yacimientoFilterResolved[y] = yacimientoFilter[y] ?? true;
+  }
+
+  const handleApplyYacimientoFilter = () => {
+    const excluded = Object.entries(yacimientoFilterResolved)
+      .filter(([, keep]) => !keep)
+      .map(([y]) => y);
+    if (excluded.length === 0) return;
+    const newPoints = points.filter(p => !p.yacimiento || yacimientoFilterResolved[p.yacimiento] !== false);
+    const usedGroupIds = new Set(newPoints.map(p => p.groupId));
+    const newGroups = groups.filter(g => usedGroupIds.has(g.id));
+    onPointsChanged(newPoints, newGroups);
+    setYacimientoFilter({});
+    log.info(`Yacimiento filter applied, removed ${points.length - newPoints.length} points`);
   };
 
   const handleOptimizeAndGo = () => {
@@ -256,6 +282,40 @@ export function ImportPanel({
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* ── Yacimiento filter (optional — only shown when data is present) ── */}
+            {uniqueYacimientos.length > 0 && (
+              <div style={{ marginTop: '14px', padding: '10px 12px', background: '#111', borderRadius: '6px', border: '1px solid #2a2a2a' }}>
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#ccc', marginBottom: '8px' }}>
+                  Filtrar por Yacimiento
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '10px' }}>
+                  {uniqueYacimientos.map(y => {
+                    const count = points.filter(p => p.yacimiento === y).length;
+                    const checked = yacimientoFilterResolved[y];
+                    return (
+                      <label key={y} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e => setYacimientoFilter(prev => ({ ...prev, [y]: e.target.checked }))}
+                        />
+                        <span style={{ fontSize: '12px', color: checked ? '#eee' : '#555', flex: 1 }}>{y}</span>
+                        <span style={{ fontSize: '11px', color: '#666' }}>{count} pts</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <button
+                  className="btn-primary"
+                  onClick={handleApplyYacimientoFilter}
+                  disabled={Object.values(yacimientoFilterResolved).every(v => v)}
+                  style={{ width: '100%', fontSize: '12px', padding: '6px', background: '#7B1FA2' }}
+                >
+                  Aplicar filtro ({points.filter(p => p.yacimiento && !yacimientoFilterResolved[p.yacimiento]).length} puntos a eliminar)
+                </button>
               </div>
             )}
 

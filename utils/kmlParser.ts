@@ -9,6 +9,7 @@ export interface ParsedPoint {
   longitude: number;
   altitude?: number;
   description?: string;
+  yacimiento?: string;
 }
 
 export async function parseKML(file: File): Promise<ParsedPoint[]> {
@@ -27,6 +28,17 @@ export async function parseKML(file: File): Promise<ParsedPoint[]> {
     const placemark = placemarks[i];
     const name = placemark.getElementsByTagName('name')[0]?.textContent || `Point ${i + 1}`;
     const description = placemark.getElementsByTagName('description')[0]?.textContent;
+
+    // Extract YACIMIENTO_PROD from ExtendedData > SchemaData > SimpleData
+    let yacimiento: string | undefined;
+    const simpleDataNodes = placemark.getElementsByTagName('SimpleData');
+    for (let j = 0; j < simpleDataNodes.length; j++) {
+      if (simpleDataNodes[j].getAttribute('name') === 'YACIMIENTO_PROD') {
+        const val = simpleDataNodes[j].textContent?.trim();
+        if (val) yacimiento = val;
+        break;
+      }
+    }
 
     // Try Point first, then LineString coordinates
     let coordText =
@@ -49,6 +61,7 @@ export async function parseKML(file: File): Promise<ParsedPoint[]> {
         longitude,
         altitude,
         description,
+        yacimiento,
       });
     }
   }

@@ -42,7 +42,7 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
   const [polygon, setPolygon] = useState<PolygonCoords | null>(null);
   const [excludedPoints, setExcludedPoints] = useState<{ points: RoutePoint[]; groups: PointGroup[] } | null>(null);
 
-  const { savedSets, saveSet, deleteSet } = useSavedRouteSets(projectId);
+  const { savedSets, isLoading, saveSet, deleteSet } = useSavedRouteSets(projectId);
   const { projectTopologies } = useDatabase(orgId, projectId);
   const devices: Drone[] = toDockDroneList(projectTopologies);
 
@@ -241,7 +241,10 @@ export function ManagerRoute({ orgId, projectId, debugMode = false }: ManagerRou
       </header>
 
       <main className="content-area" style={{ overflowY: 'auto', padding: '16px' }}>
-        {renderTabContent()}
+        {isLoading
+          ? <div className="empty-state"><p>Cargando...</p></div>
+          : renderTabContent()
+        }
       </main>
     </div>
   );

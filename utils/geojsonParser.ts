@@ -9,6 +9,7 @@ export interface ParsedPoint {
   longitude: number;
   altitude?: number;
   description?: string;
+  yacimiento?: string;
 }
 
 export async function parseGeoJSON(file: File): Promise<ParsedPoint[]> {
@@ -26,6 +27,7 @@ export async function parseGeoJSON(file: File): Promise<ParsedPoint[]> {
     const properties = feature.properties || {};
     const name = properties.name || properties.title || `Point ${index + 1}`;
     const description = properties.description || '';
+    const yacimiento: string | undefined = properties.YACIMIENTO_PROD || undefined;
 
     if (!geometry || !geometry.coordinates) return;
 
@@ -55,6 +57,7 @@ export async function parseGeoJSON(file: File): Promise<ParsedPoint[]> {
         longitude,
         altitude,
         description,
+        yacimiento,
       });
     }
   });

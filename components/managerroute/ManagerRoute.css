@@ -1631,3 +1631,31 @@
 }
 
 
+
+
+/* Custom scrollbars — dark theme */
+.route-exporter-container *::-webkit-scrollbar,
+.import-panel *::-webkit-scrollbar,
+.content-area::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.route-exporter-container *::-webkit-scrollbar-track,
+.import-panel *::-webkit-scrollbar-track,
+.content-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.route-exporter-container *::-webkit-scrollbar-thumb,
+.import-panel *::-webkit-scrollbar-thumb,
+.content-area::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.route-exporter-container *::-webkit-scrollbar-thumb:hover,
+.import-panel *::-webkit-scrollbar-thumb:hover,
+.content-area::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

@@ -103,6 +103,8 @@ const ViewportTracker: React.FC<ViewportTrackerProps> = ({ setBounds, setZoom })
     zoomend: () => { // 👈 Explicitly catch zoom events
       setBounds(map.getBounds());
       setZoom(map.getZoom());
+      log.info(map.getZoom()
+    );
     }
   });
 
@@ -176,6 +178,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         zoom={currentZoom}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false} // Cleaner look
+        maxZoom={20}
       >
         {/* Invisible Utility Components stay outside the LayersControl */}
         <BoundsHandler annotations={compromisedAnnotations} />
@@ -205,7 +208,8 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
           <LayersControl.BaseLayer name="Satellite (Esri)" checked>
             <TileLayer
               attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" 
+              maxNativeZoom={17}
             />
           </LayersControl.BaseLayer>
 

@@ -12,6 +12,7 @@ export interface RoutePoint {
   description?: string;
   groupId?: string;
   groupName?: string;
+  yacimiento?: string;
 }
 
 export interface OptimizationResult {

@@ -76,13 +76,7 @@ function MapController({
         <Marker
           key={point.id}
           position={[point.latitude, point.longitude]}
-          draggable={!drawMode}
-          eventHandlers={{
-            dragend: (event) => {
-              const marker = event.target;
-              handleMarkerDragEnd(index, marker.getLatLng());
-            },
-          }}
+          draggable={false}
           icon={(() => {
             const label = point.name;
             const charW = 7.5;
@@ -188,12 +182,20 @@ export function RouteMap({
           <MapContainer
             center={center}
             zoom={13}
+            maxZoom={17}
             style={{ height: '100%', width: '100%', cursor: drawMode ? 'crosshair' : '' }}
           >
-            <TileLayer
+            
+            {/* <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            /> */}
+
+            <TileLayer
+                          attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                          maxNativeZoom={17}
+                        />
             <MapController
               points={points}
               onPointsReordered={onPointsReordered}
@@ -302,7 +304,7 @@ export function RouteMap({
           </div>
 
           <div className="map-info">
-            <p>💡 Arrastrá los marcadores para moverlos · Dibujá un polígono para filtrar</p>
+            <p>💡 Dibujá un polígono para filtrar puntos</p>
             <p>Total route distance: <strong>{(totalDistance / 1000).toFixed(2)} km</strong></p>
             {points.length > 1 && (
               <p>Avg. segment: <strong>{(totalDistance / (points.length - 1) / 1000).toFixed(2)} km</strong></p>

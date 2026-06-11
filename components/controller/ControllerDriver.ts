@@ -6,10 +6,15 @@ export type ButtonsState = {
   tr: boolean; tl: boolean
   f1: boolean; f2: boolean; f3: boolean;
   f4: boolean; f5: boolean; f6: boolean;
+  hat_up: boolean; hat_down: boolean;
+  hat_left: boolean; hat_right: boolean;
+  hat_push: boolean
 };
+
 
 export enum ControllerModel {
   RC3 = "DJI RC 3",
+  SCE = "DJI Smart Controller Enterprise",
   RCP2 = "DJI RC plus2"
 }
 

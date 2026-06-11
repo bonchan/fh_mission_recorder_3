@@ -104,6 +104,7 @@ export default function VisualController({
                 }}
               >
                 <option value={ControllerModel.RCP2}>{ControllerModel.RCP2}</option>
+                <option value={ControllerModel.SCE}>{ControllerModel.SCE}</option>
                 <option value={ControllerModel.RC3}>{ControllerModel.RC3}</option>
               </select>
             </div>

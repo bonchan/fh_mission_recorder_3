@@ -1,9 +1,10 @@
 // AdbControllerDriver.ts
-import { ControllerDriver, ControllerState, ControllerCallbacks } from '@/components/controller/ControllerDriver';
-import { Adb, AdbDaemonTransport } from '@yume-chan/adb';
-import { AdbDaemonWebUsbDeviceManager } from '@yume-chan/adb-daemon-webusb';
-import AdbWebCredentialStore from '@yume-chan/adb-credential-web';
+import { ControllerCallbacks, ControllerDriver, ControllerModel } from '@/components/controller/ControllerDriver';
 import { createLogger } from '@/utils/logger';
+import { Adb, AdbDaemonTransport } from '@yume-chan/adb';
+import AdbWebCredentialStore from '@yume-chan/adb-credential-web';
+import { AdbDaemonWebUsbDeviceManager } from '@yume-chan/adb-daemon-webusb';
+
 
 const CredentialStore = new AdbWebCredentialStore("AdbControllerDriver");
 const W_MAX = 1100.0;
@@ -19,21 +20,27 @@ const INITIAL_BUTTONS = {
   f1: false, f2: false, f3: false,
   f4: false, f5: false, f6: false,
   power: false,
-  sw1: 0, sw2: 0
+  sw1: 0, sw2: 0,
+  hat_up: false, hat_down: false,
+  hat_left: false, hat_right: false,
+  hat_push: false
 };
 
 export class AdbControllerDriver implements ControllerDriver {
   private stopFlag = false;
   private process: any = null;
   private transport: any = null;
-  
-  // Store the callbacks object
   private callbacks?: ControllerCallbacks;
+  private model: ControllerModel
 
   // Local hardware state
   private sticks = { ...INITIAL_STICKS };
   private touch = { ...INITIAL_TOUCH };
   private buttons = { ...INITIAL_BUTTONS };
+
+  constructor(model: ControllerModel) {
+    this.model = model;
+  }
 
   async connect(callbacks: ControllerCallbacks) {
     this.stopFlag = false;
@@ -76,18 +83,18 @@ export class AdbControllerDriver implements ControllerDriver {
 
     } catch (err) {
       log.error("ADB Connection Error:", err);
-      throw err; 
+      throw err;
     }
   }
 
   async disconnect() {
     this.stopFlag = true;
     if (this.process) {
-      try { await this.process.kill(); } catch (e) {}
+      try { await this.process.kill(); } catch (e) { }
       this.process = null;
     }
     if (this.transport) {
-      try { await this.transport.close(); } catch (e) {}
+      try { await this.transport.close(); } catch (e) { }
       this.transport = null;
     }
   }
@@ -99,7 +106,7 @@ export class AdbControllerDriver implements ControllerDriver {
     while (!this.stopFlag) {
       try {
         const { value, done } = await reader.read();
-        
+
         // If the stream naturally finishes (device unplugged)
         if (done) break;
 
@@ -149,6 +156,7 @@ export class AdbControllerDriver implements ControllerDriver {
       if (code === 'ABS_Z') this.sticks.wheel_l = this._normalize_wheel(val);
       if (code === 'ABS_RZ') this.sticks.wheel_r = this._normalize_wheel(val);
       updatedSticks = true;
+      updatedButtons = this._process_hat(code, val)
     }
 
     // 2. Touch Logic
@@ -183,6 +191,11 @@ export class AdbControllerDriver implements ControllerDriver {
       if (btnCode === "KEY_F5") this.buttons.f5 = isDown;
       if (btnCode === "KEY_F6") this.buttons.f6 = isDown;
       if (btnCode === "KEY_POWER") this.buttons.power = isDown;
+      if (btnCode === "BTN_THUMBL") {
+        this.buttons.hat_push = isDown;
+        // nasty hack
+        this.buttons.f2 = isDown
+      }
       updatedButtons = true;
     }
 
@@ -194,6 +207,30 @@ export class AdbControllerDriver implements ControllerDriver {
     }
   }
 
+  private _process_hat(code: string, val: number): boolean {
+    if (code === 'ABS_HAT0Y' || code === 'ABS_HAT0X') {
+      const signedVal = val > 0x7fffffff ? val - 0x100000000 : val;
+
+      if (code === 'ABS_HAT0Y') {
+        this.buttons.hat_up = (signedVal === -1);
+        this.buttons.hat_down = (signedVal === 1);
+        // nasty hack
+        this.buttons.f5 = this.buttons.hat_up
+        this.buttons.f6 = this.buttons.hat_down
+
+      }
+      if (code === 'ABS_HAT0X') {
+        this.buttons.hat_left = (signedVal === -1);
+        this.buttons.hat_right = (signedVal === 1);
+        // nasty hack
+        this.buttons.f1 = this.buttons.hat_left
+        this.buttons.f3 = this.buttons.hat_right
+      }
+      return true;
+    }
+    return false;
+  }
+
   private _normalize_stick(val: number) {
     if (val > 0x7fffffff) val -= 0x100000000;
     const norm = (val - (-1)) / 32767.0;
@@ -201,7 +238,14 @@ export class AdbControllerDriver implements ControllerDriver {
   }
 
   private _normalize_wheel(val: number) {
-    const norm = (val - 127) / 127.0;
+    let norm = 0;
+
+    if (this.model === ControllerModel.SCE) {
+      norm = (val - 511.5) / 511.5;
+    } else if (this.model === ControllerModel.RCP2) {
+      norm = (val - 127) / 127.0;
+    }
+
     return Math.max(-1, Math.min(1, norm));
   }
 }

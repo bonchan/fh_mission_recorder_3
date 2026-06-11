@@ -1,10 +1,9 @@
 // useDJIController.ts
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { ControllerDriver } from '@/components/controller/ControllerDriver';
-import { createLogger } from '@/utils/logger'; 
+import { ControllerDriver, ControllerModel } from '@/components/controller/ControllerDriver';
 import { AdbControllerDriver } from '@/drivers/AdbControllerDriver';
 import { HidControllerDriver } from '@/drivers/HidControllerDriver';
-import { ControllerModel } from '@/components/controller/ControllerDriver';
+import { createLogger } from '@/utils/logger';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 
 const INITIAL_STICKS = { throttle: 0, yaw: 0, pitch: 0, roll: 0, wheel_l: 0, wheel_r: 0 };
@@ -13,7 +12,10 @@ const INITIAL_BUTTONS = {
   back: false, tr: false, tl: false,
   f1: false, f2: false, f3: false,
   f4: false, f5: false, f6: false,
-  power: false
+  power: false,
+  hat_up: false, hat_down: false, 
+  hat_left: false, hat_right: false, 
+  hat_push: false
 };
 
 const log = createLogger('useDJIController');
@@ -31,9 +33,9 @@ export function useDJIController() {
       await driverRef.current.disconnect();
       driverRef.current = null;
     }
-    
+
     setIsConnected(false);
-    
+
     setSticks(INITIAL_STICKS);
     setTouch(INITIAL_TOUCH);
     setButtons(INITIAL_BUTTONS);
@@ -53,14 +55,17 @@ export function useDJIController() {
       let driver: ControllerDriver;
       switch (rcType) {
         case ControllerModel.RCP2:
-          driver = new AdbControllerDriver();
+          driver = new AdbControllerDriver(ControllerModel.RCP2);
+          break;
+        case ControllerModel.SCE:
+          driver = new AdbControllerDriver(ControllerModel.SCE);
           break;
         case ControllerModel.RC3:
         default:
           driver = new HidControllerDriver();
           break;
       }
-      
+
       driverRef.current = driver;
 
       await driver.connect({

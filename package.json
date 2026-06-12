@@ -2,7 +2,7 @@
   "name": "panel-3",
   "description": "Panel 3",
   "private": true,
-  "version": "0.0.15-naughty",
+  "version": "0.0.16-naughty",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -26,7 +26,7 @@
     "@yume-chan/adb": "^2.6.0",
     "@yume-chan/adb-credential-web": "^2.1.0",
     "@yume-chan/adb-daemon-webusb": "^2.3.2",
-    "@yume-chan/stream-extra": "^2.5.3",
+    "@yume-chan/stream-extra": "^2.6.1",
     "deck.gl": "^9.2.11",
     "dexie": "^4.4.2",
     "dexie-react-hooks": "^4.4.0",

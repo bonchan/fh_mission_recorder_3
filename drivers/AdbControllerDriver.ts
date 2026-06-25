@@ -30,6 +30,7 @@ export class AdbControllerDriver implements ControllerDriver {
   private stopFlag = false;
   private process: any = null;
   private transport: any = null;
+  private adb: any = null;
   private callbacks?: ControllerCallbacks;
   private model: ControllerModel
 
@@ -38,8 +39,18 @@ export class AdbControllerDriver implements ControllerDriver {
   private touch = { ...INITIAL_TOUCH };
   private buttons = { ...INITIAL_BUTTONS };
 
+  // constants
+  private wheelNorm = 0.5
+
   constructor(model: ControllerModel) {
     this.model = model;
+
+    if (this.model === ControllerModel.SCE) {
+      this.wheelNorm = 511.5;
+    } else if (this.model === ControllerModel.RCP2) {
+      this.wheelNorm = 127.0;
+    }
+
   }
 
   async connect(callbacks: ControllerCallbacks) {
@@ -73,6 +84,7 @@ export class AdbControllerDriver implements ControllerDriver {
       const process = await adb.subprocess.noneProtocol.spawn('getevent -lt');
 
       this.transport = transport;
+      this.adb = adb;
       this.process = process;
 
       const reader = process.output.getReader();
@@ -97,11 +109,27 @@ export class AdbControllerDriver implements ControllerDriver {
       try { await this.transport.close(); } catch (e) { }
       this.transport = null;
     }
+    this.adb = null;
+  }
+
+  async openApp(packageName: string, activity?: string) {
+    if (!this.adb) throw new Error("Not connected"); // 👈 Check this.adb instead
+
+    const cmd = activity
+      ? `am start -n ${packageName}/${activity}`
+      : `monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`;
+
+    // 👇 Changed this.transport.adb to this.adb
+    await this.adb.subprocess.noneProtocol.spawn(cmd);
   }
 
   private async startReadLoop(reader: any) {
     const decoder = new TextDecoder();
     let buffer = "";
+
+    // this.openApp("com.nob.p3", ".MainActivity").catch(err =>
+    //   log.error("Failed to open app:", err)
+    // );
 
     while (!this.stopFlag) {
       try {
@@ -142,6 +170,8 @@ export class AdbControllerDriver implements ControllerDriver {
     let updatedSticks = false;
     let updatedTouch = false;
     let updatedButtons = false;
+
+    log.info('processLine', line)
 
     // 1. Stick Logic
     const absMatch = line.match(/EV_ABS\s+(ABS_\w+)\s+([0-9a-fA-F]+)/);
@@ -238,14 +268,7 @@ export class AdbControllerDriver implements ControllerDriver {
   }
 
   private _normalize_wheel(val: number) {
-    let norm = 0;
-
-    if (this.model === ControllerModel.SCE) {
-      norm = (val - 511.5) / 511.5;
-    } else if (this.model === ControllerModel.RCP2) {
-      norm = (val - 127) / 127.0;
-    }
-
+    const norm = (val - this.wheelNorm) / this.wheelNorm;
     return Math.max(-1, Math.min(1, norm));
   }
 }

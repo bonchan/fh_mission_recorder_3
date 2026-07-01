@@ -1,3 +1,4 @@
+import { INVALID_ROUTE_CHARS_REGEX } from '@/utils/constants';
 import { RouteSafetyStatus, TurnType } from "./interfaces";
 
 export const getProjectTopologiesStorageKey = (orgId: string, projectId: string) => {
@@ -10,6 +11,11 @@ export const getProjectMissionsStorageKey = (orgId: string, projectId: string) =
 
 export const getProjectAnnotationsStorageKey = (orgId: string, projectId: string) => {
   return `${orgId}__${projectId}__annotations`;
+};
+
+export const sanitizeRouteName = (name: string): string => {
+  name = name.replace('_', '-')
+  return name.replace(new RegExp(INVALID_ROUTE_CHARS_REGEX, 'g'), '');
 };
 
 export function simulateClick(el: HTMLElement) {

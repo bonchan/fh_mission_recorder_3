@@ -1,23 +1,24 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { createLogger } from '@/utils/logger';
-import { isInRange } from '@/utils/utils';
-import { Mission, Waypoint, ViewContext, MissionType, Annotation, WaypointType } from '@/utils/interfaces';
 import { WaypointList } from '@/components/waypoint/WaypointList';
-import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useMessage } from '@/hooks/useMessage';
 import { useSync } from '@/hooks/useSync';
+import { Annotation, Mission, MissionType, ViewContext, Waypoint, WaypointType } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
+import { isInRange } from '@/utils/utils';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import { generateWaypointsFromTemplate } from '@/components/mission/missionGenerator'
-import { TemplateSelector } from '@/components/mission/TemplateSelector'
-import { MissionTemplate } from '@/components/mission/templates'
+import { generateWaypointsFromTemplate } from '@/components/mission/missionGenerator';
+import { MissionTemplate } from '@/components/mission/templates';
+import { TemplateSelector } from '@/components/mission/TemplateSelector';
 
 import { useToast } from '@/providers/ToastProvider';
 
 import Button from '@/components/ui/Button';
 import SearchInput from '@/components/ui/SearchInput';
 
-import { TemplateWaypoint } from '@/components/mission/templates'
+import { TemplateWaypoint } from '@/components/mission/templates';
+import { sanitizeRouteName } from '@/utils/utils';
+
 
 interface MissionItemProps {
   mission: Mission;
@@ -55,6 +56,11 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
     e.stopPropagation(); // Prevent the chevron toggle from firing
     setIsEditing(true);
     setEditName(mission.name);
+  };
+
+  const handleEditName = (name: string) => {
+    const cleanName = sanitizeRouteName(name)
+    setEditName(cleanName)
   };
 
   const handleConfirmName = () => {
@@ -282,7 +288,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
               <input
                 autoFocus
                 value={editName}
-                onChange={(e) => setEditName(e.target.value)}
+                onChange={(e) => handleEditName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleConfirmName();
                   if (e.key === 'Escape') setIsEditing(false);

@@ -4,6 +4,7 @@ import { uploadToCloudStorage } from '@/services/cloudStorage';
 import { Mission } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { delay } from '@/utils/time';
+import { sanitizeRouteName } from '@/utils/utils';
 import { generateDJIMission } from '@/utils/wpml-generator';
 import { RouteBuilder, type DjiKmlRoot } from 'dji-kmz-parser';
 import { useState } from 'react';
@@ -27,8 +28,8 @@ export function useMissionActions(orgId: string, projectId: string) {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const cleanName = mission.name.replace(/[<>:"/|?*._\\]/g, '');
-    a.download = `P3--${cleanName}.kmz`;
+    const cleanName = sanitizeRouteName(mission.name)
+    a.download = `${cleanName}.kmz`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -46,7 +47,7 @@ export function useMissionActions(orgId: string, projectId: string) {
 
       showToast('Generating mission file', '', { type: "info", swarm: true, duration: toastTTL })
       const blob = await generateDJIMission(mission);
-      const cleanName = mission.name.replace(/[<>:"/|?*._\\]/g, '');
+      const cleanName = sanitizeRouteName(mission.name)
       const fileUUID = crypto.randomUUID();
       const tempFileName = `${fileUUID}.kmz`;
       const file = new File([blob], tempFileName, { type: 'application/zip' });
@@ -85,7 +86,7 @@ export function useMissionActions(orgId: string, projectId: string) {
         const dd = String(date.getDate()).padStart(2, '0');
         const fileName = `NO VOLAR ${route.name} ${yyyy}-${mm}-${dd}`;
 
-        const cleanName = fileName.replace(/[<>:"/|?*._\\]/g, '');
+        const cleanName = sanitizeRouteName(fileName)
         const fileUUID = crypto.randomUUID();
         const tempFileName = `${fileUUID}.kmz`;
 

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Drone, MissionType } from '@/utils/interfaces';
-import { enumToOptions } from '@/utils/utils';
 import godMode from '@/assets/GgsQO4YX0AAyEFG.jpg';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { Drone, MissionType } from '@/utils/interfaces';
+import { enumToOptions, sanitizeRouteName } from '@/utils/utils';
+import { useState } from 'react';
 
 interface CreateMissionModalProps {
   devices: Drone[];
@@ -36,6 +36,11 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
     onSubmit(newMissionName, selectedDevice, selectedType);
   };
 
+  const handleSetMissionName = (name: string) => {
+    const cleanName = sanitizeRouteName(name)
+    setNewMissionName(cleanName)
+  }
+
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -64,7 +69,7 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
               <input
                 autoFocus
                 value={newMissionName}
-                onChange={(e) => setNewMissionName(e.target.value)}
+                onChange={(e) => handleSetMissionName(e.target.value)}
                 placeholder="e.g. Morning Patrol"
                 style={{ width: '100%', padding: '8px', marginBottom: '15px', background: '#2c2c2c', border: '1px solid #444', color: 'white', boxSizing: 'border-box' }}
               />

@@ -2,6 +2,8 @@ export const DJI_COCKPIT_REGEX = /^https:\/\/fh\.dji\.com\/organization\/([^\/]+
 export const DJI_PROJECT_BASE_REGEX = /^https:\/\/fh\.dji\.com\/organization\/([^\/]+)\/project\/([^\/\?#]+)(?:[\/#\?].*)?$/;
 export const DJI_COCKPIT_URL_REGEX = /^https:\/\/fh\.dji\.com\/organization\/([^\/]+)\/project\/([^\/\?#]+)\?droneSn=([^&]+)&gatewaySn=([^&#]+).*$/;
 
+export const INVALID_ROUTE_CHARS_REGEX = /[<>:"\/|?*._\\]/
+
 export const FIVE_MIN_MS = 5 * 60 * 1000;
 export const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 

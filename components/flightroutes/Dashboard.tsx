@@ -1,13 +1,14 @@
 import MapDisplay from '@/components/flightroutes/MapDisplay';
 import Button from '@/components/ui/Button';
-import { FilterOption, MultiSelectFilter } from '@/components/ui/MultiSelectFilter';
+import { MultiSelectFilter } from '@/components/ui/MultiSelectFilter';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useMissionActions } from '@/hooks/useMissionActions';
 import { useSync } from '@/hooks/useSync';
 import { useToast } from '@/providers/ToastProvider';
-import { FlightRouteData, ROUTE_SAFETY_STATUSES, RouteSafetyStatus } from '@/utils/interfaces';
+import { FlightRouteData, RouteSafetyStatus } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { toDockDroneList } from '@/utils/mapper';
+import { STATUS_OPTIONS } from '@/utils/options';
 import { getStatusColor } from '@/utils/utils';
 import { DjiParser, type DjiKmzData } from 'dji-kmz-parser';
 import React, { useRef, useState } from 'react';
@@ -15,11 +16,6 @@ import React, { useRef, useState } from 'react';
 
 const log = createLogger('FlightRoutesDashboard');
 
-const STATUS_OPTIONS: FilterOption<RouteSafetyStatus>[] = ROUTE_SAFETY_STATUSES.map(status => ({
-  value: status,
-  // Helper to make them pretty: "PATH_COMPROMISED" -> "COMPROMISED" or "PATH COMPROMISED"
-  label: status === 'PATH_COMPROMISED' ? 'COMPROMISED' : status.replace('_', ' ')
-}));
 
 interface DashboardProps {
   orgId: string;

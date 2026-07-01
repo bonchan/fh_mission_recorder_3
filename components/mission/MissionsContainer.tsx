@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useDatabase } from '@/hooks/useDatabase';
 import { CreateMissionModal } from './CreateMissionModal';
 import { MissionList } from './MissionList';
-import { Mission, MissionType, ViewContext, Drone, Annotation } from '@/utils/interfaces';
+import { Mission, MissionType, ViewContext, Drone, Annotation, ImageFormat } from '@/utils/interfaces';
 import Button from '@/components/ui/Button';
 
 const log = createLogger('MissionsContainer');
@@ -13,7 +13,7 @@ export function MissionsContainer({ orgId, projectId, sourceTabId, devices, anno
   const { projectMissions, createMission } = useDatabase(orgId, projectId);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleMissionSubmit = async (missionName: string, selectedDevice: Drone, missionType: MissionType) => {
+  const handleMissionSubmit = async (missionName: string, selectedDevice: Drone, missionType: MissionType, imageFormat: ImageFormat[]) => {
     const newMission: Mission = {
       id: crypto.randomUUID(),
       name: missionName,
@@ -22,6 +22,7 @@ export function MissionsContainer({ orgId, projectId, sourceTabId, devices, anno
       device: selectedDevice,
       createdDate: Date.now(),
       updatedDate: Date.now(),
+      imageFormat: imageFormat,
       missionType: missionType,
       waypoints: []
     };
@@ -58,7 +59,7 @@ export function MissionsContainer({ orgId, projectId, sourceTabId, devices, anno
         <CreateMissionModal
           devices={devices}
           onClose={() => setIsModalOpen(false)}
-          onSubmit={handleMissionSubmit} // Pass the handler down!
+          onSubmit={handleMissionSubmit}
         />
       )}
     </div>

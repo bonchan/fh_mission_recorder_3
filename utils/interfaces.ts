@@ -13,6 +13,11 @@ export enum MissionType {
   CLAMP = 'clamp',
 }
 
+export enum ImageFormat {
+  VISIBLE = 'visable',
+  INFRARED = 'ir',
+}
+
 export interface SyncMetadata {
   id: string;
   lastUpdated: number;
@@ -158,6 +163,7 @@ export interface Mission {
   device: Drone;
   createdDate: number;
   updatedDate: number;
+  imageFormat: ImageFormat[];
   // author: string | null;
   // isExpanded: boolean;
   missionType: MissionType;

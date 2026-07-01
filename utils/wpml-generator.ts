@@ -75,9 +75,9 @@ export async function generateDJIMissionFiles(mission: Mission) {
       <wpml:actionId>${action.actionId}</wpml:actionId>
       <wpml:actionActuatorFunc>${action.actionActuatorFunc}</wpml:actionActuatorFunc>
       ${action.actionActuatorTags
-        ? `<wpml:actionActuatorTags>${action.actionActuatorTags}</wpml:actionActuatorTags>`
-        : ''
-      }
+      ? `<wpml:actionActuatorTags>${action.actionActuatorTags}</wpml:actionActuatorTags>`
+      : ''
+    }
       
       <wpml:actionActuatorFuncParam>
         ${action.actionActuatorFunc === "orientedShoot"
@@ -201,9 +201,11 @@ export async function generateDJIMissionFiles(mission: Mission) {
   `
 
   const renderImageFormat = (mission: Mission) => {
-    let imageFormat = 'visable,ir'
-    if (mission.missionType == 'zenithal') imageFormat = 'visable'
-    return imageFormat
+    // TODO remove the zenithal validation
+    if (mission.imageFormat && mission.imageFormat.length > 0) {
+      return mission.imageFormat.join(',');
+    }
+    return mission.missionType === 'zenithal' ? 'visable' : 'visable,ir';
   }
 
   const templateFolderXml = `

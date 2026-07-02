@@ -1,4 +1,4 @@
-import { Annotation, AnnotationFlag, AppSettings, FlightRouteData, FlightRouteHeader, Mission, SyncMetadata } from '@/utils/interfaces';
+import { Annotation, AnnotationFlag, AppSettings, FlightArea, FlightRouteData, FlightRouteHeader, Mission, SyncMetadata } from '@/utils/interfaces';
 import Dexie, { Table } from 'dexie';
 
 
@@ -8,6 +8,8 @@ export class AppDatabase extends Dexie {
 
   annotations!: Table<Annotation, string>;
   annotations_flags!: Table<AnnotationFlag, string>;
+
+  flight_areas!: Table<FlightArea, string>;
 
   flight_routes!: Table<FlightRouteHeader, string>;
   flight_route_data!: Table<FlightRouteData, string>;
@@ -24,6 +26,8 @@ export class AppDatabase extends Dexie {
 
       annotations: 'id, projectId',
       annotations_flags: 'id, projectId',
+
+      flight_areas: 'id, projectId',
 
       flight_routes: 'id, projectId, syncStatus, [projectId+syncStatus]',
       flight_route_data: 'routeId',

@@ -121,6 +121,11 @@ export const fhApi = {
         return this.call('GET', endpoint);
     },
 
+    async getFlightAreas(projectUUID: string): Promise<any> {
+        const endpoint = `/map/api/v1/workspaces/${projectUUID}/flight-areas?name=&type=&status=`;
+        return this.call('GET', endpoint);
+    },
+
     async getFlightRoutes(projectUUID: string, searchQuery: string, page: number, size: number): Promise<any> {
         const endpoint = `/wayline/api/v1/workspaces/${projectUUID}/web-waylines?size=${size}&key=${searchQuery}&template_type=0&order_by=update_time%20desc&file_type=5&page=${page}`
         return this.call('GET', endpoint);

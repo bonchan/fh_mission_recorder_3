@@ -133,6 +133,22 @@ export interface AnnotationFlag {
   isCompromised: boolean;
 }
 
+export interface FlightArea {
+  id: string;
+  projectId: string;
+  name: string;
+  status: string;
+  type: string;
+  geometry: Geometry;
+  color: string;
+}
+
+export interface Geometry {
+  type: string;
+  coordinates: [];
+  radius?: number;
+}
+
 export interface LiveDroneData {
   timestamp: number;
   sn: string;

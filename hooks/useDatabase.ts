@@ -1,7 +1,7 @@
 import { FIVE_MIN_MS } from '@/utils/constants';
 import { db } from '@/utils/db';
 import { get3DDistanceInMeters } from '@/utils/geo';
-import { AnnotationFlag, AppSettings, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint } from '@/utils/interfaces';
+import { AnnotationFlag, AppSettings, FlightArea, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { toWaypointMini } from '@/utils/mapper';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -507,6 +507,19 @@ export function useDatabase(orgId: string, projectId: string) {
   };
 
   // ==========================================
+  // FLIGHT AREAS
+  // ==========================================
+
+  const saveFlightAreasCache = async (flightAreaList: FlightArea[]) => {
+    const cacheKey = `flight_areas_${projectId}`;
+    await db.transaction('rw', db.flight_areas, db.sync_metadata, async () => {
+      await db.flight_areas.where('projectId').equals(projectId).delete();
+      await db.flight_areas.bulkPut(flightAreaList);
+      await db.sync_metadata.put({ id: cacheKey, lastUpdated: Date.now() });
+    });
+  };
+
+  // ==========================================
   // BACKUP RESTORE
   // ==========================================
 
@@ -607,6 +620,9 @@ export function useDatabase(orgId: string, projectId: string) {
     saveCompromisedAnnotation,
     deleteCompromisedAnnotation,
     deleteAllCompromisedAnnotations,
+
+    // Flight Areas
+    saveFlightAreasCache,
 
     // Missions
     createMission,

@@ -1,4 +1,4 @@
-import { Annotation, Dock, Drone, FlatDevice, Waypoint, WaypointMini } from '@/utils/interfaces';
+import { Annotation, Dock, Drone, FlatDevice, FlightArea, Geometry, Waypoint, WaypointMini } from '@/utils/interfaces';
 import { extractNumber } from '@/utils/utils';
 import { type DjiKmzData } from 'dji-kmz-parser';
 
@@ -163,6 +163,27 @@ export function toAnnotation(djiItem: any, projectId: string): Annotation | null
         return annotation
     }
     return null
+}
+
+export function toFlaightArea(djiItem: any, projectId: string): FlightArea | null {
+    const djiItemGeometry = djiItem.content.geometry
+    const djiItemProperties = djiItem.content.properties
+
+    const geometry: Geometry = {
+        type: djiItemGeometry.type,
+        coordinates: djiItemGeometry.coordinates,
+        radius: djiItemGeometry.radius
+    }
+    const flightArea: FlightArea = {
+        id: djiItem.id,
+        projectId: projectId,
+        name: djiItem.name,
+        status: djiItem.status,
+        type: djiItem.type,
+        geometry: geometry,
+        color: djiItemProperties.color,
+    }
+    return flightArea
 }
 
 export function toWaypointMini(data: DjiKmzData | undefined | null): WaypointMini[] {

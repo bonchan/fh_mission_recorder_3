@@ -35,16 +35,17 @@ export default function SidePanelView() {
   }
   log.info("log", orgId, projectId)
   const { settings, updateSettings, projectTopologies, projectAnnotations } = useDatabase(orgId, projectId)
-  const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
+  const { isSyncingTopologies, isSyncingAnnotations, isSyncingFlightAreas, syncTopologies, syncAnnotations, syncFlightAreas } = useSync(orgId, projectId, sourceTabId)
 
   const { openPage } = useMessage(orgId, projectId)
 
   const devices = toDockDroneList(projectTopologies)
-  const isFetching = isSyncingTopologies || isSyncingAnnotations
+  const isFetching = isSyncingTopologies || isSyncingAnnotations || isSyncingFlightAreas
 
 
   useEffect(() => {
     syncAnnotations()
+    syncFlightAreas()
     syncTopologies()
   }, [projectId])
 

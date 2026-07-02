@@ -8,8 +8,8 @@ const log = createLogger('useSync');
 
 export function useSync(orgId: string, projectId: string, sourceTabId: number) {
   // Grab the Network and the Hard Drive
-  const { checkIsCacheFresh, saveAnnotationsCache, saveTopologiesCache } = useDatabase(orgId, projectId);
-  const { getAnnotations, getTopologies } = useMessage(orgId, projectId);
+  const { checkIsCacheFresh, saveAnnotationsCache, saveFlightAreasCache, saveTopologiesCache } = useDatabase(orgId, projectId);
+  const { getAnnotations, getFlightAreas, getTopologies } = useMessage(orgId, projectId);
 
   // Keep track of loading states for multiple resources
   const [syncStates, setSyncStates] = useState<Record<string, boolean>>({});
@@ -67,6 +67,17 @@ export function useSync(orgId: string, projectId: string, sourceTabId: number) {
     );
   }, [projectId, sourceTabId, performSync, getAnnotations, saveAnnotationsCache]);
 
+  const syncFlightAreas = useCallback(async (forceSync = false) => {
+    return await performSync(
+      'FlightAreas',
+      `flight_areas_${projectId}`,
+      FIVE_MIN_MS,
+      () => getFlightAreas(sourceTabId),
+      saveFlightAreasCache,
+      forceSync
+    );
+  }, [projectId, sourceTabId, performSync, getFlightAreas, saveFlightAreasCache]);
+
   const syncTopologies = useCallback(async (forceSync = false) => {
     return await performSync(
       'Topologies',
@@ -82,6 +93,9 @@ export function useSync(orgId: string, projectId: string, sourceTabId: number) {
   return {
     isSyncingAnnotations: syncStates['Annotations'] || false,
     syncAnnotations,
+
+    isSyncingFlightAreas: syncStates['FlightAreas'] || false,
+    syncFlightAreas,
 
     isSyncingTopologies: syncStates['Topologies'] || false,
     syncTopologies,

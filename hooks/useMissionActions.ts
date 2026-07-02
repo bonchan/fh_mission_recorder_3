@@ -57,7 +57,7 @@ export function useMissionActions(orgId: string, projectId: string) {
       await uploadToCloudStorage(file, objectKey, stsResponse.credentials.data);
       await delay(500);
 
-      let desiredFileName = `P3--${cleanName}.kmz`;
+      let desiredFileName = `${cleanName}.kmz`;
       showToast('Checking file name', desiredFileName, { type: "info", swarm: true, duration: toastTTL })
       const nscResponse = await duplicateNameStorageCheck(desiredFileName);
       desiredFileName = nscResponse.dnResponse.data.index_name;
@@ -106,7 +106,7 @@ export function useMissionActions(orgId: string, projectId: string) {
         await uploadToCloudStorage(file, objectKey, stsResponse.credentials.data);
         await delay(500);
 
-        let desiredFileName = `P3--${cleanName}.kmz`;
+        let desiredFileName = `${cleanName}.kmz`;
         showToast('Checking file name', desiredFileName, { type: "info", swarm: true, duration: toastTTL })
         const nscResponse = await duplicateNameStorageCheck(desiredFileName);
         desiredFileName = nscResponse.dnResponse.data.index_name;

@@ -1,11 +1,11 @@
-import { FlightRoute } from '@/utils/interfaces';
+import { FlightArea, FlightRoute } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { dockEmptyIcon, dockFullIcon, getRotatedDroneIcon } from '@/utils/mapIcons';
 import { getStatusColor } from '@/utils/utils';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import React, { useEffect, useRef, useState } from 'react';
-import { Circle, LayerGroup, LayersControl, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { Circle, LayerGroup, LayersControl, MapContainer, Marker, Polygon, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import Button from '../ui/Button';
 
 const log = createLogger('MapDisplay');
@@ -54,6 +54,7 @@ interface MapDisplayProps {
   settings: MapSettings;
   routes: FlightRoute[];
   annotations: Annotation[];
+  flightAreas: FlightArea[];
   compromisedAnnotations: Annotation[];
   focusedAnnoId: string | number | null;
   setFocusedAnnoId: (id: string | number | null) => void;
@@ -121,6 +122,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   settings,
   routes,
   annotations,
+  flightAreas,
   compromisedAnnotations,
   focusedAnnoId,
   setFocusedAnnoId,
@@ -348,6 +350,82 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                   )}
                 </Circle>
               ))}
+            </LayerGroup>
+          </LayersControl.Overlay>
+
+          {/* TOGGLE 3: Flight Areas */}
+          <LayersControl.Overlay name="Flight Areas" checked>
+            <LayerGroup>
+              {flightAreas.map(fa => {
+                switch (fa.geometry.type) {
+                  case "Circle": {
+                    // Grab the raw [lng, lat] and flip it to [lat, lng]
+                    const rawCoords = fa.geometry.coordinates as unknown as [number, number];
+                    const center: [number, number] = [rawCoords[1], rawCoords[0]];
+
+                    return (
+                      <Circle
+                        key={fa.id}
+                        center={center}
+                        radius={fa.geometry.radius}
+                        pathOptions={{
+                          color: fa.enabled ? fa.color : 'gray',
+                          fillColor: fa.enabled ? fa.color : 'gray',
+                          fillOpacity: 0.5,
+                          weight: 2
+                        }}
+                      >
+                        {(currentZoom > 10) && (
+                          <Tooltip
+                            permanent
+                            direction="top"
+                            offset={[0, -5]}
+                            className="custom-label"
+                          >
+                            {fa.name}
+                          </Tooltip>
+                        )}
+                      </Circle>
+                    );
+                  }
+
+                  case "Polygon": {
+                    // GeoJSON Polygons are nested one level deeper: Array of Rings -> Array of Coords
+                    const rawPolygon = fa.geometry.coordinates as unknown as [number, number][][];
+
+                    // Map over the rings first, THEN map over the coordinates to flip them
+                    const positions = rawPolygon.map(ring =>
+                      ring.map(coord => [coord[1], coord[0]] as [number, number])
+                    );
+
+                    return (
+                      <Polygon
+                        key={fa.id}
+                        positions={positions}
+                        pathOptions={{
+                          color: fa.color || 'red',
+                          fillColor: fa.color || 'red',
+                          fillOpacity: 0.5,
+                          weight: 2
+                        }}
+                      >
+                        {(currentZoom > 10) && (
+                          <Tooltip
+                            permanent
+                            direction="center"
+                            className="custom-label"
+                          >
+                            {fa.name}
+                          </Tooltip>
+                        )}
+                      </Polygon>
+                    );
+                  }
+
+                  default:
+                    return null;
+                }
+              })}
             </LayerGroup>
           </LayersControl.Overlay>
 

@@ -31,6 +31,7 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
     projectRoutes,
     projectTopologies,
     projectAnnotations,
+    projectFlightAreas,
     executionRoutesWithData,
 
     processAndSaveRoute,
@@ -239,13 +240,15 @@ export function Dashboard({ orgId, projectId, sourceTabId, debugMode }: Dashboar
           routes={executionRoutesWithData || []}
           compromisedAnnotations={compromisedAnnotations}
           annotations={projectAnnotations}
-          focusedAnnoId={focusedAnnoId}
-          setFocusedAnnoId={() => { }}
-
+          flightAreas={projectFlightAreas}
+          
           liveData={isRunning}
           toggleLiveData={() => { setIsRunning(!isRunning) }}
-
+          
           settings={{ circleBuffer: settings.circleBuffer }}
+
+          focusedAnnoId={focusedAnnoId}
+          setFocusedAnnoId={() => { }}
         />
       </div>
     </div>

@@ -76,7 +76,6 @@ export function useDatabase(orgId: string, projectId: string) {
     [projectId]
   ) || [];
 
-  // Inside useDatabase.ts
   const projectAnnotations = useLiveQuery(
     async () => {
       if (!projectId) return [];
@@ -99,6 +98,14 @@ export function useDatabase(orgId: string, projectId: string) {
         isCompromised: compromisedIds.has(anno.id)
       }));
     },
+    [projectId]
+  ) || [];
+
+  const projectFlightAreas = useLiveQuery(
+    () => db.flight_areas
+      .where('projectId')
+      .equals(projectId)
+      .toArray(),
     [projectId]
   ) || [];
 
@@ -588,6 +595,7 @@ export function useDatabase(orgId: string, projectId: string) {
     projectRoutes,
     projectTopologies,
     projectAnnotations,
+    projectFlightAreas,
     executionRoutesWithData,
     projectMissions,
 

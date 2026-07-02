@@ -178,7 +178,7 @@ export function toFlaightArea(djiItem: any, projectId: string): FlightArea | nul
         id: djiItem.id,
         projectId: projectId,
         name: djiItem.name,
-        status: djiItem.status,
+        enabled: djiItem.status == "enable",
         type: djiItem.type,
         geometry: geometry,
         color: djiItemProperties.color,

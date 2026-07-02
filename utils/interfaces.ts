@@ -137,7 +137,7 @@ export interface FlightArea {
   id: string;
   projectId: string;
   name: string;
-  status: string;
+  enabled: boolean;
   type: string;
   geometry: Geometry;
   color: string;
@@ -145,7 +145,7 @@ export interface FlightArea {
 
 export interface Geometry {
   type: string;
-  coordinates: [];
+  coordinates: number[];
   radius?: number;
 }
 

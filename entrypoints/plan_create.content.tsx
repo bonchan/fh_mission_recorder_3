@@ -119,6 +119,7 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
         // the previous device's readings until the next poll lands - it
         // shows "Waiting for live data..." until the timer below refills it.
         setDockTopology(null);
+        setShowHide(true); // always reveal data for the newly selected dock, no matter what it was set to before
         if (!deviceName) return;
 
         let cancelled = false;
@@ -270,21 +271,24 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                 </label>
             </div>
 
-            {showHide && rows.length > 0 ? (
+            {showHide ? (
                 <>
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
                         FH Data
                     </div>
-                    <table style={{ marginTop: 8, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
-                        <tbody>
-                            {rows.map(([label, value]) => (
-                                <tr key={label}>
-                                    <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
-                                    <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+
+                    {rows.length > 0 && (
+                        <table style={{ marginTop: 8, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
+                            <tbody>
+                                {rows.map(([label, value]) => (
+                                    <tr key={label}>
+                                        <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
+                                        <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </>
             ) : (
                 <div style={{ marginTop: 4, fontSize: 11, color: '#aaa' }}>{showHide ? 'Waiting for live data...' : 'Data Hidden'}</div>
@@ -310,39 +314,43 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                 </pre>
             )}
 
-            {showHide && weatherRows.length > 0 && (
+            {showHide && (
                 <>
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
                         Weather (Open-Meteo){selectedWeatherTime ? ` — ${selectedWeatherTime}` : ''}, CON PINZAS
                     </div>
-                    <table style={{ marginTop: 4, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
-                        <tbody>
-                            {weatherRows.map(([label, value]) => (
-                                <tr key={label}>
-                                    <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
-                                    <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    {weatherRows.length > 0 &&
+                        (<table style={{ marginTop: 4, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
+                            <tbody>
+                                {weatherRows.map(([label, value]) => (
+                                    <tr key={label}>
+                                        <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
+                                        <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>)
+                    }
                 </>
             )}
 
-            {showHide && kpRows.length > 0 && (
+            {showHide && (
                 <>
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
                         Kp Index (NOAA), CON PINZAS
                     </div>
-                    <table style={{ marginTop: 4, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
-                        <tbody>
-                            {kpRows.map(([time, kp]) => (
-                                <tr key={time}>
-                                    <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{time}</td>
-                                    <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500 }}>{kp}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    {kpRows.length > 0 &&
+                        (<table style={{ marginTop: 4, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
+                            <tbody>
+                                {kpRows.map(([time, kp]) => (
+                                    <tr key={time}>
+                                        <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{time}</td>
+                                        <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500 }}>{kp}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>)
+                    }
                 </>
             )}
         </div>

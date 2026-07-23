@@ -190,6 +190,9 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
     ] : [];
 
     const weatherHourIndex = weather ? weatherApi.findCurrentHourIndex(weather.hourly.time) : -1;
+    // hourly.time is like "2026-07-23T14:00" (local, per timezone=auto) -
+    // just the HH:mm is enough since forecast_days=1 means it's always today.
+    const selectedWeatherTime = weatherHourIndex >= 0 ? weather!.hourly.time[weatherHourIndex]?.split('T')[1] : null;
     const weatherRows: [string, string][] = weather && weatherHourIndex >= 0 ? [
         ['Temp', `${weather.hourly.temperature_2m[weatherHourIndex]}°C (feels ${weather.hourly.apparent_temperature[weatherHourIndex]}°C)`],
         ['Humidity', `${weather.hourly.relative_humidity_2m[weatherHourIndex]}%`],
@@ -227,16 +230,21 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
             </div>
 
             {rows.length > 0 ? (
-                <table style={{ marginTop: 8, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
-                    <tbody>
-                        {rows.map(([label, value]) => (
-                            <tr key={label}>
-                                <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
-                                <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <>
+                    <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
+                        FH Data
+                    </div>
+                    <table style={{ marginTop: 8, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
+                        <tbody>
+                            {rows.map(([label, value]) => (
+                                <tr key={label}>
+                                    <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
+                                    <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </>
             ) : (
                 <div style={{ marginTop: 4, fontSize: 11, color: '#aaa' }}>Waiting for live data...</div>
             )}
@@ -264,7 +272,7 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
             {weatherRows.length > 0 && (
                 <>
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
-                        Weather (Open-Meteo)
+                        Weather (Open-Meteo){selectedWeatherTime ? ` — ${selectedWeatherTime}` : ''}
                     </div>
                     <table style={{ marginTop: 4, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
                         <tbody>

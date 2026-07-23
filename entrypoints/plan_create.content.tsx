@@ -2,6 +2,7 @@
 import { DJI_PLAN_CREATE_URL_REGEX } from '@/utils/constants';
 import { createLogger } from '@/utils/logger';
 import { fhApi } from '@/services/fhApi';
+import { topoUtils } from '@/utils/topo-utils';
 import { createRoot, type Root as ReactRoot } from 'react-dom/client';
 import { useEffect, useState } from 'react';
 
@@ -118,11 +119,41 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
 
     if (!deviceName) return null;
 
-    // parents is a list - the dock we care about is always parents[0].
+    // parents is a list - the dock we care about is always parents[0]. The
+    // dock is always powered on, so its state is what's actually live; the
+    // host (drone) keeps reporting its last known state after it's powered
+    // off, so anything battery/mode-related has to come from the parent
+    // instead (dock mode_code and drone mode_code are different code spaces).
     const parentDeviceState = dockTopology?.parents?.[0]?.device_state;
+    const gps = parentDeviceState?.position_state;
 
-    const battery = dockTopology?.host?.device_state?.battery?.capacity_percent;
-    const mode = dockTopology?.host?.device_state?.mode_code;
+    // Real per-cell battery data lives here, not drone_charge_state - a
+    // drone can report 1 or 2 batteries depending on model.
+    const batteries: any[] = parentDeviceState?.drone_battery_maintenance_info?.batteries ?? [];
+    const batteryLabel = batteries.length > 1 ? 'Battery (per cell)' : 'Battery';
+    const batteryValue = batteries.length === 0
+        ? '--'
+        : batteries.length === 1
+            ? `${batteries[0].capacity_percent}%`
+            : batteries
+                .map(b => `${topoUtils.getBatteryIndexLabel(b.index)}: ${b.capacity_percent}%`)
+                .join(' / ');
+
+    const rows: [string, string][] = parentDeviceState ? [
+        [batteryLabel, batteryValue],
+        ['Dock Mode', topoUtils.getModeCodeLabel(parentDeviceState.mode_code)],
+        ['Task State', topoUtils.getFlightTaskStepCodeLabel(parentDeviceState.flighttask_step_code)],
+        ['In Dock', topoUtils.getDroneInDockLabel(parentDeviceState.drone_in_dock)],
+        ['Cover', topoUtils.getCoverStateLabel(parentDeviceState.cover_state)],
+        ['Wind', `${parentDeviceState.wind_speed ?? '--'} m/s`],
+        ['Rainfall', topoUtils.getRainfallLabel(parentDeviceState.rainfall)],
+        ['Temp', `${parentDeviceState.environment_temperature ?? '--'}°C`],
+        ['Humidity', `${parentDeviceState.humidity ?? '--'}%`],
+        ['GPS/RTK', `${gps?.gps_number ?? 0} GPS / ${gps?.rtk_number ?? 0} RTK sats — ${topoUtils.getFixStateLabel(gps?.is_fixed)}`],
+        ['Alarm', topoUtils.getAlarmStateLabel(parentDeviceState.alarm_state)],
+        ['E-Stop', topoUtils.getEmergencyStopStateLabel(parentDeviceState.emergency_stop_state)],
+        ['Firmware', topoUtils.getFirmwareUpgradeStatusLabel(parentDeviceState.firmware_upgrade_status)],
+    ] : [];
 
     return (
         <div style={{
@@ -138,12 +169,34 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
             fontSize: 13,
             fontFamily: 'system-ui, sans-serif',
         }}>
-            Selected device: <strong>{deviceName}</strong>
-            <div style={{ marginTop: 4, fontSize: 11, color: '#aaa' }}>
-                {dockTopology ? `Battery: ${battery ?? '--'}% | Mode: ${mode ?? '--'}` : 'Waiting for live data...'}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <span>Selected device: <strong>{deviceName}</strong></span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#aaa', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    <input
+                        type="checkbox"
+                        checked={showFullData}
+                        onChange={(e) => setShowFullData(e.target.checked)}
+                    />
+                    Full data
+                </label>
             </div>
 
-            {parentDeviceState && (
+            {rows.length > 0 ? (
+                <table style={{ marginTop: 8, borderCollapse: 'collapse', fontSize: 11 }}>
+                    <tbody>
+                        {rows.map(([label, value]) => (
+                            <tr key={label}>
+                                <td style={{ padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
+                                <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500 }}>{value}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : (
+                <div style={{ marginTop: 4, fontSize: 11, color: '#aaa' }}>Waiting for live data...</div>
+            )}
+
+            {showFullData && parentDeviceState && (
                 <pre style={{
                     marginTop: 8,
                     maxHeight: 400,

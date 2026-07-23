@@ -295,30 +295,3 @@ export const filterObjectTree = (obj: any, query: string): { isMatch: boolean; f
 
   return { isMatch: objHasMatch, filtered: filteredObj };
 };
-
-export const getAcStateLabel = (stateCode: number) => {
-  switch (stateCode) {
-    case 0:
-      return 'Idle mode (No cooling, heating, and dehumidification)';
-    case 1:
-      return 'Cooling mode';
-    case 2:
-      return 'Heating mode';
-    case 3:
-      return 'Dehumidification mode';
-    case 4:
-      return 'Cooling exit mode';
-    case 5:
-      return 'Heating exit mode';
-    case 6:
-      return 'Dehumidification exit mode';
-    case 7:
-      return 'Cooling preparation mode';
-    case 8:
-      return 'Heating preparation mode';
-    case 9:
-      return 'Dehumidification preparation mode';
-    default:
-      return 'Unknown state';
-  }
-};

@@ -1,5 +1,5 @@
 import React from 'react';
-import { getAcStateLabel } from '@/utils/utils'
+import { getAcStateLabel } from '@/utils/topo-utils'
 
 // --- HELPER COMPONENT ---
 // Keeps our layout clean and consistent

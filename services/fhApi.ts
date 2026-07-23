@@ -61,8 +61,6 @@ async function request<T>(
 
     if (body) options.body = JSON.stringify(body);
 
-    log.debug(`fetching: ${url}`, options)
-
     const response = await fetch(url, options);
 
     // 2. Now check if the response was successful
@@ -78,7 +76,6 @@ async function request<T>(
 
     // 3. Return the parsed data (cast to T for TypeScript)
     const json = (await response.json()) as T
-    log.info(`response: ${url}`, json)
     return json;
 }
 
@@ -156,7 +153,6 @@ export const fhApi = {
             "request_id": crypto.randomUUID(),
         }
 
-        log.info("importCallbackStorageUpload", body)
         const headers = {
             "Content-Type": ""
         }

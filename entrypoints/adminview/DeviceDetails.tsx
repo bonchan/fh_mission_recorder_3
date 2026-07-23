@@ -1,4 +1,5 @@
 import React from 'react';
+import { getAcStateLabel } from '@/utils/utils'
 
 // --- HELPER COMPONENT ---
 // Keeps our layout clean and consistent
@@ -22,7 +23,7 @@ export function HostRowItem({ host }: { host: any }) {
       <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#00bcd4', borderBottom: '1px solid #222', paddingBottom: '8px' }}>
         🚁 Drone Details (Host)
       </h3>
-      
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
         {/* Hardware & System */}
         <div>
@@ -61,13 +62,13 @@ export function ParentRowItem({ parent }: { parent: any }) {
   if (!parent) return <div style={{ color: '#666', fontSize: '12px' }}>No Dock Data</div>;
 
   const state = parent.device_state || {};
-  
+
   return (
     <div style={{ backgroundColor: '#000', padding: '20px', borderRadius: '6px', border: '1px solid #333' }}>
       <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#ff9800', borderBottom: '1px solid #222', paddingBottom: '8px' }}>
         🔋 Dock Details (Parent)
       </h3>
-      
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
         {/* Hardware & System */}
         <div>
@@ -94,7 +95,7 @@ export function ParentRowItem({ parent }: { parent: any }) {
         <div>
           <DataField label="Drone Charge" value={state.drone_charge_state?.capacity_percent ? `${state.drone_charge_state.capacity_percent}%` : '--'} />
           <DataField label="Backup Battery" value={state.backup_battery?.voltage ? `${(state.backup_battery.voltage / 1000).toFixed(1)}v` : '--'} />
-          <DataField label="AC Config" value={state.air_conditioner?.air_conditioner_state === 1 ? 'Active' : 'Idle'} />
+          <DataField label="AC Config" value={getAcStateLabel(state.air_conditioner?.air_conditioner_state)} />
         </div>
       </div>
     </div>

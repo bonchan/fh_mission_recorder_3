@@ -56,6 +56,7 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
     const [deviceName, setDeviceName] = useState<string | null>(null);
     const [dockTopology, setDockTopology] = useState<any | null>(null);
     const [showFullData, setShowFullData] = useState(false);
+    const [showHide, setShowHide] = useState(true);
 
     // Weather per device name, kept in-memory only (never persisted) - it's
     // live data, refreshed on its own timer below. Cached per device so
@@ -258,9 +259,18 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                     />
                     Full data
                 </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#aaa', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    <input
+                        type="checkbox"
+                        checked={showHide}
+                        onChange={(e) => setShowHide(e.target.checked)}
+                    />
+                    Show/Hide
+                </label>
             </div>
 
-            {rows.length > 0 ? (
+            {showHide && rows.length > 0 ? (
                 <>
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
                         FH Data
@@ -277,10 +287,10 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                     </table>
                 </>
             ) : (
-                <div style={{ marginTop: 4, fontSize: 11, color: '#aaa' }}>Waiting for live data...</div>
+                <div style={{ marginTop: 4, fontSize: 11, color: '#aaa' }}>{showHide ? 'Waiting for live data...' : 'Data Hidden'}</div>
             )}
 
-            {showFullData && parentDeviceState && (
+            {showHide && showFullData && parentDeviceState && (
                 <pre style={{
                     marginTop: 8,
                     maxHeight: 400,
@@ -300,7 +310,7 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                 </pre>
             )}
 
-            {weatherRows.length > 0 && (
+            {showHide && weatherRows.length > 0 && (
                 <>
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
                         Weather (Open-Meteo){selectedWeatherTime ? ` — ${selectedWeatherTime}` : ''}, CON PINZAS
@@ -318,7 +328,7 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                 </>
             )}
 
-            {kpRows.length > 0 && (
+            {showHide && kpRows.length > 0 && (
                 <>
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
                         Kp Index (NOAA), CON PINZAS

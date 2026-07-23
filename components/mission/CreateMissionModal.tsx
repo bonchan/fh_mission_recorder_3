@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
-import { Drone, MissionType } from '@/utils/interfaces';
-import { enumToOptions } from '@/utils/utils';
 import godMode from '@/assets/GgsQO4YX0AAyEFG.jpg';
 import Button from '@/components/ui/Button';
+import { MultiSelectFilter } from '@/components/ui/MultiSelectFilter';
 import Select from '@/components/ui/Select';
+import { useToast } from '@/providers/ToastProvider';
+import { Drone, ImageFormat, MissionType } from '@/utils/interfaces';
+import { IMAGE_FORMAT_OPTIONS } from '@/utils/options';
+import { enumToOptions, sanitizeRouteName } from '@/utils/utils';
+import { useState } from 'react';
 
 interface CreateMissionModalProps {
   devices: Drone[];
   onClose: () => void;
-  onSubmit: (missionName: string, selectedDevice: Drone, missionType: MissionType) => void;
+  onSubmit: (missionName: string, selectedDevice: Drone, missionType: MissionType, imageFormat: ImageFormat[]) => void;
 }
 
 export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMissionModalProps) {
@@ -16,9 +19,11 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
   const [newMissionName, setNewMissionName] = useState('');
   const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0);
   const [selectedType, setSelectedType] = useState<MissionType>(MissionType.WAYPOINT);
-
-
+  const [selectedImageFormats, setSelectedImageFormats] = useState<ImageFormat[]>([ImageFormat.VISIBLE, ImageFormat.INFRARED]);
+  // FIXME review this to use in imageformat also
   const missionOptions = enumToOptions(MissionType)
+
+  const { showToast } = useToast();
 
   const dockOptions = devices.map((device, index) => ({
     label: `${device.parent?.deviceOrganizationCallsign || device.parent?.deviceProjectCallsign} - ${device.deviceOrganizationCallsign || device.deviceProjectCallsign}`,
@@ -33,7 +38,20 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
     if (!selectedDevice) return;
 
     // Tell the parent component to handle the actual creation!
-    onSubmit(newMissionName, selectedDevice, selectedType);
+    onSubmit(newMissionName, selectedDevice, selectedType, selectedImageFormats);
+  };
+
+  const handleSetMissionName = (name: string) => {
+    const cleanName = sanitizeRouteName(name)
+    setNewMissionName(cleanName)
+  }
+
+  const handleUpdateImageFormat = (formats: ImageFormat[]) => {
+    if (formats.length == 0) {
+      showToast('Error', 'At least 1 Image Format', { type: "warning" })
+      return
+    }
+    setSelectedImageFormats(formats)
   };
 
   return (
@@ -64,7 +82,7 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
               <input
                 autoFocus
                 value={newMissionName}
-                onChange={(e) => setNewMissionName(e.target.value)}
+                onChange={(e) => handleSetMissionName(e.target.value)}
                 placeholder="e.g. Morning Patrol"
                 style={{ width: '100%', padding: '8px', marginBottom: '15px', background: '#2c2c2c', border: '1px solid #444', color: 'white', boxSizing: 'border-box' }}
               />
@@ -81,6 +99,13 @@ export function CreateMissionModal({ devices, onClose, onSubmit }: CreateMission
                 value={selectedType}
                 options={missionOptions}
                 onChange={(val) => setSelectedType(val)}
+              />
+
+              <MultiSelectFilter
+                label='Image Format:'
+                options={IMAGE_FORMAT_OPTIONS}
+                selectedValues={selectedImageFormats}
+                onChange={(formats) => handleUpdateImageFormat(formats)}
               />
 
               <div style={{ display: 'flex', gap: '10px' }}>

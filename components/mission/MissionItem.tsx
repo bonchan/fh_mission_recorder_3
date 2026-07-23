@@ -1,23 +1,20 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { createLogger } from '@/utils/logger';
-import { isInRange } from '@/utils/utils';
-import { Mission, Waypoint, ViewContext, MissionType, Annotation, WaypointType } from '@/utils/interfaces';
+import { generateWaypointsFromTemplate } from '@/components/mission/missionGenerator';
+import { MissionTemplate, TemplateWaypoint } from '@/components/mission/templates';
+import { TemplateSelector } from '@/components/mission/TemplateSelector';
+import Button from '@/components/ui/Button';
+import { MultiSelectFilter } from '@/components/ui/MultiSelectFilter';
+import SearchInput from '@/components/ui/SearchInput';
 import { WaypointList } from '@/components/waypoint/WaypointList';
-import { useExtensionData } from '@/providers/ExtensionDataProvider';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useMessage } from '@/hooks/useMessage';
 import { useSync } from '@/hooks/useSync';
-
-import { generateWaypointsFromTemplate } from '@/components/mission/missionGenerator'
-import { TemplateSelector } from '@/components/mission/TemplateSelector'
-import { MissionTemplate } from '@/components/mission/templates'
-
 import { useToast } from '@/providers/ToastProvider';
+import { Annotation, Mission, MissionType, ViewContext, Waypoint, WaypointType, ImageFormat } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
+import { IMAGE_FORMAT_OPTIONS } from '@/utils/options';
+import { isInRange, sanitizeRouteName } from '@/utils/utils';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import Button from '@/components/ui/Button';
-import SearchInput from '@/components/ui/SearchInput';
-
-import { TemplateWaypoint } from '@/components/mission/templates'
 
 interface MissionItemProps {
   mission: Mission;
@@ -55,6 +52,19 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
     e.stopPropagation(); // Prevent the chevron toggle from firing
     setIsEditing(true);
     setEditName(mission.name);
+  };
+
+  const handleUpdateName = (name: string) => {
+    const cleanName = sanitizeRouteName(name)
+    setEditName(cleanName)
+  };
+
+  const handleUpdateImageFormat = (formats: ImageFormat[]) => {
+    if (formats.length == 0) {
+      showToast('Error', 'At least 1 Image Format', { type: "warning" })
+      return
+    }
+    updateMission(mission.id, { ...mission, imageFormat: formats });
   };
 
   const handleConfirmName = () => {
@@ -282,7 +292,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
               <input
                 autoFocus
                 value={editName}
-                onChange={(e) => setEditName(e.target.value)}
+                onChange={(e) => handleUpdateName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleConfirmName();
                   if (e.key === 'Escape') setIsEditing(false);
@@ -306,6 +316,13 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
               {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign}`}
             </div>
           )}
+
+          <MultiSelectFilter
+            label='Image Format:'
+            options={IMAGE_FORMAT_OPTIONS}
+            selectedValues={mission.imageFormat}
+            onChange={(formats) => handleUpdateImageFormat(formats)}
+          />
 
           <div style={{ fontSize: '10px', color: '#888', paddingTop: '5px' }}>
             Mission Type: {mission.missionType.toUpperCase()} | {(mission.waypoints || []).length} Waypoints

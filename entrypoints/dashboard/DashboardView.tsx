@@ -1,20 +1,21 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { createLogger } from '@/utils/logger';
+import { XMLDebugModal } from '@/components/debug/XMLDebugModal';
 import { Map } from '@/components/map/Map';
-import styles from './DashboardView.module.css';
 import Button from '@/components/ui/Button';
+import { MultiSelectFilter } from '@/components/ui/MultiSelectFilter';
 import SearchInput from '@/components/ui/SearchInput';
-import { LiveDroneData, LiveWaypointData, Annotation, WaypointType, ViewContext, Waypoint, SimulatorConnectParams } from '@/utils/interfaces';
-import { useSync } from '@/hooks/useSync';
+import { WaypointList } from '@/components/waypoint/WaypointList';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useMessage } from '@/hooks/useMessage';
 import { useMissionActions } from '@/hooks/useMissionActions';
+import { useSync } from '@/hooks/useSync';
 import { useExtensionData } from '@/providers/ExtensionDataProvider';
-import { WaypointList } from '@/components/waypoint/WaypointList';
-import { XMLDebugModal } from '@/components/debug/XMLDebugModal';
 import { useToast } from '@/providers/ToastProvider';
-
-import { optimizeMissionPath } from '@/utils/geo'
+import { optimizeMissionPath } from '@/utils/geo';
+import { ImageFormat, LiveDroneData, SimulatorConnectParams, ViewContext, Waypoint, WaypointType } from '@/utils/interfaces';
+import { createLogger } from '@/utils/logger';
+import { IMAGE_FORMAT_OPTIONS } from '@/utils/options';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import styles from './DashboardView.module.css';
 
 const log = createLogger('DashboardView');
 
@@ -270,6 +271,17 @@ export function DashboardView() {
     deleteWaypoint(selectedMission.id, wpId)
   };
 
+  const handleUpdateImageFormat = (missionId: string, formats: ImageFormat[]) => {
+    if (formats.length == 0) {
+      showToast('Error', 'At least 1 Image Format', { type: "warning" })
+      return
+    }
+    const missionToUpdate = allMissions.find(m => m.id === missionId);
+    if (missionToUpdate) {
+      updateMission(missionId, { ...missionToUpdate, imageFormat: formats });
+    }
+  };
+
   const handleOptimizeMission = () => {
     const updatedMission = optimizeMissionPath(selectedMission);
     if (updatedMission) {
@@ -319,6 +331,12 @@ export function DashboardView() {
                 <div className={`${styles.missionItemDescription}`}>
                   Mission Type: {mission.missionType.toUpperCase()} | {(mission.waypoints || []).length} Waypoints
                 </div>
+                <MultiSelectFilter
+                  label='Image Format:'
+                  options={IMAGE_FORMAT_OPTIONS}
+                  selectedValues={mission.imageFormat}
+                  onChange={(formats) => handleUpdateImageFormat(mission.id, formats)}
+                />
                 <br />
                 <Button
                   disabled={mission.id !== selectedMissionId}

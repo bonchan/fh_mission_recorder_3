@@ -40,7 +40,7 @@ export const weatherApi = {
   // timezone=auto lets Open-Meteo resolve the right local timezone for
   // whatever coordinates get passed in, instead of hardcoding one region.
   async getForecast(latitude: number, longitude: number, forecastDays = 1): Promise<WeatherForecast> {
-    const url = `${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=${HOURLY_VARS.join(',')}&timezone=auto&forecast_days=${forecastDays}`;
+    const url = `${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=${HOURLY_VARS.join(',')}&timezone=auto&forecast_days=${forecastDays}&wind_speed_unit=ms`;
 
     const response = await fetch(url);
     if (!response.ok) {

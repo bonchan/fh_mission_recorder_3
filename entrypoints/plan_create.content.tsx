@@ -3,6 +3,7 @@ import { DJI_PLAN_CREATE_URL_REGEX } from '@/utils/constants';
 import { createLogger } from '@/utils/logger';
 import { fhApi } from '@/services/fhApi';
 import { weatherApi, type WeatherForecast } from '@/services/weatherApi';
+import { kpApi, type KpEntry } from '@/services/kpApi';
 import { topoUtils } from '@/utils/topo-utils';
 import { createRoot, type Root as ReactRoot } from 'react-dom/client';
 import { useEffect, useRef, useState } from 'react';
@@ -62,6 +63,11 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
     // forecast immediately instead of going blank while waiting on a refetch.
     const [weatherByDevice, setWeatherByDevice] = useState<Record<string, WeatherForecast>>({});
     const fetchedWeatherForRef = useRef<Set<string>>(new Set());
+
+    // Planetary Kp index isn't location-specific, so it's fetched once ever
+    // (not per device) and kept in-memory only, same as weather.
+    const [kpEntries, setKpEntries] = useState<KpEntry[] | null>(null);
+    const hasFetchedKpRef = useRef(false);
 
     // parents is a list - the dock we care about is always parents[0]. The
     // dock is always powered on, so its state is what's actually live; the
@@ -141,6 +147,21 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                             fetchedWeatherForRef.current.delete(deviceName); // allow a retry later
                         });
                 }
+
+                // Kp index isn't tied to the dock at all, so it's fetched
+                // once ever (not per device, no interval).
+                if (!hasFetchedKpRef.current) {
+                    hasFetchedKpRef.current = true;
+
+                    kpApi.getPlanetaryKIndex()
+                        .then(entries => {
+                            if (!cancelled) setKpEntries(entries);
+                        })
+                        .catch(error => {
+                            log.error('Failed to fetch Kp index', error);
+                            hasFetchedKpRef.current = false; // allow a retry later
+                        });
+                }
             } catch (error) {
                 log.error('Failed to poll dock topology', error);
             }
@@ -181,8 +202,8 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
         ['Cover', topoUtils.getCoverStateLabel(parentDeviceState.cover_state)],
         ['Wind', `${parentDeviceState.wind_speed ?? '--'} m/s`],
         ['Rainfall', topoUtils.getRainfallLabel(parentDeviceState.rainfall)],
-        ['Temp', `${parentDeviceState.environment_temperature ?? '--'}°C`],
-        ['Humidity', `${parentDeviceState.humidity ?? '--'}%`],
+        ['Temp Hamb', `${parentDeviceState.environment_temperature ?? '--'}°C`],
+        ['Int Humidity', `${parentDeviceState.humidity ?? '--'}%`],
         ['GPS/RTK', `${gps?.gps_number ?? 0} GPS / ${gps?.rtk_number ?? 0} RTK sats — ${topoUtils.getFixStateLabel(gps?.is_fixed)}`],
         ['Alarm', topoUtils.getAlarmStateLabel(parentDeviceState.alarm_state)],
         ['E-Stop', topoUtils.getEmergencyStopStateLabel(parentDeviceState.emergency_stop_state)],
@@ -197,10 +218,20 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
         ['Temp', `${weather.hourly.temperature_2m[weatherHourIndex]}°C (feels ${weather.hourly.apparent_temperature[weatherHourIndex]}°C)`],
         ['Humidity', `${weather.hourly.relative_humidity_2m[weatherHourIndex]}%`],
         ['Rain', `${weather.hourly.precipitation_probability[weatherHourIndex]}% chance, ${weather.hourly.rain[weatherHourIndex]} mm`],
-        ['Wind', `${weather.hourly.wind_speed_10m[weatherHourIndex]} km/h (gusts ${weather.hourly.wind_gusts_10m[weatherHourIndex]} km/h)`],
-        ['Wind @120m', `${weather.hourly.wind_speed_120m[weatherHourIndex]} km/h`],
+        ['Wind', `${weather.hourly.wind_speed_10m[weatherHourIndex]} m/s (gusts ${weather.hourly.wind_gusts_10m[weatherHourIndex]} m/s)`],
+        ['Wind @120m', `${weather.hourly.wind_speed_120m[weatherHourIndex]} m/s`],
         ['Visibility', `${weather.hourly.visibility[weatherHourIndex]} m`],
     ] : [];
+
+    // Every entry for today (~3 hours apart) - each row is its own time/kp
+    // pair, with the current one labeled so it stands out in the list.
+    const kpTodayEntries = kpEntries ? kpApi.getTodayEntries(kpEntries) : [];
+    const kpCurrentIndex = kpApi.findCurrentIndex(kpTodayEntries);
+    const kpRows: [string, string][] = kpTodayEntries.map((entry, i) => [
+        // i === kpCurrentIndex ? `Now (${kpApi.formatTime(entry.timeTag)})` : kpApi.formatTime(entry.timeTag),
+        kpApi.formatTime(entry.timeTag),
+        entry.kp.toFixed(2),
+    ]);
 
     return (
         <div style={{
@@ -218,7 +249,7 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
             fontFamily: 'system-ui, sans-serif',
         }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                <span>Selected device: <strong>{deviceName}</strong></span>
+                <span>Dock: <strong>{deviceName}</strong></span>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#aaa', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     <input
                         type="checkbox"
@@ -272,7 +303,7 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
             {weatherRows.length > 0 && (
                 <>
                     <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
-                        Weather (Open-Meteo){selectedWeatherTime ? ` — ${selectedWeatherTime}` : ''}
+                        Weather (Open-Meteo){selectedWeatherTime ? ` — ${selectedWeatherTime}` : ''}, CON PINZAS
                     </div>
                     <table style={{ marginTop: 4, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
                         <tbody>
@@ -280,6 +311,24 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                                 <tr key={label}>
                                     <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
                                     <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </>
+            )}
+
+            {kpRows.length > 0 && (
+                <>
+                    <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
+                        Kp Index (NOAA), CON PINZAS
+                    </div>
+                    <table style={{ marginTop: 4, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
+                        <tbody>
+                            {kpRows.map(([time, kp]) => (
+                                <tr key={time}>
+                                    <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{time}</td>
+                                    <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500 }}>{kp}</td>
                                 </tr>
                             ))}
                         </tbody>

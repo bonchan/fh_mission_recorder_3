@@ -33,7 +33,8 @@ export default defineConfig({
     host_permissions: [
       'https://fh.dji.com/*',
       '*://*.djigate.com/*',
-      'https://api.open-meteo.com/*'
+      'https://api.open-meteo.com/*',
+      'https://services.swpc.noaa.gov/*'
     ],
     action: {},
     web_accessible_resources: [

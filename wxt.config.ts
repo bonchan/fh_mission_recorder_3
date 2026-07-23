@@ -32,7 +32,8 @@ export default defineConfig({
     permissions: ['sidePanel', 'storage', 'tabs', 'activeTab', 'debugger', 'usb'],
     host_permissions: [
       'https://fh.dji.com/*',
-      '*://*.djigate.com/*'
+      '*://*.djigate.com/*',
+      'https://api.open-meteo.com/*'
     ],
     action: {},
     web_accessible_resources: [

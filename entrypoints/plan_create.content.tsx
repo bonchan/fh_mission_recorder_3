@@ -2,9 +2,10 @@
 import { DJI_PLAN_CREATE_URL_REGEX } from '@/utils/constants';
 import { createLogger } from '@/utils/logger';
 import { fhApi } from '@/services/fhApi';
+import { weatherApi, type WeatherForecast } from '@/services/weatherApi';
 import { topoUtils } from '@/utils/topo-utils';
 import { createRoot, type Root as ReactRoot } from 'react-dom/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const log = createLogger('plan_create.content');
 
@@ -55,6 +56,20 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
     const [dockTopology, setDockTopology] = useState<any | null>(null);
     const [showFullData, setShowFullData] = useState(false);
 
+    // Weather per device name, kept in-memory only (never persisted) - it's
+    // live data, refreshed on its own timer below. Cached per device so
+    // switching back to a device we've already seen shows its last known
+    // forecast immediately instead of going blank while waiting on a refetch.
+    const [weatherByDevice, setWeatherByDevice] = useState<Record<string, WeatherForecast>>({});
+    const fetchedWeatherForRef = useRef<Set<string>>(new Set());
+
+    // parents is a list - the dock we care about is always parents[0]. The
+    // dock is always powered on, so its state is what's actually live; the
+    // host (drone) keeps reporting its last known state after it's powered
+    // off, so anything battery/mode-related has to come from the parent
+    // instead (dock mode_code and drone mode_code are different code spaces).
+    const parentDeviceState = dockTopology?.parents?.[0]?.device_state;
+
     useEffect(() => {
         let formObserver: MutationObserver | null = null;
         let bodyObserver: MutationObserver | null = null;
@@ -92,17 +107,40 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
     // Only poll while a device is actually selected, and only for that one
     // dock - no reason to pull/store the full project topology list here.
     useEffect(() => {
-        if (!deviceName) {
-            setDockTopology(null);
-            return;
-        }
+        // Reset immediately on every device change (including switching
+        // between two selected devices) so the table doesn't keep showing
+        // the previous device's readings until the next poll lands - it
+        // shows "Waiting for live data..." until the timer below refills it.
+        setDockTopology(null);
+        if (!deviceName) return;
 
         let cancelled = false;
 
         const poll = async () => {
             try {
                 const match = await fetchDockTopology(projectId, deviceName);
-                if (!cancelled) setDockTopology(match);
+                if (cancelled) return;
+
+                setDockTopology(match);
+
+                // Weather fetched once per device name, right here where we
+                // actually have coordinates - keyed only on deviceName via
+                // fetchedWeatherForRef, nothing to do with position.
+                const matchLat = match?.parents?.[0]?.device_state?.latitude;
+                const matchLon = match?.parents?.[0]?.device_state?.longitude;
+
+                if (matchLat != null && matchLon != null && !fetchedWeatherForRef.current.has(deviceName)) {
+                    fetchedWeatherForRef.current.add(deviceName);
+
+                    weatherApi.getForecast(matchLat, matchLon)
+                        .then(forecast => {
+                            if (!cancelled) setWeatherByDevice(prev => ({ ...prev, [deviceName]: forecast }));
+                        })
+                        .catch(error => {
+                            log.error('Failed to fetch weather forecast', error);
+                            fetchedWeatherForRef.current.delete(deviceName); // allow a retry later
+                        });
+                }
             } catch (error) {
                 log.error('Failed to poll dock topology', error);
             }
@@ -119,12 +157,8 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
 
     if (!deviceName) return null;
 
-    // parents is a list - the dock we care about is always parents[0]. The
-    // dock is always powered on, so its state is what's actually live; the
-    // host (drone) keeps reporting its last known state after it's powered
-    // off, so anything battery/mode-related has to come from the parent
-    // instead (dock mode_code and drone mode_code are different code spaces).
-    const parentDeviceState = dockTopology?.parents?.[0]?.device_state;
+    const weather = weatherByDevice[deviceName] ?? null;
+
     const gps = parentDeviceState?.position_state;
 
     // Real per-cell battery data lives here, not drone_charge_state - a
@@ -155,11 +189,22 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
         ['Firmware', topoUtils.getFirmwareUpgradeStatusLabel(parentDeviceState.firmware_upgrade_status)],
     ] : [];
 
+    const weatherHourIndex = weather ? weatherApi.findCurrentHourIndex(weather.hourly.time) : -1;
+    const weatherRows: [string, string][] = weather && weatherHourIndex >= 0 ? [
+        ['Temp', `${weather.hourly.temperature_2m[weatherHourIndex]}°C (feels ${weather.hourly.apparent_temperature[weatherHourIndex]}°C)`],
+        ['Humidity', `${weather.hourly.relative_humidity_2m[weatherHourIndex]}%`],
+        ['Rain', `${weather.hourly.precipitation_probability[weatherHourIndex]}% chance, ${weather.hourly.rain[weatherHourIndex]} mm`],
+        ['Wind', `${weather.hourly.wind_speed_10m[weatherHourIndex]} km/h (gusts ${weather.hourly.wind_gusts_10m[weatherHourIndex]} km/h)`],
+        ['Wind @120m', `${weather.hourly.wind_speed_120m[weatherHourIndex]} km/h`],
+        ['Visibility', `${weather.hourly.visibility[weatherHourIndex]} m`],
+    ] : [];
+
     return (
         <div style={{
             position: 'fixed',
             top: 16,
             right: 90,
+            width: 340,
             zIndex: 999999,
             background: '#111',
             color: '#fff',
@@ -182,12 +227,12 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
             </div>
 
             {rows.length > 0 ? (
-                <table style={{ marginTop: 8, borderCollapse: 'collapse', fontSize: 11 }}>
+                <table style={{ marginTop: 8, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
                     <tbody>
                         {rows.map(([label, value]) => (
                             <tr key={label}>
-                                <td style={{ padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
-                                <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500 }}>{value}</td>
+                                <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
+                                <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -200,7 +245,8 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                 <pre style={{
                     marginTop: 8,
                     maxHeight: 400,
-                    maxWidth: 420,
+                    width: '100%',
+                    boxSizing: 'border-box',
                     overflow: 'auto',
                     background: '#000',
                     padding: 8,
@@ -213,6 +259,24 @@ function PlanCreatePopup({ projectId }: { projectId: string }) {
                 }}>
                     {JSON.stringify(parentDeviceState, null, 2)}
                 </pre>
+            )}
+
+            {weatherRows.length > 0 && (
+                <>
+                    <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #333', fontSize: 11, color: '#888' }}>
+                        Weather (Open-Meteo)
+                    </div>
+                    <table style={{ marginTop: 4, width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
+                        <tbody>
+                            {weatherRows.map(([label, value]) => (
+                                <tr key={label}>
+                                    <td style={{ width: 90, padding: '2px 12px 2px 0', color: '#888' }}>{label}</td>
+                                    <td style={{ padding: '2px 0', color: '#fff', fontWeight: 500, wordBreak: 'break-word' }}>{value}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </>
             )}
         </div>
     );

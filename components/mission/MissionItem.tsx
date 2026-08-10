@@ -42,7 +42,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
 
-  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint, createStill } = useDatabase(mission.orgId, mission.projectId);
+  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint, createStill, stillsById } = useDatabase(mission.orgId, mission.projectId);
   const { openPage, getCockpitData, captureStill } = useMessage(mission.orgId, mission.projectId);
 
 
@@ -370,6 +370,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
         <div style={{ padding: '12px', borderTop: '1px solid #333', background: '#181818', borderRadius: '0 0 8px 8px' }}>
           <WaypointList
             waypoints={mission.waypoints}
+            stillsById={stillsById}
             onCreate={undefined}
             onUpdate={handleUpdateWaypoint}
             onDelete={handleDeleteWaypoint}

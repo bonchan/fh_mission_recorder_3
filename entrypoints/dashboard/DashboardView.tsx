@@ -29,7 +29,7 @@ export function DashboardView() {
 
   const viewContext = ViewContext.DASHBOARD
 
-  const { projectMissions, projectAnnotations, updateMission, deleteMission, createWaypoints, updateWaypoint, deleteWaypoint } = useDatabase(orgId, projectId);
+  const { projectMissions, projectAnnotations, updateMission, deleteMission, createWaypoints, updateWaypoint, deleteWaypoint, stillsById } = useDatabase(orgId, projectId);
   const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
   const { toggleDebugger } = useMessage(orgId, projectId)
   const { simData, isSimConnected, connectSim, disconnectSim, } = useExtensionData();
@@ -385,6 +385,7 @@ export function DashboardView() {
                 // (Your previous code snippet for WaypointList handled this internally, so it should slot in perfectly here)
                 <WaypointList
                   waypoints={selectedMission.waypoints}
+                  stillsById={stillsById}
                   onCreate={handleCreateSecurityWaypoint}
                   onUpdate={handleUpdateWaypoint}
                   onDelete={handleDeleteWaypoint}

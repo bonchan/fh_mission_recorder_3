@@ -1,7 +1,7 @@
 import { FIVE_MIN_MS } from '@/utils/constants';
 import { db } from '@/utils/db';
 import { get3DDistanceInMeters } from '@/utils/geo';
-import { AnnotationFlag, AppSettings, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint } from '@/utils/interfaces';
+import { AnnotationFlag, AppSettings, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint, Still } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { toWaypointMini } from '@/utils/mapper';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -199,6 +199,16 @@ export function useDatabase(orgId: string, projectId: string) {
     [projectId]
   ) || [];
 
+  const projectStills = useLiveQuery(
+    () => db.stills.where('projectId').equals(projectId).toArray(),
+    [projectId]
+  ) || [];
+
+  const stillsById = useMemo(
+    () => Object.fromEntries(projectStills.map(still => [still.id, still])),
+    [projectStills]
+  );
+
   const checkIsCacheFresh = async (cacheKey: string, maxAgeMs = FIVE_MIN_MS) => {
     const metadata = await db.sync_metadata.get(cacheKey);
     if (!metadata) return false;
@@ -254,11 +264,22 @@ export function useDatabase(orgId: string, projectId: string) {
   };
 
   const deleteWaypoint = async (missionId: string, waypointId: string) => {
-    const mission = await db.missions.get(missionId);
-    if (!mission || !mission.waypoints) return;
+    await db.transaction('rw', db.missions, db.stills, async () => {
+      const mission = await db.missions.get(missionId);
+      if (!mission || !mission.waypoints) return;
 
-    const newList = mission.waypoints.filter(wp => wp.id !== waypointId);
-    await db.missions.update(missionId, { waypoints: newList });
+      const waypointToDelete = mission.waypoints.find(wp => wp.id === waypointId);
+      const newList = mission.waypoints.filter(wp => wp.id !== waypointId);
+      await db.missions.update(missionId, { waypoints: newList });
+
+      if (waypointToDelete?.imageId) {
+        await db.stills.delete(waypointToDelete.imageId);
+      }
+    });
+  };
+
+  const createStill = async (still: Still) => {
+    await db.stills.put(still);
   };
 
   // ==========================================
@@ -577,6 +598,7 @@ export function useDatabase(orgId: string, projectId: string) {
     projectAnnotations,
     executionRoutesWithData,
     projectMissions,
+    stillsById,
 
     // Cache
     checkIsCacheFresh,
@@ -615,6 +637,7 @@ export function useDatabase(orgId: string, projectId: string) {
     createWaypoints,
     updateWaypoint,
     deleteWaypoint,
+    createStill,
 
     //Backup & Restore
     doBackup,

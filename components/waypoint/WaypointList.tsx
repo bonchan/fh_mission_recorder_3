@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { WaypointItem } from './WaypointItem';
 import { WaypointTags } from './WaypointTags';
-import { Waypoint, ViewContext } from '@/utils/interfaces';
+import { Waypoint, ViewContext, Still } from '@/utils/interfaces';
 import Button from '@/components/ui/Button'
 import { WaypointOffset } from './WaypointOffset';
 
 interface WaypointListProps {
   waypoints: Waypoint[];
+  stillsById?: Record<string, Still>;
   viewContext?: ViewContext;
   isEditing?: boolean;
   showOffset?: boolean | false;
@@ -15,7 +16,7 @@ interface WaypointListProps {
   onDelete: ((id: string) => void) | undefined;
 }
 
-export function WaypointList({ waypoints, viewContext, isEditing, showOffset, onCreate, onUpdate, onDelete }: WaypointListProps) {
+export function WaypointList({ waypoints, stillsById, viewContext, isEditing, showOffset, onCreate, onUpdate, onDelete }: WaypointListProps) {
   const [offsetWaypointIndex, setOffsetWaypointIndex] = useState(0)
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export function WaypointList({ waypoints, viewContext, isEditing, showOffset, on
         // 1. SECURITY POINTS (Render naked)
         return (
           <React.Fragment key={wp.id}>
-            <WaypointItem waypoint={wp} index={index} viewContext={viewContext} onUpdate={onUpdate} onDelete={onDelete}>
+            <WaypointItem waypoint={wp} index={index} still={wp.imageId ? stillsById?.[wp.imageId] : undefined} viewContext={viewContext} onUpdate={onUpdate} onDelete={onDelete}>
               <WaypointTags
                 waypointType={wp.type}
                 selectedTagIds={wp.tagIds || []}
@@ -71,6 +72,7 @@ export function WaypointList({ waypoints, viewContext, isEditing, showOffset, on
               key={wp.id}
               waypoint={wp}
               index={index}
+              still={wp.imageId ? stillsById?.[wp.imageId] : undefined}
               viewContext={viewContext}
               onUpdate={onUpdate}
               onDelete={onDelete}
@@ -112,6 +114,7 @@ export function WaypointList({ waypoints, viewContext, isEditing, showOffset, on
             <WaypointItem
               waypoint={wp}
               index={index}
+              still={wp.imageId ? stillsById?.[wp.imageId] : undefined}
               viewContext={viewContext}
               onUpdate={onUpdate}
               onDelete={onDelete}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Button from '@/components/ui/Button';
-import { ViewContext, Waypoint } from "@/utils/interfaces";
+import { Still, ViewContext, Waypoint } from "@/utils/interfaces";
 import styles from './WaypointItem.module.css';
 import { WaypointTags } from './WaypointTags';
 import { createLogger } from '@/utils/logger';
@@ -9,6 +9,7 @@ import { createLogger } from '@/utils/logger';
 interface WaypointItemProps {
   waypoint: Waypoint;
   index: number;
+  still?: Still;
   viewContext?: ViewContext;
   onUpdate: ((id: string, updates: Partial<Waypoint>) => void) | undefined;
   onDelete: ((id: string) => void) | undefined;
@@ -16,13 +17,23 @@ interface WaypointItemProps {
 }
 const log = createLogger('WaypointItem');
 
-export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete, children }: WaypointItemProps) {
+export function WaypointItem({ waypoint, index, still, viewContext, onUpdate, onDelete, children }: WaypointItemProps) {
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isImageExpanded, setIsImageExpanded] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleUpdate = () => {
     if (onUpdate === undefined) return;
     onUpdate(waypoint.id, waypoint);
+  };
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsImageExpanded((prev) => !prev);
+  };
+
+  const handleContainerClick = () => {
+    if (isImageExpanded) setIsImageExpanded(false);
   };
 
   useEffect(() => {
@@ -46,7 +57,7 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete,
   const typeClass = styles[`type_${waypoint.type || 'default'}`];
 
   return (
-    <div className={`${styles.container} ${typeClass}`}>
+    <div className={`${styles.container} ${typeClass}`} onClick={handleContainerClick}>
 
       {/* 1. THE HEADER ROW */}
       <div className={styles.itemHeader}>
@@ -67,6 +78,14 @@ export function WaypointItem({ waypoint, index, viewContext, onUpdate, onDelete,
           </Button>
         )}
       </div>
+
+      {still?.dataUrl && (
+        <img
+          src={still.dataUrl}
+          className={`${styles.thumbnail} ${isImageExpanded ? styles.expanded : ''}`}
+          onClick={handleImageClick}
+        />
+      )}
 
       {/* 2. TELEMETRY GRID */}
       <div className={styles.dataGrid}>

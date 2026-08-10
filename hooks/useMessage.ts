@@ -28,6 +28,38 @@ export function useMessage(orgId: string, projectId: string) {
     }
   };
 
+  const getCockpitTabId = async (deviceSn: string, tabId?: number): Promise<number> => {
+    if (tabId) return tabId;
+
+    const tabs = await browser.tabs.query({ url: "*://fh.dji.com/*" });
+
+    const cockpitTabs = tabs.filter(t => {
+      if (!t.url || t.status !== "complete" || t.discarded) return false;
+
+      const match = t.url.match(DJI_COCKPIT_REGEX);
+      if (!match) return false;
+
+      const [_, tabOrgId, tabProjectId] = match;
+      return tabOrgId === orgId && tabProjectId === projectId;
+    });
+
+    if (cockpitTabs.length > 1) {
+      log.warn(`Found ${cockpitTabs.length} open cockpit tabs for this project - matching on droneSn to pick the right one`, cockpitTabs.map(t => t.url));
+    }
+
+    const cockpitTab = cockpitTabs.find(t => {
+      const match = t.url!.match(DJI_COCKPIT_REGEX)!;
+      const tabDroneSn = match[3];
+      return tabDroneSn === deviceSn;
+    });
+
+    if (cockpitTab && cockpitTab.id) {
+      return cockpitTab.id;
+    } else {
+      throw new Error(`Could not find an open cockpit tab for drone ${deviceSn} in this project. Open that drone's cockpit view in FlightHub first.`);
+    }
+  };
+
   // --- HELPERS ---
   const openPage = async (type: string, extraData: Record<string, any> = {}, tabId?: number) => {
     const targetTabId = await getTargetTabId(tabId);
@@ -127,10 +159,22 @@ export function useMessage(orgId: string, projectId: string) {
   };
 
   // --- COCKPIT ---
-  const getCockpitData = async (tabId?: number) => {
-    const targetTabId = await getTargetTabId(tabId);
+  // getCockpitData reads pitch/zoom/rng straight off the cockpit page's DOM
+  // (handleGetCockpitData in global.content.ts), so it's only meaningful when the
+  // target tab is actually on the cockpit route - same reasoning as getCockpitTabId
+  // above, even though global.content.ts's listener technically exists on every FH tab.
+  const getCockpitData = async (deviceSn: string, tabId?: number) => {
+    const targetTabId = await getCockpitTabId(deviceSn, tabId);
     const cockpitData = await browser.tabs.sendMessage(targetTabId, { action: "GET_COCKPIT_DATA", orgId, projectId });
     return cockpitData
+  };
+
+  const captureStill = async (deviceSn: string, tabId?: number) => {
+    const targetTabId = await getCockpitTabId(deviceSn, tabId);
+    log.info('captureStill: sending CAPTURE_STILL', { targetTabId, orgId, projectId });
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "CAPTURE_STILL", deviceSn, orgId, projectId });
+    log.info('captureStill: response', res);
+    return res?.still ?? null;
   };
 
 
@@ -151,5 +195,7 @@ export function useMessage(orgId: string, projectId: string) {
     duplicateNameStorageCheck,
     importCallbackStorage,
     getCockpitData,
+    
+    captureStill,
   };
 }

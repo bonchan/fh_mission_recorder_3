@@ -282,6 +282,10 @@ export function useDatabase(orgId: string, projectId: string) {
     await db.stills.put(still);
   };
 
+  const updateStill = async (stillId: string, updates: Partial<Still>) => {
+    await db.stills.update(stillId, {...updates});
+  };
+
   // ==========================================
   // FLIGHT ROUTES
   // ==========================================
@@ -638,6 +642,7 @@ export function useDatabase(orgId: string, projectId: string) {
     updateWaypoint,
     deleteWaypoint,
     createStill,
+    updateStill,
 
     //Backup & Restore
     doBackup,

@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { WaypointType, TagCategory, TagOption, TAG_OPTIONS } from '@/utils/interfaces';
+import { ViewContext, WaypointType, TagCategory, TagOption, TAG_OPTIONS } from '@/utils/interfaces';
 
 interface WaypointTagsProps {
   waypointType: WaypointType;
   selectedTagIds: string[];
+  viewContext?: ViewContext;
   onChange: (newTagIds: string[]) => void;
 }
 
@@ -24,7 +25,7 @@ const CATEGORY_COLORS: Record<TagCategory, string> = {
   intention: '#c2410c'
 };
 
-export function WaypointTags({ waypointType, selectedTagIds = [], onChange }: WaypointTagsProps) {
+export function WaypointTags({ waypointType, selectedTagIds = [], viewContext, onChange }: WaypointTagsProps) {
   if (waypointType != 'picture') return <></>
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -98,32 +99,35 @@ export function WaypointTags({ waypointType, selectedTagIds = [], onChange }: Wa
         </div>
       </div>
 
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsExpanded(!isExpanded);
-        }}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          color: '#888',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          userSelect: 'none',
-          padding: '2px 0'
-        }}
-      >
-        <span style={{
-          display: 'inline-block',
-          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 0.2s ease'
-        }}>
-          ▼
-        </span>
-        {isExpanded ? 'HIDE TAG SELECTORS' : 'EDIT TAGS'}
-      </div>
+      {(viewContext == ViewContext.DASHBOARD || viewContext == ViewContext.COCKPIT) &&
+
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: '#888',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            userSelect: 'none',
+            padding: '2px 0'
+          }}
+        >
+          <span style={{
+            display: 'inline-block',
+            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease'
+          }}>
+            ▼
+          </span>
+          {isExpanded ? 'HIDE TAG SELECTORS' : 'EDIT TAGS'}
+        </div>
+      }
 
       {/* SECTION 2: Multi-Selectors by Category (HIDDEN BY DEFAULT) */}
       {isExpanded && (

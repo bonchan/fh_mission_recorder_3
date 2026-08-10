@@ -4,7 +4,8 @@ import { ControllerModel } from '@/components/controller/ControllerDriver';
 
 export enum ViewContext {
   SIDEPANEL = 'sidepanel',
-  DASHBOARD = 'dashboard'
+  DASHBOARD = 'dashboard',
+  COCKPIT = 'cockpit',
 }
 
 export enum MissionType {

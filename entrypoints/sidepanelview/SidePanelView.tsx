@@ -41,6 +41,8 @@ export default function SidePanelView() {
   const devices = toDockDroneList(projectTopologies)
   const isFetching = isSyncingTopologies || isSyncingAnnotations
 
+  const viewContext = droneSn && dockSn ? ViewContext.COCKPIT : ViewContext.SIDEPANEL
+
 
   useEffect(() => {
     syncAnnotations()
@@ -110,7 +112,7 @@ export default function SidePanelView() {
           devices={devices}
           annotations={projectAnnotations}
           isFetching={isFetching}
-          viewContext={ViewContext.SIDEPANEL}
+          viewContext={viewContext}
         />
       </div>
 

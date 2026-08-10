@@ -387,6 +387,7 @@ export function DashboardView() {
                   waypoints={selectedMission.waypoints}
                   stillsById={stillsById}
                   onCreate={handleCreateSecurityWaypoint}
+                  onOverWrite={undefined}
                   onUpdate={handleUpdateWaypoint}
                   onDelete={handleDeleteWaypoint}
                   viewContext={viewContext}

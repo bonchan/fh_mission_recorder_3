@@ -42,7 +42,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
 
-  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint, createStill, stillsById } = useDatabase(mission.orgId, mission.projectId);
+  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint, createStill, updateStill, stillsById } = useDatabase(mission.orgId, mission.projectId);
   const { openPage, getCockpitData, captureStill } = useMessage(mission.orgId, mission.projectId);
 
 
@@ -80,9 +80,120 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
     updateWaypoint(mission.id, wpId, updates)
   };
 
+  const handleOverWrite = (wp: Waypoint) => {
+    // FIXME, after this, template does not work 
+    setTemplate(null)
+    handleAddWaypoint(wp)
+  };
+
   const handleDeleteWaypoint = (wpId: string) => {
     deleteWaypoint(mission.id, wpId)
   };
+
+  const handleAddWaypoint = async (wp: Waypoint | null) => {
+    try {
+      setIsFetchingLocation(true);
+      const topologies = await syncTopologies(true)
+
+      if (topologies == null) {
+        showToast('Error', 'Could not fetch drone data', { type: "error" })
+        return
+      }
+
+      let currentDroneData = null
+      for (const item of topologies) {
+        currentDroneData = toWaypoint(item, mission.device.deviceSn)
+        if (currentDroneData) break
+      }
+
+      // 3. Extract the live telemetry
+      if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
+        let still: Still | null = null;
+
+        if (!template) {
+          try {
+            still = await captureStill(mission.device.deviceSn);
+          } catch (error) {
+            log.error("captureStill failed", error);
+            still = null;
+          }
+
+          if (!still) {
+            showToast('Could not capture image', 'Waypoint not added - check the cockpit tab is open and streaming', { type: "error" });
+            return;
+          }
+          if (wp?.imageId) {
+            // Overwrite: reuse the waypoint's existing still row instead of
+            // orphaning it and pointing imageId at a never-persisted id.
+            const updates: Partial<Still> = {
+              canvasId: still.canvasId,
+              capturedAt: still.capturedAt,
+              dataUrl: still.dataUrl
+            }
+            await updateStill(wp.imageId, updates)
+          } else {
+            await createStill(still)
+          }
+        }
+
+        if (wp) {
+          const updates: Partial<Waypoint> = {
+            latitude: currentDroneData.latitude,
+            longitude: currentDroneData.longitude,
+            elevation: currentDroneData.elevation || 0,
+            height: currentDroneData.height || 0,
+            yaw: currentDroneData.yaw || 0,
+            pitch: currentDroneData.pitch || 0,
+            zoom: currentDroneData.zoom || 1,
+            hoverTime: 0,
+            turn: "CW",
+            type: 'picture',
+            actionGroup: null,
+            tagIds: [],
+            imageId: wp.imageId ?? still?.id ?? null,
+          }
+
+          await updateWaypoint(mission.id, wp.id, updates)
+          showToast(`Waypoint OverWritten`, ``, { type: "warning" })
+        } else {
+
+          const newWaypoint: Waypoint = {
+            id: crypto.randomUUID(),
+            latitude: currentDroneData.latitude,
+            longitude: currentDroneData.longitude,
+            elevation: currentDroneData.elevation || 0,
+            height: currentDroneData.height || 0,
+            yaw: currentDroneData.yaw || 0,
+            pitch: currentDroneData.pitch || 0,
+            zoom: currentDroneData.zoom || 1,
+            hoverTime: 0,
+            turn: "CW",
+            type: 'picture',
+            actionGroup: null,
+            imageId: still?.id ?? null,
+          };
+
+          if (template) {
+            const cluster = generateWaypointsFromTemplate(newWaypoint, template);
+            await createWaypoints(mission.id, cluster)
+            showToast(`Added (${cluster.length}) waypoints from template`, template.name, { type: "warning" })
+
+          } else {
+            await createWaypoints(mission.id, newWaypoint)
+            showToast('Added waypoint', ``)
+          }
+        }
+
+      } else {
+        showToast("Could not find active telemetry for this drone.", "Is it turned on?", { type: "warning" })
+      }
+    } catch (error) {
+      log.error("Failed to fetch drone location:", error);
+      showToast('Error adding Waypoint:', (error as Error).message, { type: "error" })
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  }
 
   const handleAddWaypointClick = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -118,76 +229,8 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
       if (paramError) return
     }
 
-    setIsFetchingLocation(true);
 
-    try {
-      const topologies = await syncTopologies(true)
-
-      if (topologies == null) {
-        showToast('Error', 'Could not fetch drone data', { type: "error" })
-        return
-      }
-
-      let currentDroneData = null
-      for (const item of topologies) {
-        currentDroneData = toWaypoint(item, mission.device.deviceSn)
-        if (currentDroneData) break
-      }
-
-      // 3. Extract the live telemetry
-      if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
-        let still: Still | null = null;
-
-        if (!template) {
-          try {
-            still = await captureStill(mission.device.deviceSn);
-          } catch (error) {
-            log.error("captureStill failed", error);
-            still = null;
-          }
-
-          if (!still) {
-            showToast('Could not capture image', 'Waypoint not added - check the cockpit tab is open and streaming', { type: "error" });
-            return;
-          }
-          await createStill(still)
-        }
-
-        const newWaypoint: Waypoint = {
-          id: crypto.randomUUID(),
-          latitude: currentDroneData.latitude,
-          longitude: currentDroneData.longitude,
-          elevation: currentDroneData.elevation || 0,
-          height: currentDroneData.height || 0,
-          yaw: currentDroneData.yaw || 0,
-          pitch: currentDroneData.pitch || 0,
-          zoom: currentDroneData.zoom || 1,
-          hoverTime: 0,
-          turn: "CW",
-          type: 'picture',
-          actionGroup: null,
-          imageId: still?.id ?? null,
-        };
-
-        if (template) {
-          const cluster = generateWaypointsFromTemplate(newWaypoint, template);
-          await createWaypoints(mission.id, cluster)
-          showToast(`Added (${cluster.length}) waypoints from template`, template.name, { type: "warning" })
-
-        } else {
-          await createWaypoints(mission.id, newWaypoint)
-          showToast('Added waypoint', ``)
-        }
-
-      } else {
-        showToast("Could not find active telemetry for this drone.", "Is it turned on?", { type: "warning" })
-      }
-    } catch (error) {
-      log.error("Failed to fetch drone location:", error);
-      showToast('Error adding Waypoint:', (error as Error).message, { type: "error" })
-    } finally {
-      setIsFetchingLocation(false);
-    }
+    await handleAddWaypoint(null)
 
     setTimeout(() => {
       scrollRef.current?.scrollIntoView({
@@ -373,12 +416,14 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
             stillsById={stillsById}
             onCreate={undefined}
             onUpdate={handleUpdateWaypoint}
+            onOverWrite={handleOverWrite}
             onDelete={handleDeleteWaypoint}
             viewContext={viewContext as any}
           />
           <div ref={scrollRef}></div>
           {mission.missionType == MissionType.WAYPOINT && <>
-            <TemplateSelector onSelectTemplate={setTemplate} />
+            {/* FIXME, before enabling this . solve the setTemplate(null) thing in the wp creation  */}
+            {/* <TemplateSelector onSelectTemplate={setTemplate} /> */}
             <Button
               onClick={handleAddWaypointClick}
               disabled={isFetchingLocation}

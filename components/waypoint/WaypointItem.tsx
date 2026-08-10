@@ -11,20 +11,25 @@ interface WaypointItemProps {
   index: number;
   still?: Still;
   viewContext?: ViewContext;
-  onUpdate: ((id: string, updates: Partial<Waypoint>) => void) | undefined;
+  onOverWrite: ((wp: Waypoint) => void) | undefined;
   onDelete: ((id: string) => void) | undefined;
   children?: React.ReactNode;
 }
 const log = createLogger('WaypointItem');
 
-export function WaypointItem({ waypoint, index, still, viewContext, onUpdate, onDelete, children }: WaypointItemProps) {
+export function WaypointItem({ waypoint, index, still, viewContext, onOverWrite, onDelete, children }: WaypointItemProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isImageExpanded, setIsImageExpanded] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleUpdate = () => {
-    if (onUpdate === undefined) return;
-    onUpdate(waypoint.id, waypoint);
+  const handleOverWrite = () => {
+    if (onOverWrite === undefined) return;
+    onOverWrite(waypoint);
+  };
+
+  const handleDelete = () => {
+    if (onDelete === undefined) return;
+    onDelete(waypoint.id);
   };
 
   const handleImageClick = (e: React.MouseEvent) => {
@@ -65,18 +70,33 @@ export function WaypointItem({ waypoint, index, still, viewContext, onUpdate, on
           <span>{getIcon()}</span> WP {index + 1}
         </div>
 
-        {onDelete && (
+        {onOverWrite && viewContext == ViewContext.COCKPIT && (
+          <Button
+            variant="danger"
+            requireConfirm={true}
+            confirmText="CONFIRM"
+            confirmVariant="success"
+            className={styles.deleteBtn}
+            onClick={handleOverWrite}
+          >
+            OVERWRITE
+          </Button>
+        )}
+
+        {onDelete && (viewContext == ViewContext.DASHBOARD || viewContext == ViewContext.COCKPIT) && (
           <Button
             variant="sad"
             requireConfirm={true}
             confirmText="CONFIRM"
             confirmVariant="danger"
             className={styles.deleteBtn}
-            onClick={() => onDelete(waypoint.id)}
+            onClick={handleDelete}
           >
             DELETE
           </Button>
         )}
+
+
       </div>
 
       {still?.dataUrl && (

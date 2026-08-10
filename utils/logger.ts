@@ -1,3 +1,5 @@
+import pkg from '@/package.json';
+
 // Define your log levels (higher number = more severe)
 export enum LogLevel {
   DEBUG = 0,
@@ -31,10 +33,13 @@ function shouldLog(componentName: string, level: LogLevel): boolean {
  */
 export function createLogger(componentName: string) {
   // Adding some colors makes the console infinitely easier to read
-  const prefix = `%c[${componentName}]`;
+  const prefix = `${pkg.name} ${pkg.version} %c[${componentName}]`;
   const infoStyle = 'color: #0066ff; font-weight: bold;'; // Nice DJI blue!
   const warnStyle = 'color: #ff9900; font-weight: bold;';
   const errorStyle = 'color: #ff0000; font-weight: bold;';
+  const registeredStyle = 'color: #4be9dc; font-style: italic;';
+
+  console.log(`${pkg.name} ${pkg.version} %c[${componentName}] logger registered`, registeredStyle);
 
   return {
     get debug() {

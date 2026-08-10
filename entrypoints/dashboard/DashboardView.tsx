@@ -224,10 +224,10 @@ export function DashboardView() {
           pitch: currentDroneData.pitch || 0,
           zoom: currentDroneData.zoom || 1,
           hoverTime: 0,
-          // tag: '' // Default to empty string
           turn: "CW",
           type: 'picture',
           actionGroup: null,
+          imageId: null,
         };
 
         await createWaypoints(selectedMission.id, newWaypoint)
@@ -257,6 +257,7 @@ export function DashboardView() {
       zoom: 1,
       pitch: -30,
       type: 'security' as WaypointType,
+      imageId: null,
     }
     createWaypoints(selectedMission.id, securityWaypoint, index)
   };

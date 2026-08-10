@@ -33,7 +33,6 @@ export default function SidePanelView() {
       </div>
     )
   }
-  log.info("log", orgId, projectId)
   const { settings, updateSettings, projectTopologies, projectAnnotations } = useDatabase(orgId, projectId)
   const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
 

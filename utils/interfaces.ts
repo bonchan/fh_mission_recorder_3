@@ -133,6 +133,15 @@ export interface AnnotationFlag {
   isCompromised: boolean;
 }
 
+export interface Still {
+  id: string;
+  projectId: string;
+  deviceSn: string;
+  canvasId: string;
+  capturedAt: number;
+  dataUrl: string;
+}
+
 export interface LiveDroneData {
   timestamp: number;
   sn: string;
@@ -191,8 +200,9 @@ export interface Waypoint {
   zoom: number;
   hoverTime: number;
   turn: TurnType;
-  actionGroup: any | null;
   type: WaypointType;
+  actionGroup: any | null;
+  imageId?: string | null;
   tagIds?: string[];
 }
 

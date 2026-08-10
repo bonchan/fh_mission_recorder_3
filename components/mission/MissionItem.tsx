@@ -9,7 +9,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { useMessage } from '@/hooks/useMessage';
 import { useSync } from '@/hooks/useSync';
 import { useToast } from '@/providers/ToastProvider';
-import { Annotation, Mission, MissionType, ViewContext, Waypoint, WaypointType, ImageFormat } from '@/utils/interfaces';
+import { Annotation, Mission, MissionType, Still, ViewContext, Waypoint, WaypointType, ImageFormat } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { IMAGE_FORMAT_OPTIONS } from '@/utils/options';
 import { isInRange, sanitizeRouteName } from '@/utils/utils';
@@ -42,8 +42,8 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
 
-  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint } = useDatabase(mission.orgId, mission.projectId);
-  const { openPage, getCockpitData } = useMessage(mission.orgId, mission.projectId);
+  const { updateMission, createWaypoints, updateWaypoint, deleteWaypoint, createStill } = useDatabase(mission.orgId, mission.projectId);
+  const { openPage, getCockpitData, captureStill } = useMessage(mission.orgId, mission.projectId);
 
 
 
@@ -95,7 +95,8 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
 
     if (template) {
       // if i need the tabId... drill it
-      const cockpitData: any = await getCockpitData();
+      // TODO check this.. it may be broken
+      const cockpitData: any = await getCockpitData(mission.device.deviceSn);
       const originItem: TemplateWaypoint | undefined = template.template.find(step => step.x === 0 && step.y === 0 && step.z === 0);
 
       let paramError = false
@@ -135,6 +136,23 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
 
       // 3. Extract the live telemetry
       if (currentDroneData && currentDroneData.latitude && currentDroneData.longitude) {
+        let still: Still | null = null;
+
+        if (!template) {
+          try {
+            still = await captureStill(mission.device.deviceSn);
+          } catch (error) {
+            log.error("captureStill failed", error);
+            still = null;
+          }
+
+          if (!still) {
+            showToast('Could not capture image', 'Waypoint not added - check the cockpit tab is open and streaming', { type: "error" });
+            return;
+          }
+          await createStill(still)
+        }
+
         const newWaypoint: Waypoint = {
           id: crypto.randomUUID(),
           latitude: currentDroneData.latitude,
@@ -148,6 +166,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
           turn: "CW",
           type: 'picture',
           actionGroup: null,
+          imageId: still?.id ?? null,
         };
 
         if (template) {

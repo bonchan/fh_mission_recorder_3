@@ -8,10 +8,6 @@ export default defineContentScript({
   matches: ['https://fh.dji.com/*'],
   async main() {
 
-    if (DJI_COCKPIT_REGEX.test(window.location.href)) {
-      log.info("cockpit.content")
-    }
-
 
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 

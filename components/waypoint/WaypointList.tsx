@@ -42,7 +42,14 @@ export function WaypointList({ waypoints, stillsById, viewContext, isEditing, sh
         // 1. SECURITY POINTS (Render naked)
         return (
           <React.Fragment key={wp.id}>
-            <WaypointItem waypoint={wp} index={index} still={wp.imageId ? stillsById?.[wp.imageId] : undefined} viewContext={viewContext} onOverWrite={wp.type == 'security' ? undefined : onOverWrite} onDelete={onDelete}>
+            <WaypointItem
+              waypoint={wp}
+              index={index}
+              still={wp.imageId ? stillsById?.[wp.imageId] : undefined}
+              viewContext={viewContext}
+              onOverWrite={wp.type == 'security' ? undefined : onOverWrite}
+              onDelete={onDelete}
+            >
               <WaypointTags
                 waypointType={wp.type}
                 selectedTagIds={wp.tagIds || []}

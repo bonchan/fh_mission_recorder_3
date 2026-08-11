@@ -290,6 +290,16 @@ export function DashboardView() {
     }
   }
 
+  const handleUploadMission = async (mission: Mission) => {
+    const uploaded = await uploadMission(mission)
+    if (uploaded) {
+      const updates: Partial<Mission> = {
+        fhUploadDate: Date.now()
+      }
+      updateMission(mission.id, updates)
+    }
+  }
+
   // const mappedWaypoints: LiveWaypointData[] = (selectedMission?.waypoints || []).map(wp => ({
   //   latitude: wp.latitude, longitude: wp.longitude, altitude: wp.elevation || 0,
   //   heading: wp.yaw || 0, gimbalPitch: wp.pitch || 0, zoomFactor: wp.zoom || 1
@@ -324,10 +334,10 @@ export function DashboardView() {
               <div
                 key={mission.id}
                 onClick={() => { handleSelectMission(mission.id) }}
-                className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''}`}
+                className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''} ${mission.fhUploadDate > 0 ? styles.missionItemFH : ''}`  }
               >
                 <div className={`${styles.missionItemTitle}`}>
-                  {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign}`}
+                  {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} • ${mission.fhUploadDate > 0 ? 'FH' : ''}`}
                 </div>
                 <div className={`${styles.missionItemDescription}`}>
                   Mission Type: {mission.missionType.toUpperCase()} | {(mission.waypoints || []).length} Waypoints
@@ -367,7 +377,7 @@ export function DashboardView() {
               <Button onClick={(e) => { e.stopPropagation(); debugMission(selectedMission, setDebugXml); }} variant='sad'>Debug</Button>
               <Button onClick={(e) => { e.stopPropagation(); exportMission(selectedMission); }} variant='sad'>Export</Button>
               <Button
-                onClick={(e) => { e.stopPropagation(); uploadMission(selectedMission); }}
+                onClick={(e) => { e.stopPropagation(); handleUploadMission(selectedMission); }}
                 disabled={isUploading}
                 variant='sad'
               >

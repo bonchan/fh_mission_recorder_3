@@ -173,6 +173,7 @@ export interface Mission {
   device: Drone;
   createdDate: number;
   updatedDate: number;
+  fhUploadDate: number;
   imageFormat: ImageFormat[];
   // author: string | null;
   // isExpanded: boolean;

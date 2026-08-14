@@ -108,6 +108,7 @@ export default function SidePanelView() {
         <MissionsContainer
           orgId={orgId}
           projectId={projectId}
+          dockSn={dockSn}
           sourceTabId={sourceTabId}
           devices={devices}
           annotations={projectAnnotations}

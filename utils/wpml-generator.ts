@@ -30,7 +30,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
     exitOnRCLost: 'executeLostAction',
     executeRCLostAction: 'goBack',
     takeOffSecurityHeight: 40,
-    globalTransitionalSpeed: 10,
+    globalTransitionalSpeed: 15,
     globalRTHHeight: 60,
     takeOffRefPoint: `${activeDrone?.parent?.latitude},${activeDrone?.parent?.longitude},${activeDrone?.parent?.height}`,
     takeOffRefPointAGLHeight: 20, //`${activeDrone?.parent?.height}`,
@@ -147,7 +147,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
       <wpml:ellipsoidHeight>${wp.ellipsoidHeight}</wpml:ellipsoidHeight>
       <wpml:height>${wp.height}</wpml:height>
       <wpml:useGlobalHeight>0</wpml:useGlobalHeight>
-      <wpml:useGlobalSpeed>${wp.waypointSpeed}</wpml:useGlobalSpeed>
+      <wpml:useGlobalSpeed>${wp.useGlobalSpeed}</wpml:useGlobalSpeed>
       <wpml:useGlobalHeadingParam>1</wpml:useGlobalHeadingParam>
       <wpml:useGlobalTurnParam>1</wpml:useGlobalTurnParam>
       <wpml:gimbalPitchAngle>0</wpml:gimbalPitchAngle>
@@ -216,7 +216,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
         <wpml:coordinateMode>WGS84</wpml:coordinateMode>
         <wpml:heightMode>relativeToStartPoint</wpml:heightMode>
       </wpml:waylineCoordinateSysParam>
-      <wpml:autoFlightSpeed>10</wpml:autoFlightSpeed>
+      <wpml:autoFlightSpeed>15</wpml:autoFlightSpeed>
       <wpml:globalHeight>100</wpml:globalHeight>
       <wpml:caliFlightEnable>0</wpml:caliFlightEnable>
       <wpml:gimbalPitchMode>manual</wpml:gimbalPitchMode>
@@ -251,7 +251,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
     <wpml:templateId>0</wpml:templateId>
     <wpml:executeHeightMode>relativeToStartPoint</wpml:executeHeightMode>
     <wpml:waylineId>0</wpml:waylineId>
-    <wpml:autoFlightSpeed>10</wpml:autoFlightSpeed>
+    <wpml:autoFlightSpeed>15</wpml:autoFlightSpeed>
     <wpml:realTimeFollowSurfaceByFov>0</wpml:realTimeFollowSurfaceByFov>
 
     ${readyWaypoints.map((wp, index) => renderPlacemarkWaylines(wp, index)).join('\n')}

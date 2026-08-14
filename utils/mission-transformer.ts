@@ -30,6 +30,7 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
         const waypoint = {
             ...wp,
             index: index,
+            useGlobalSpeed: 1,
             waypointSpeed: 15, // Default speed
             isRisky: false,
             ellipsoidHeight: wp.elevation,// FIXME wp.height,

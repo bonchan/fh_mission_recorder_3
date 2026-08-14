@@ -259,7 +259,21 @@ export function DashboardView() {
       type: 'security' as WaypointType,
       imageId: null,
     }
-    createWaypoints(selectedMission.id, securityWaypoint, index)
+    return createWaypoints(selectedMission.id, securityWaypoint, index)
+  };
+
+  const handleAddFirstAndLastSecurityWaypoints = async () => {
+    if (!selectedMission) return
+    const waypoints = selectedMission.waypoints || []
+    if (waypoints.length === 0) return
+
+    const firstWp = waypoints[0]
+    const lastWp = waypoints[waypoints.length - 1]
+
+    // Sequential: createWaypoints reads the mission fresh from the DB each call,
+    // so firing both at once would race and the second write would clobber the first.
+    await handleCreateSecurityWaypoint(firstWp, 0)
+    await handleCreateSecurityWaypoint(lastWp)
   };
 
   const handleUpdateWaypoint = (wpId: string, updates: Partial<Waypoint>) => {
@@ -334,7 +348,7 @@ export function DashboardView() {
               <div
                 key={mission.id}
                 onClick={() => { handleSelectMission(mission.id) }}
-                className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''} ${mission.fhUploadDate > 0 ? styles.missionItemFH : ''}`  }
+                className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''} ${mission.fhUploadDate > 0 ? styles.missionItemFH : ''}`}
               >
                 <div className={`${styles.missionItemTitle}`}>
                   {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} • ${mission.fhUploadDate > 0 ? 'FH' : ''}`}
@@ -393,17 +407,28 @@ export function DashboardView() {
               ) : (
                 // Make sure <WaypointList> has flex:1 internally or is wrapped!
                 // (Your previous code snippet for WaypointList handled this internally, so it should slot in perfectly here)
-                <WaypointList
-                  waypoints={selectedMission.waypoints}
-                  stillsById={stillsById}
-                  onCreate={handleCreateSecurityWaypoint}
-                  onOverWrite={undefined}
-                  onUpdate={handleUpdateWaypoint}
-                  onDelete={handleDeleteWaypoint}
-                  viewContext={viewContext}
-                  isEditing={isEditing}
-                  showOffset={isShowOffset}
-                />
+                <>
+                  {isEditing &&
+                    <Button
+                      onClick={(e) => { e.stopPropagation(); handleAddFirstAndLastSecurityWaypoints() }}
+                      variant='danger'
+                      style={{ padding: '5px 10px', alignSelf: 'center', marginBottom: '8px' }}
+                    >
+                      Add security first and last
+                    </Button>
+                  }
+                  <WaypointList
+                    waypoints={selectedMission.waypoints}
+                    stillsById={stillsById}
+                    onCreate={handleCreateSecurityWaypoint}
+                    onOverWrite={undefined}
+                    onUpdate={handleUpdateWaypoint}
+                    onDelete={handleDeleteWaypoint}
+                    viewContext={viewContext}
+                    isEditing={isEditing}
+                    showOffset={isShowOffset}
+                  />
+                </>
               )
             )}
           </>

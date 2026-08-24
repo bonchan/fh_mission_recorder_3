@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import Button from '@/components/ui/Button';
+import SearchInput from '@/components/ui/SearchInput';
+import { HostRowItem, ParentRowItem } from '@/entrypoints/adminview/DeviceDetails';
+import { FlatDevice } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { toFlatDeviceList } from '@/utils/mapper';
-import { FlatDevice } from '@/utils/interfaces';
 import { filterObjectTree } from '@/utils/utils';
-import SearchInput from '@/components/ui/SearchInput';
-import { HostRowItem, ParentRowItem } from '@/entrypoints/adminview/DeviceDetails'
+import React, { useEffect, useMemo, useState } from 'react';
 
-import { useSync } from '@/hooks/useSync';
 import { useDatabase } from '@/hooks/useDatabase';
+import { useSync } from '@/hooks/useSync';
 
 const log = createLogger('AdminView');
 type SortDirection = 'asc' | 'desc';
@@ -35,6 +36,21 @@ export function AdminView() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
 
+
+  const [isRunning, setIsRunning] = useState(false);
+    useEffect(() => {
+      let intervalId: NodeJS.Timeout;
+      if (isRunning) {
+        intervalId = setInterval(() => {
+          syncTopologies(true)
+        }, 1000);
+      }
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
+    }, [isRunning]);
 
 
   const devices = toFlatDeviceList(projectTopologies)
@@ -144,44 +160,20 @@ export function AdminView() {
         <h1 style={{ margin: 0, fontSize: '24px' }}>Device Administration</h1>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
 
-          <button
-            onClick={() => { syncTopologies(true) }}
-            disabled={isSyncingTopologies}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: isSyncingTopologies ? '#ad6c6c' : '#1a1a1a',
-              color: '#ccc',
-              border: '1px solid #333',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-              transition: 'all 0.2s ease',
-              height: '38px' // Matches most standard input heights
-            }}
+          <Button
+            onClick={() => { setIsRunning(!isRunning) }}
+            variant={isRunning ? 'success' : 'sad'}
           >
-            {'Refresh'}
-          </button>
+            {'Live'}
+          </Button>
 
-          <button
+          <Button
             onClick={toggleExpandAll}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: isAllExpanded ? '#2a2a2a' : '#1a1a1a',
-              color: isAllExpanded ? '#fff' : '#ccc',
-              border: '1px solid #333',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-              transition: 'all 0.2s ease',
-              height: '38px' // Matches most standard input heights
-            }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#333'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isAllExpanded ? '#2a2a2a' : '#1a1a1a'}
           >
             {isAllExpanded ? 'Collapse All' : 'Expand All'}
-          </button>
+          </Button>
 
           <SearchInput onSearch={setSearchQuery} initialValue={searchQuery} placeholder="Search devices deep JSON..." />
         </div>

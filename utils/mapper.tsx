@@ -105,7 +105,8 @@ export function toWaypoint(djiItem: any, hostSn?: string): any | null {
         hoverTime: 0,
         turn: 'CW',
         actionGroup: null,
-        type: 'default'
+        type: 'default',
+        imageId: null,
     };
     return waypoint
 }

@@ -26,3 +26,6 @@ web-ext.config.ts
 *.sw?
 
 .ignore
+
+.patches
+.examples

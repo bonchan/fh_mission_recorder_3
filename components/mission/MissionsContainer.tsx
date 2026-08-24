@@ -22,6 +22,7 @@ export function MissionsContainer({ orgId, projectId, sourceTabId, devices, anno
       device: selectedDevice,
       createdDate: Date.now(),
       updatedDate: Date.now(),
+      fhUploadDate: 0,
       imageFormat: imageFormat,
       missionType: missionType,
       waypoints: []

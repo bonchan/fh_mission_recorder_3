@@ -33,7 +33,6 @@ export default function SidePanelView() {
       </div>
     )
   }
-  log.info("log", orgId, projectId)
   const { settings, updateSettings, projectTopologies, projectAnnotations } = useDatabase(orgId, projectId)
   const { isSyncingTopologies, isSyncingAnnotations, isSyncingFlightAreas, syncTopologies, syncAnnotations, syncFlightAreas } = useSync(orgId, projectId, sourceTabId)
 
@@ -41,6 +40,8 @@ export default function SidePanelView() {
 
   const devices = toDockDroneList(projectTopologies)
   const isFetching = isSyncingTopologies || isSyncingAnnotations || isSyncingFlightAreas
+
+  const viewContext = droneSn && dockSn ? ViewContext.COCKPIT : ViewContext.SIDEPANEL
 
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export default function SidePanelView() {
           devices={devices}
           annotations={projectAnnotations}
           isFetching={isFetching}
-          viewContext={ViewContext.SIDEPANEL}
+          viewContext={viewContext}
         />
       </div>
 

@@ -4,7 +4,8 @@ import { ControllerModel } from '@/components/controller/ControllerDriver';
 
 export enum ViewContext {
   SIDEPANEL = 'sidepanel',
-  DASHBOARD = 'dashboard'
+  DASHBOARD = 'dashboard',
+  COCKPIT = 'cockpit',
 }
 
 export enum MissionType {
@@ -133,20 +134,13 @@ export interface AnnotationFlag {
   isCompromised: boolean;
 }
 
-export interface FlightArea {
+export interface Still {
   id: string;
   projectId: string;
-  name: string;
-  enabled: boolean;
-  type: string;
-  geometry: Geometry;
-  color: string;
-}
-
-export interface Geometry {
-  type: string;
-  coordinates: number[];
-  radius?: number;
+  deviceSn: string;
+  canvasId: string;
+  capturedAt: number;
+  dataUrl: string;
 }
 
 export interface LiveDroneData {
@@ -179,6 +173,7 @@ export interface Mission {
   device: Drone;
   createdDate: number;
   updatedDate: number;
+  fhUploadDate: number;
   imageFormat: ImageFormat[];
   // author: string | null;
   // isExpanded: boolean;
@@ -207,8 +202,9 @@ export interface Waypoint {
   zoom: number;
   hoverTime: number;
   turn: TurnType;
-  actionGroup: any | null;
   type: WaypointType;
+  actionGroup: any | null;
+  imageId?: string | null;
   tagIds?: string[];
 }
 

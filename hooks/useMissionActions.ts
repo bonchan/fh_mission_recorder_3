@@ -34,9 +34,15 @@ export function useMissionActions(orgId: string, projectId: string) {
     window.URL.revokeObjectURL(url);
   };
 
-  const uploadMission = async (mission: Mission) => {
-    if (mission.waypoints.length === 0) return showToast('Mission has no waypoints!', '', { type: "warning" })
-    if (!mission.orgId || !mission.projectId) return showToast('Mission has no orgId or projectId!', '', { type: "warning" })
+  const uploadMission = async (mission: Mission): Promise<boolean> => {
+    if (mission.waypoints.length === 0) {
+      showToast('Mission has no waypoints!', '', { type: "warning" })
+      return false
+    }
+    if (!mission.orgId || !mission.projectId) {
+      showToast('Mission has no orgId or projectId!', '', { type: "warning" })
+      return false
+    }
 
     const toastTTL = 3000;
     try {
@@ -69,9 +75,11 @@ export function useMissionActions(orgId: string, projectId: string) {
     } catch (err) {
       log.error("Failed to upload mission sequence:", err);
       showToast('Failed to upload mission sequence:', String(err), { type: "error", permanent: true })
+      return false
     } finally {
       setIsUploading(false);
     }
+    return true
   };
 
   const uploadFlightRoute = async (route: FlightRoute) => {

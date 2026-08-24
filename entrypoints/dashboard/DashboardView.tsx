@@ -29,7 +29,7 @@ export function DashboardView() {
 
   const viewContext = ViewContext.DASHBOARD
 
-  const { projectMissions, projectAnnotations, updateMission, deleteMission, createWaypoints, updateWaypoint, deleteWaypoint } = useDatabase(orgId, projectId);
+  const { projectMissions, projectAnnotations, updateMission, deleteMission, createWaypoints, updateWaypoint, deleteWaypoint, stillsById } = useDatabase(orgId, projectId);
   const { isSyncingTopologies, isSyncingAnnotations, syncTopologies, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
   const { toggleDebugger } = useMessage(orgId, projectId)
   const { simData, isSimConnected, connectSim, disconnectSim, } = useExtensionData();
@@ -224,10 +224,10 @@ export function DashboardView() {
           pitch: currentDroneData.pitch || 0,
           zoom: currentDroneData.zoom || 1,
           hoverTime: 0,
-          // tag: '' // Default to empty string
           turn: "CW",
           type: 'picture',
           actionGroup: null,
+          imageId: null,
         };
 
         await createWaypoints(selectedMission.id, newWaypoint)
@@ -257,6 +257,7 @@ export function DashboardView() {
       zoom: 1,
       pitch: -30,
       type: 'security' as WaypointType,
+      imageId: null,
     }
     createWaypoints(selectedMission.id, securityWaypoint, index)
   };
@@ -286,6 +287,16 @@ export function DashboardView() {
     const updatedMission = optimizeMissionPath(selectedMission);
     if (updatedMission) {
       updateMission(updatedMission.id, updatedMission)
+    }
+  }
+
+  const handleUploadMission = async (mission: Mission) => {
+    const uploaded = await uploadMission(mission)
+    if (uploaded) {
+      const updates: Partial<Mission> = {
+        fhUploadDate: Date.now()
+      }
+      updateMission(mission.id, updates)
     }
   }
 
@@ -323,10 +334,10 @@ export function DashboardView() {
               <div
                 key={mission.id}
                 onClick={() => { handleSelectMission(mission.id) }}
-                className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''}`}
+                className={`${styles.missionItem} ${mission.id === selectedMissionId ? styles.missionItemActive : ''} ${mission.fhUploadDate > 0 ? styles.missionItemFH : ''}`  }
               >
                 <div className={`${styles.missionItemTitle}`}>
-                  {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign}`}
+                  {`${mission.name} • ${mission.device.parent?.deviceOrganizationCallsign} • ${mission.fhUploadDate > 0 ? 'FH' : ''}`}
                 </div>
                 <div className={`${styles.missionItemDescription}`}>
                   Mission Type: {mission.missionType.toUpperCase()} | {(mission.waypoints || []).length} Waypoints
@@ -366,7 +377,7 @@ export function DashboardView() {
               <Button onClick={(e) => { e.stopPropagation(); debugMission(selectedMission, setDebugXml); }} variant='sad'>Debug</Button>
               <Button onClick={(e) => { e.stopPropagation(); exportMission(selectedMission); }} variant='sad'>Export</Button>
               <Button
-                onClick={(e) => { e.stopPropagation(); uploadMission(selectedMission); }}
+                onClick={(e) => { e.stopPropagation(); handleUploadMission(selectedMission); }}
                 disabled={isUploading}
                 variant='sad'
               >
@@ -384,7 +395,9 @@ export function DashboardView() {
                 // (Your previous code snippet for WaypointList handled this internally, so it should slot in perfectly here)
                 <WaypointList
                   waypoints={selectedMission.waypoints}
+                  stillsById={stillsById}
                   onCreate={handleCreateSecurityWaypoint}
+                  onOverWrite={undefined}
                   onUpdate={handleUpdateWaypoint}
                   onDelete={handleDeleteWaypoint}
                   viewContext={viewContext}

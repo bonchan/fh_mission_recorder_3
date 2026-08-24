@@ -30,13 +30,14 @@ export function generateWaypointsFromTemplate(triggerData: Waypoint, missionTemp
       id: crypto.randomUUID(),
       longitude: newLng,
       latitude: newLat,
-      elevation: trueElevation, 
-      height: trueElevation, 
+      elevation: trueElevation,
+      height: trueElevation,
       yaw: trueHeading,
-      pitch: point.pitch, 
+      pitch: point.pitch,
       zoom: point.zoomFactor,
       type: point.type,
-      tagIds: trueTags
+      tagIds: trueTags,
+      imageId: null,
     };
   });
 }

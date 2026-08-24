@@ -1,27 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { WaypointItem } from './WaypointItem';
 import { WaypointTags } from './WaypointTags';
-import { Waypoint, ViewContext } from '@/utils/interfaces';
+import { Waypoint, ViewContext, Still } from '@/utils/interfaces';
 import Button from '@/components/ui/Button'
 import { WaypointOffset } from './WaypointOffset';
 
 interface WaypointListProps {
   waypoints: Waypoint[];
+  stillsById?: Record<string, Still>;
   viewContext?: ViewContext;
   isEditing?: boolean;
   showOffset?: boolean | false;
   onCreate: ((waypoint: Waypoint, index?: number) => void) | undefined;
+  onOverWrite: ((wp: Waypoint) => void) | undefined;
   onUpdate: ((id: string, updates: Partial<Waypoint>) => void) | undefined;
   onDelete: ((id: string) => void) | undefined;
 }
 
-export function WaypointList({ waypoints, viewContext, isEditing, showOffset, onCreate, onUpdate, onDelete }: WaypointListProps) {
+export function WaypointList({ waypoints, stillsById, viewContext, isEditing, showOffset, onCreate, onOverWrite, onUpdate, onDelete }: WaypointListProps) {
   const [offsetWaypointIndex, setOffsetWaypointIndex] = useState(0)
 
   useEffect(() => {
     if (!showOffset) setOffsetWaypointIndex(0)
-    }, [showOffset]);
-  
+  }, [showOffset]);
+
   if (!waypoints || waypoints.length === 0) return <p style={{ fontSize: '12px', color: '#888' }}>No waypoints added yet.</p>;
   return (
     <div className="waypoint-list"
@@ -40,10 +42,18 @@ export function WaypointList({ waypoints, viewContext, isEditing, showOffset, on
         // 1. SECURITY POINTS (Render naked)
         return (
           <React.Fragment key={wp.id}>
-            <WaypointItem waypoint={wp} index={index} viewContext={viewContext} onUpdate={onUpdate} onDelete={onDelete}>
+            <WaypointItem
+              waypoint={wp}
+              index={index}
+              still={wp.imageId ? stillsById?.[wp.imageId] : undefined}
+              viewContext={viewContext}
+              onOverWrite={wp.type == 'security' ? undefined : onOverWrite}
+              onDelete={onDelete}
+            >
               <WaypointTags
                 waypointType={wp.type}
                 selectedTagIds={wp.tagIds || []}
+                viewContext={viewContext}
                 onChange={(newTags) => {
                   if (onUpdate) onUpdate(wp.id, { tagIds: newTags });
                 }}
@@ -71,8 +81,9 @@ export function WaypointList({ waypoints, viewContext, isEditing, showOffset, on
               key={wp.id}
               waypoint={wp}
               index={index}
+              still={wp.imageId ? stillsById?.[wp.imageId] : undefined}
               viewContext={viewContext}
-              onUpdate={onUpdate}
+              onOverWrite={undefined}
               onDelete={onDelete}
             />
           );
@@ -112,8 +123,9 @@ export function WaypointList({ waypoints, viewContext, isEditing, showOffset, on
             <WaypointItem
               waypoint={wp}
               index={index}
+              still={wp.imageId ? stillsById?.[wp.imageId] : undefined}
               viewContext={viewContext}
-              onUpdate={onUpdate}
+              onOverWrite={onOverWrite}
               onDelete={onDelete}
             />
 

@@ -109,6 +109,10 @@
   border-color: #0066ff;
 }
 
+.missionItemFH {
+  border-color: #ff00ea !important;
+}
+
 .missionItemActive:hover {
   background-color: #005ce6;
 }

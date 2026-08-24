@@ -1,4 +1,4 @@
-import { Annotation, AnnotationFlag, AppSettings, FlightArea, FlightRouteData, FlightRouteHeader, Mission, SyncMetadata } from '@/utils/interfaces';
+import { Annotation, AnnotationFlag, AppSettings, Drone, FlightRouteData, FlightRouteHeader, Mission, Still, SyncMetadata } from '@/utils/interfaces';
 import Dexie, { Table } from 'dexie';
 
 
@@ -17,6 +17,8 @@ export class AppDatabase extends Dexie {
 
   topologies!: Table<Drone, string>;
 
+  stills!: Table<Still, string>;
+
   constructor() {
     super('P3DB');
 
@@ -34,6 +36,10 @@ export class AppDatabase extends Dexie {
       missions: 'id, projectId',
 
       topologies: 'deviceSn, projectId',
+    });
+
+    this.version(2).stores({
+      stills: 'id, projectId, deviceSn, capturedAt',
     });
   }
 }

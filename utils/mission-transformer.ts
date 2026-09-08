@@ -82,6 +82,7 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
         // });
 
         if (waypoint.type == 'picture') {
+            const normalizedHeading = normalizeHeading180(wp.yaw)
             actions.push({
                 actionId: actionId++,
                 actionActuatorFunc: "orientedShoot",
@@ -89,13 +90,13 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
                 actionActuatorFuncParam: {
                     gimbalPitchRotateAngle: wp.pitch,               // From recorded data
                     gimbalRollRotateAngle: 0,
-                    gimbalYawRotateAngle: normalizeHeading180(wp.yaw),                   // Align with aircraftHeading for M3E
+                    gimbalYawRotateAngle: normalizedHeading,                   // Align with aircraftHeading for M3E
                     focusX: 0,                                    // Center (960/2)
                     focusY: 0,                                    // Center (720/2)
                     focusRegionWidth: 0,
                     focusRegionHeight: 0,
                     focalLength: getFocalLengthFromZoom(wp.zoom),   // Example focal length
-                    aircraftHeading: normalizeHeading180(wp.yaw),                        // True north relative
+                    aircraftHeading: normalizedHeading,                        // True north relative
                     accurateFrameValid: 0,                          // 1: AI Spot-check ON
                     payloadPositionIndex: payloadPositionIndex,
                     // payloadLensIndex: "zoom,ir",                    // "wide", "zoom", or "wide,ir"
@@ -104,6 +105,11 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
                     actionUuid: crypto.randomUUID(),                // Unique ID for image association
                     imageWidth: 0,
                     imageHeight: 0,
+                    // imageWidth: 960,
+                    // imageHeight: 720,
+                    // orientedFilePath: '.jpg',
+                    // orientedFileMD5L: '',
+                    // orientedFileSize: 0,
                     afPos: 0,
                     gimbalPort: 0,
                     // orientedCameraType: 53,                         // 52: M30 Dual, 53: M30T Triple

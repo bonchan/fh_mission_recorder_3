@@ -77,7 +77,7 @@ export async function generateDJIMissionFiles(mission: Mission) {
       ${action.actionActuatorTags
       ? `<wpml:actionActuatorTags>${action.actionActuatorTags}</wpml:actionActuatorTags>`
       : ''
-    }
+      }
       
       <wpml:actionActuatorFuncParam>
         ${action.actionActuatorFunc === "orientedShoot"
@@ -93,11 +93,21 @@ export async function generateDJIMissionFiles(mission: Mission) {
         <wpml:aircraftHeading>${action.actionActuatorFuncParam.aircraftHeading}</wpml:aircraftHeading>
         <wpml:accurateFrameValid>${action.actionActuatorFuncParam.accurateFrameValid}</wpml:accurateFrameValid>
         <wpml:payloadPositionIndex>${action.actionActuatorFuncParam.payloadPositionIndex}</wpml:payloadPositionIndex>
-        <wpml:payloadLensIndex>${action.actionActuatorFuncParam.payloadLensIndex}</wpml:payloadLensIndex>
+        
+        ${action.actionActuatorFuncParam.payloadLensIndex
+        ? `<wpml:payloadLensIndex>${action.actionActuatorFuncParam.payloadLensIndex}</wpml:payloadLensIndex>`
+        : ''
+        }
+
         <wpml:useGlobalPayloadLensIndex>${action.actionActuatorFuncParam.useGlobalPayloadLensIndex}</wpml:useGlobalPayloadLensIndex>
         <wpml:targetAngle>${action.actionActuatorFuncParam.targetAngle}</wpml:targetAngle>
-        <wpml:imageWidth>${action.actionActuatorFuncParam.imageWidth}</wpml:imageWidth>
-        <wpml:imageHeight>${action.actionActuatorFuncParam.imageHeight}</wpml:imageHeight>
+        <!--<wpml:actionUUID>${action.actionActuatorFuncParam.actionUuid}</wpml:actionUUID> -->
+        <!--<wpml:imageWidth>${action.actionActuatorFuncParam.imageWidth}</wpml:imageWidth> -->
+        <!--<wpml:imageHeight>${action.actionActuatorFuncParam.imageHeight}</wpml:imageHeight> -->
+        <!--<wpml:orientedFilePath>${action.actionActuatorFuncParam.orientedFilePath}</wpml:orientedFilePath> -->
+        <!--<wpml:orientedFileMD5>${action.actionActuatorFuncParam.orientedFileMD5}</wpml:orientedFileMD5> -->
+        <!--<wpml:orientedFileSize>${action.actionActuatorFuncParam.orientedFileSize}</wpml:orientedFileSize> -->
+
         <wpml:AFPos>${action.actionActuatorFuncParam.afPos}</wpml:AFPos>
         <wpml:gimbalPort>${action.actionActuatorFuncParam.gimbalPort}</wpml:gimbalPort>
         <!--<wpml:orientedCameraType>${action.actionActuatorFuncParam.orientedCameraType}</wpml:orientedCameraType> -->

@@ -4,6 +4,7 @@ import { useDatabase } from '@/hooks/useDatabase';
 import { useToast } from '@/providers/ToastProvider';
 import { createLogger } from '@/utils/logger';
 import React, { useState } from 'react';
+import pkg from '@/package.json';
 
 const log = createLogger('SettingsView');
 
@@ -49,8 +50,12 @@ export function SettingsView() {
   return (
     <div style={containerStyle}>
       <h2 style={{ marginTop: 0, marginBottom: '20px', color: '#212529', borderBottom: '2px solid #dee2e6', paddingBottom: '10px' }}>
-        ⚙️ Workspace Settings
+        ⚙️ Workspace Settings 
       </h2>
+      <span>{pkg.name} {pkg.version}</span>
+
+      <br />
+      <br />
 
       {/* --- Section 1: Database Management --- */}
       <section style={sectionStyle}>

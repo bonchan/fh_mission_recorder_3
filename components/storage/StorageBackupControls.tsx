@@ -27,7 +27,7 @@ export function StorageBackupControls({ orgId, projectId }: StorageBackupControl
       const url = window.URL.createObjectURL(backupBlob);
       const a = document.createElement('a');
       a.href = url;
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = new Date().toISOString();
       a.download = `flighthub-idb-backup-${dateStr}.json`;
 
       document.body.appendChild(a); // Safest way to trigger clicks in some browsers

@@ -220,6 +220,7 @@ export function DashboardView() {
           longitude: currentDroneData.longitude,
           elevation: currentDroneData.elevation || 0,
           height: currentDroneData.height || 0,
+          heading: currentDroneData.heading || 0,
           yaw: currentDroneData.yaw || 0,
           pitch: currentDroneData.pitch || 0,
           zoom: currentDroneData.zoom || 1,

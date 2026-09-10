@@ -22,6 +22,7 @@
     "@deck.gl/layers": "^9.2.11",
     "@deck.gl/mesh-layers": "^9.2.11",
     "@deck.gl/react": "^9.2.11",
+    "@geoman-io/leaflet-geoman-free": "^2.20.0",
     "@turf/turf": "^7.3.4",
     "@yume-chan/adb": "^2.6.0",
     "@yume-chan/adb-credential-web": "^2.1.0",

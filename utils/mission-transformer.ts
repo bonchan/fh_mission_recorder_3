@@ -46,7 +46,7 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
             actionId: actionId++,
             actionActuatorFunc: "rotateYaw",
             actionActuatorFuncParam: {
-                aircraftHeading: normalizeHeading180(wp.yaw),
+                aircraftHeading: normalizeHeading180(wp.heading),
                 aircraftPathMode: wp.turn ? "clockwise" : "counterClockwise",
             }
         });
@@ -82,7 +82,8 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
         // });
 
         if (waypoint.type == 'picture') {
-            const normalizedHeading = normalizeHeading180(wp.yaw)
+            const normalizedYaw = normalizeHeading180(wp.yaw)
+            const normalizedHeading = normalizeHeading180(wp.heading)
             actions.push({
                 actionId: actionId++,
                 actionActuatorFunc: "orientedShoot",
@@ -90,9 +91,9 @@ export const transformWaypointsForExport = (waypoints: Waypoint[], payloadPositi
                 actionActuatorFuncParam: {
                     gimbalPitchRotateAngle: wp.pitch,               // From recorded data
                     gimbalRollRotateAngle: 0,
-                    gimbalYawRotateAngle: normalizedHeading,                   // Align with aircraftHeading for M3E
-                    focusX: 0,                                    // Center (960/2)
-                    focusY: 0,                                    // Center (720/2)
+                    gimbalYawRotateAngle: normalizedYaw,            // Align with aircraftHeading for M3E
+                    focusX: 0,                                      // Center (960/2)
+                    focusY: 0,                                      // Center (720/2)
                     focusRegionWidth: 0,
                     focusRegionHeight: 0,
                     focalLength: getFocalLengthFromZoom(wp.zoom),   // Example focal length

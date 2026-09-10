@@ -29,6 +29,12 @@ export interface AppSettings {
   circleBuffer: number;
   safeSecurityHeight: number;
   selectedRemote: ControllerModel;
+  maxPoints: number;
+  maxDistanceKm: number;
+  clusterRadiusMeters: number;
+  // Comma-separated name prefixes; matching points still belong to their
+  // cluster but are left out of its centroid
+  centroidExcludedPrefixes: string;
 }
 
 export interface Dock {
@@ -134,6 +140,66 @@ export interface AnnotationFlag {
   isCompromised: boolean;
 }
 
+// ==========================================
+// FLIGHT PLANNING — annotation folder tree
+// Mirrors FlightHub's /element-groups response: a flat list of group
+// nodes keyed by `pid` (parent group id, null/undefined for a root folder).
+// ==========================================
+
+export interface AnnotationGroupRaw {
+  id: string;
+  name: string;
+  pid: string | null;
+  order: number;
+  type: number;
+  is_lock: boolean;
+  is_distributed: boolean;
+  tri_state: string;
+  create_time: number;
+  elements: any[];
+}
+
+export interface PlanningAnnotation {
+  id: string;
+  groupId: string;
+  name: string;
+  longitude: number;
+  latitude: number;
+  color: string;
+}
+
+export interface AnnotationGroupNode extends AnnotationGroupRaw {
+  children: AnnotationGroupNode[];
+  annotations: PlanningAnnotation[];
+}
+
+// What the drone actually flies to: a single annotation, or several nearby ones
+// merged and photographed from their shared centroid. A plain point is just a
+// stop with one member, so routing never has to special-case clusters.
+export interface RouteStop {
+  id: string;
+  latitude: number;
+  longitude: number;
+  name: string;
+  members: PlanningAnnotation[];
+}
+
+export interface PolygonGeometry {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+// Single start/end point every generated route departs from and returns to
+export interface HomePoint {
+  latitude: number;
+  longitude: number;
+}
+
+export interface MapView {
+  center: [number, number];
+  zoom: number;
+}
+
 export interface Still {
   id: string;
   projectId: string;
@@ -197,6 +263,7 @@ export interface Waypoint {
   latitude: number;
   elevation: number;
   height: number;
+  heading: number;
   yaw: number;
   pitch: number;
   zoom: number;

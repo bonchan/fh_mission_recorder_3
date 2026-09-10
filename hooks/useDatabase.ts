@@ -17,6 +17,10 @@ export function useDatabase(orgId: string, projectId: string) {
     circleBuffer: 100,
     safeSecurityHeight: 70,
     selectedRemote: ControllerModel.RCP2,
+    maxPoints: 20,
+    maxDistanceKm: 20,
+    clusterRadiusMeters: 50,
+    centroidExcludedPrefixes: 'KIT',
   };
 
   const RESET_ROUTE_PAYLOAD = {

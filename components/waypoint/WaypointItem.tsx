@@ -113,6 +113,7 @@ export function WaypointItem({ waypoint, index, still, viewContext, onOverWrite,
         <div><span className={styles.telemetryLabel}>Lat:</span> {waypoint.latitude?.toFixed(6)}</div>
         <div><span className={styles.telemetryLabel}>Elev:</span> {waypoint.elevation.toFixed(2)}m</div>
         <div><span className={styles.telemetryLabel}>Height:</span> {waypoint.height.toFixed(2)}m</div>
+        <div><span className={styles.telemetryLabel}>Hea:</span> {waypoint.heading.toFixed(2)}°</div>
         <div><span className={styles.telemetryLabel}>Yaw:</span> {waypoint.yaw.toFixed(2)}°</div>
         <div><span className={styles.telemetryLabel}>Pitch:</span> {waypoint.pitch.toFixed(2)}°</div>
         <div><span className={styles.telemetryLabel}>Zoom:</span> {waypoint.zoom}x</div>

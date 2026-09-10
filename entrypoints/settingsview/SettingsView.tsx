@@ -47,6 +47,45 @@ export function SettingsView() {
     updateSettings({ safeSecurityHeight: val });
   };
 
+  const handleMaxPointsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = Number(e.target.value);
+    if (val > 50) {
+      showToast('Oops', 'Max Points limited to 50', { type: 'warning' })
+      val = Math.min(50, val);
+    }
+    if (val < 1) {
+      showToast('Oops', 'Max Points should be more than 0', { type: 'warning' })
+      val = Math.max(1, val);
+    }
+    updateSettings({ maxPoints: val });
+  };
+
+    const handleMaxDistanceKmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = Number(e.target.value);
+    if (val > 20) {
+      showToast('Oops', 'Max Distance Km limited to 20', { type: 'warning' })
+      val = Math.min(20, val);
+    }
+    if (val < 1) {
+      showToast('Oops', 'Max Distance Km should be more than 0', { type: 'warning' })
+      val = Math.max(1, val);
+    }
+    updateSettings({ maxDistanceKm: val });
+  };
+
+  const handleClusterRadiusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = Number(e.target.value);
+    if (val > 500) {
+      showToast('Oops', 'Cluster radius limited to 500 m', { type: 'warning' })
+      val = Math.min(500, val);
+    }
+    if (val < 1) {
+      showToast('Oops', 'Cluster radius should be more than 0', { type: 'warning' })
+      val = Math.max(1, val);
+    }
+    updateSettings({ clusterRadiusMeters: val });
+  };
+
   return (
     <div style={containerStyle}>
       <h2 style={{ marginTop: 0, marginBottom: '20px', color: '#212529', borderBottom: '2px solid #dee2e6', paddingBottom: '10px' }}>
@@ -65,6 +104,50 @@ export function SettingsView() {
         </p>
         <div style={{ marginTop: '15px' }}>
           <StorageBackupControls orgId={orgId} projectId={projectId} />
+        </div>
+      </section>
+
+      {/* --- Section 2: Map Preferences --- */}
+      <section style={sectionStyle}>
+        <h3 style={sectionHeaderStyle}>Planning Preferences</h3>
+        <div style={formRowStyle}>
+          <label style={labelStyle}>Max Points</label>
+          <input
+            type="number"
+            value={settings.maxPoints}
+            onChange={handleMaxPointsChange}
+            style={inputStyle}
+          />
+        </div>
+        <div style={formRowStyle}>
+          <label style={labelStyle}>Max Distance (km)</label>
+          <input
+            type="number"
+            value={settings.maxDistanceKm}
+            onChange={handleMaxDistanceKmChange}
+            style={inputStyle}
+          />
+        </div>
+        <div style={formRowStyle}>
+          <label style={labelStyle}>Cluster Radius (meters)</label>
+          <input
+            type="number"
+            value={settings.clusterRadiusMeters}
+            onChange={handleClusterRadiusChange}
+            style={inputStyle}
+          />
+        </div>
+        <div style={formRowStyle}>
+          <label style={labelStyle} title="Comma-separated. Points whose name starts with one of these still get flown, but don't shift the cluster centroid.">
+            Centroid-excluded Prefixes
+          </label>
+          <input
+            type="text"
+            value={settings.centroidExcludedPrefixes}
+            onChange={(e) => updateSettings({ centroidExcludedPrefixes: e.target.value })}
+            placeholder="KIT"
+            style={inputStyle}
+          />
         </div>
       </section>
 

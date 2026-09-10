@@ -20,11 +20,16 @@ interface RoutesMapProps {
   emphasisRouteId?: string | null;
 }
 
-const legsFor = (route: GeneratedRoute, home: HomePoint): L.LatLngTuple[] => [
-  [home.latitude, home.longitude],
-  ...route.points.map(p => [p.latitude, p.longitude] as L.LatLngTuple),
-  [home.latitude, home.longitude],
-];
+// The flown path once no-fly zones are accounted for, falling back to straight
+// legs before avoidance has run
+const legsFor = (route: GeneratedRoute, home: HomePoint): L.LatLngTuple[] =>
+  route.path
+    ? route.path.map(([lon, lat]) => [lat, lon] as L.LatLngTuple)
+    : [
+      [home.latitude, home.longitude],
+      ...route.points.map(p => [p.latitude, p.longitude] as L.LatLngTuple),
+      [home.latitude, home.longitude],
+    ];
 
 export function RoutesMap({ routes, homePoint, isActive, viewRef, flightAreas, emphasisRouteId = null }: RoutesMapProps) {
   const defaultCenter: L.LatLngTuple = homePoint

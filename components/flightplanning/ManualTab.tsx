@@ -1,8 +1,10 @@
 import React, { RefObject, useState } from 'react';
 import { RoutesMap } from '@/components/flightplanning/RoutesMap';
 import { FlightArea, HomePoint, MapView } from '@/utils/interfaces';
+import { buildNfzObstacles, isEnabledNfz } from '@/utils/flightAreas';
 import {
   GeneratedRoute,
+  applyNfzAvoidanceToRoute,
   breakStopInRoute,
   countMembers,
   estimateFlightMinutes,
@@ -35,6 +37,15 @@ export function ManualTab({ routes, onRoutesChange, homePoint, isActive, viewRef
 
   const toggleRoute = (routeId: string) => {
     setExpandedRouteId(prev => (prev === routeId ? null : routeId));
+  };
+
+  const nfzCount = flightAreas.filter(isEnabledNfz).length;
+
+  // Zones are buffered on demand rather than up front — the whole sweep is only
+  // worth paying for on the one route being worked on
+  const handleAvoidNfz = (routeId: string) => {
+    if (!homePoint) return;
+    onRoutesChange(applyNfzAvoidanceToRoute(routes, routeId, homePoint, buildNfzObstacles(flightAreas)));
   };
 
   if (routes.length === 0) {
@@ -96,6 +107,14 @@ export function ManualTab({ routes, onRoutesChange, homePoint, isActive, viewRef
                   </button>
                   <button
                     className="icon-button"
+                    title="Route this one around the no-fly zones (segments between stops only)"
+                    disabled={!homePoint || nfzCount === 0 || route.points.length < 2}
+                    onClick={() => handleAvoidNfz(route.id)}
+                  >
+                    🛡
+                  </button>
+                  <button
+                    className="icon-button"
                     title="Reverse direction"
                     disabled={!homePoint || route.points.length < 2}
                     onClick={() => homePoint && onRoutesChange(reverseRoute(routes, route.id, homePoint))}
@@ -114,6 +133,9 @@ export function ManualTab({ routes, onRoutesChange, homePoint, isActive, viewRef
                       <li key={point.id}>
                         <span className="point-index" style={{ color: route.color }}>{index + 1}</span>
                         <span className="point-name" title={isCluster(point) ? point.members.map(m => m.name).join(', ') : undefined}>
+                          {route.blockedStopIds?.includes(point.id) && (
+                            <span title="Inside a no-fly zone — unreachable">⛔ </span>
+                          )}
                           {isCluster(point) ? `⬡ ${point.name}` : point.name}
                         </span>
 

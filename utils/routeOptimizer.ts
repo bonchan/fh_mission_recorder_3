@@ -1,4 +1,5 @@
 import { get3DDistanceInMeters } from '@/utils/geo';
+import { Obstacle, Position, avoidObstacles, isInsideAnyObstacle, pathLengthMeters, straightPath } from '@/utils/flightAreas';
 import { HomePoint, PlanningAnnotation, RouteStop } from '@/utils/interfaces';
 
 export interface RouteConfig {
@@ -12,6 +13,12 @@ export interface GeneratedRoute {
   color: string;
   points: RouteStop[];
   totalDistanceMeters: number;
+  // Set by applyNfzAvoidance: the polyline actually flown, [lon, lat], including
+  // any detour vertices inserted around no-fly zones. Absent until it runs.
+  path?: Position[];
+  // Stops sitting inside an NFZ's clearance. Flagged only — they stay in the
+  // route, so the path still runs to them and through the zone.
+  blockedStopIds?: string[];
   // True when the point alone already exceeds maxDistanceMeters — kept as its
   // own route rather than dropped, so nothing silently disappears.
   exceedsMaxDistance: boolean;
@@ -126,6 +133,76 @@ export function generateRoutes(
   }
 
   return routes;
+}
+
+// ==========================================
+// NO-FLY ZONE AVOIDANCE
+// Applied to whole routes rather than threaded through every edit helper, so a
+// single call after any change keeps the flown path and its distance honest.
+// ==========================================
+
+export function applyNfzAvoidance(
+  routes: GeneratedRoute[],
+  home: HomePoint | null,
+  obstacles: Obstacle[]
+): GeneratedRoute[] {
+  if (!home) return routes;
+
+  return routes.map(route => {
+    const straight = straightPath(route.points, home);
+    const { path, distanceMeters, blockedIndices } = avoidObstacles(straight, obstacles);
+
+    // straight[] is home + stops + home, so index i maps to stop i - 1
+    const blockedStopIds = blockedIndices
+      .filter(index => index > 0 && index <= route.points.length)
+      .map(index => route.points[index - 1].id);
+
+    return { ...route, path, totalDistanceMeters: distanceMeters, blockedStopIds };
+  });
+}
+
+// Routes one route around the no-fly zones, on demand. Only the segments
+// between stops are diverted — the runs out from home and back are left alone.
+export function applyNfzAvoidanceToRoute(
+  routes: GeneratedRoute[],
+  routeId: string,
+  home: HomePoint,
+  obstacles: Obstacle[]
+): GeneratedRoute[] {
+  return routes.map(route => {
+    if (route.id !== routeId || route.points.length < 2) return route;
+
+    const stopPositions = route.points.map(stop => [stop.longitude, stop.latitude] as Position);
+    const { path: betweenStops, blockedIndices } = avoidObstacles(stopPositions, obstacles);
+
+    const homePosition: Position = [home.longitude, home.latitude];
+    const path: Position[] = [homePosition, ...betweenStops, homePosition];
+
+    return {
+      ...route,
+      path,
+      totalDistanceMeters: pathLengthMeters(path),
+      blockedStopIds: blockedIndices.map(index => route.points[index].id),
+    };
+  });
+}
+
+// Splits a route's stops into those that can be flown to and those sitting
+// inside an NFZ's clearance. Deliberately not wired up — kept ready for
+// filtering a single route on demand.
+export function partitionStopsByNfz(
+  stops: RouteStop[],
+  obstacles: Obstacle[]
+): { kept: RouteStop[]; blocked: RouteStop[] } {
+  const kept: RouteStop[] = [];
+  const blocked: RouteStop[] = [];
+
+  for (const stop of stops) {
+    const target = isInsideAnyObstacle([stop.longitude, stop.latitude], obstacles) ? blocked : kept;
+    target.push(stop);
+  }
+
+  return { kept, blocked };
 }
 
 // ==========================================
@@ -315,6 +392,10 @@ const withRecalculatedDistance = (route: GeneratedRoute, home: HomePoint): Gener
   ...route,
   totalDistanceMeters: calculateRouteDistance(route.points, home),
   exceedsMaxDistance: false,
+  // Any edit moves the stops, so a previously computed detour no longer matches
+  // the route — drop it rather than draw a path that doesn't belong
+  path: undefined,
+  blockedStopIds: undefined,
 });
 
 export function movePointToRoute(

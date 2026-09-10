@@ -167,6 +167,9 @@ export function OptimizationTab({ selectedAnnotations, homePoint, isActive, rout
                     {route.points.length} pts · {(route.totalDistanceMeters / 1000).toFixed(2)} km
                     · ~{Math.round(estimateFlightMinutes(route.totalDistanceMeters, countMembers(route.points)))} min
                     {isRouteOverBudget(route, config) && ' ⚠'}
+                    {route.blockedStopIds && route.blockedStopIds.length > 0 && (
+                      <span title="Sits inside a no-fly zone — no path can reach it"> ⛔</span>
+                    )}
                   </span>
                   <span className="route-chevron">{isExpanded ? '▾' : '▸'}</span>
                 </button>
@@ -197,6 +200,9 @@ export function OptimizationTab({ selectedAnnotations, homePoint, isActive, rout
                               />
                               <span className="point-index" style={{ color: route.color }}>{index + 1}</span>
                               <span className="point-name">
+                                {route.blockedStopIds?.includes(stop.id) && (
+                                  <span title="Inside a no-fly zone — unreachable">⛔ </span>
+                                )}
                                 {clustered ? `⬡ ${stop.name}` : stop.name}
                               </span>
 

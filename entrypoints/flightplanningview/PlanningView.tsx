@@ -7,7 +7,7 @@ import { useMessage } from '@/hooks/useMessage';
 import { FlightArea, HomePoint, MapView, PlanningAnnotation } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { GeneratedRoute } from '@/utils/routeOptimizer';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './PlanningView.css';
 
 
@@ -38,6 +38,16 @@ export function PlanningView() {
   // Flight areas are context for every tab, so they're fetched once here and
   // read fresh each time the view opens — no Dexie, no cache
   const [flightAreas, setFlightAreas] = useState<FlightArea[]>([]);
+
+  const enabledAreas = useMemo(
+    () => flightAreas.filter(area => area.status === 'enable'),
+    [flightAreas]
+  );
+
+  // NFZ avoidance is switched off: re-running the sweep on every route edit was
+  // heavy enough to lock the view up. Zones still draw on the maps, and
+  // buildNfzObstacles / applyNfzAvoidance stay ready to wire back in per route.
+  const updateRoutes = setRoutes;
 
   useEffect(() => {
     if (!projectId) return;
@@ -112,7 +122,7 @@ export function PlanningView() {
             onHomePointChange={setHomePoint}
             isActive={activeTab === 'annotations'}
             viewRef={mapViewRef}
-            flightAreas={flightAreas}
+            flightAreas={enabledAreas}
           ></AnnotationsPlanningTab>
         </div>
 
@@ -122,9 +132,9 @@ export function PlanningView() {
             homePoint={homePoint}
             isActive={activeTab === 'optimization'}
             viewRef={mapViewRef}
-            flightAreas={flightAreas}
+            flightAreas={enabledAreas}
             routes={routes}
-            onRoutesChange={setRoutes}
+            onRoutesChange={updateRoutes}
             settings={settings}
           ></OptimizationTab>
         </div>
@@ -132,11 +142,11 @@ export function PlanningView() {
         <div className="tab-pane" hidden={activeTab !== 'manual'}>
           <ManualTab
             routes={routes}
-            onRoutesChange={setRoutes}
+            onRoutesChange={updateRoutes}
             homePoint={homePoint}
             isActive={activeTab === 'manual'}
             viewRef={mapViewRef}
-            flightAreas={flightAreas}
+            flightAreas={enabledAreas}
             settings={settings}
           ></ManualTab>
         </div>

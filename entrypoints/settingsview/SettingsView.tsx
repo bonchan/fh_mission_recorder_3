@@ -1,10 +1,12 @@
 import VisualController from '@/components/controller/VisualController';
 import { StorageBackupControls } from '@/components/storage/StorageBackupControls';
+import Button from '@/components/ui/Button';
 import { useDatabase } from '@/hooks/useDatabase';
+import { useMessage } from '@/hooks/useMessage';
+import pkg from '@/package.json';
 import { useToast } from '@/providers/ToastProvider';
 import { createLogger } from '@/utils/logger';
 import React, { useState } from 'react';
-import pkg from '@/package.json';
 
 const log = createLogger('SettingsView');
 
@@ -20,6 +22,8 @@ export function SettingsView() {
   const [debugMode, setDebugMode] = useState(initialDebugMode);
   const { settings, updateSettings } = useDatabase(orgId, projectId)
   const { showToast } = useToast()
+  const { openPage } = useMessage(orgId, projectId)
+
 
   const handleBufferChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = Number(e.target.value);
@@ -60,7 +64,7 @@ export function SettingsView() {
     updateSettings({ maxPoints: val });
   };
 
-    const handleMaxDistanceKmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMaxDistanceKmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = Number(e.target.value);
     if (val > 20) {
       showToast('Oops', 'Max Distance Km limited to 20', { type: 'warning' })
@@ -89,8 +93,11 @@ export function SettingsView() {
   return (
     <div style={containerStyle}>
       <h2 style={{ marginTop: 0, marginBottom: '20px', color: '#212529', borderBottom: '2px solid #dee2e6', paddingBottom: '10px' }}>
-        ⚙️ Workspace Settings 
+        ⚙️ Workspace Settings
       </h2>
+      <Button onClick={() => { openPage('OPEN_ADMIN_DASHBOARD', undefined, sourceTabId) }} variant="warning" isLoading={false} style={{ width: '100%' }}>
+        Admin Dashboard
+      </Button>
       <span>{pkg.name} {pkg.version}</span>
 
       <br />

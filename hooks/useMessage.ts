@@ -1,4 +1,4 @@
-import { Annotation } from '@/utils/interfaces';
+import { Annotation, AnnotationGroupRaw } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('useMessage');
@@ -109,6 +109,13 @@ export function useMessage(orgId: string, projectId: string) {
     return annotationList;
   };
 
+  // Raw folder tree, for the Flight Planning view — preserves pid/order/type/elements
+  // instead of flattening everything into a single Annotation[] like getAnnotations does.
+  const getAnnotationGroups = async (tabId?: number): Promise<AnnotationGroupRaw[]> => {
+    const targetTabId = await getTargetTabId(tabId);
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_ANNOTATIONS", orgId, projectId });
+    return res.annotations?.data || [];
+  };
 
 
   // --- FLIGHT ROUTES ---
@@ -185,6 +192,7 @@ export function useMessage(orgId: string, projectId: string) {
     getTopologies,
 
     getAnnotations,
+    getAnnotationGroups,
 
     getFlightRoutes,
     getAllRoutesForPrefix,

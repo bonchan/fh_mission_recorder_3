@@ -1,6 +1,6 @@
 import React, { RefObject, useState } from 'react';
 import { RoutesMap } from '@/components/flightplanning/RoutesMap';
-import { HomePoint, MapView } from '@/utils/interfaces';
+import { FlightArea, HomePoint, MapView } from '@/utils/interfaces';
 import {
   GeneratedRoute,
   breakStopInRoute,
@@ -21,9 +21,10 @@ interface ManualTabProps {
   isActive: boolean;
   viewRef: RefObject<MapView | null>;
   settings: AppSettings;
+  flightAreas: FlightArea[];
 }
 
-export function ManualTab({ routes, onRoutesChange, homePoint, isActive, viewRef, settings }: ManualTabProps) {
+export function ManualTab({ routes, onRoutesChange, homePoint, isActive, viewRef, settings, flightAreas }: ManualTabProps) {
   // Single-open accordion: opening a route closes the previous one, so the map
   // only ever emphasises one route at a time
   const [expandedRouteId, setExpandedRouteId] = useState<string | null>(null);
@@ -48,7 +49,7 @@ export function ManualTab({ routes, onRoutesChange, homePoint, isActive, viewRef
           </div>
         </div>
         <div className="planning-map">
-          <RoutesMap routes={routes} homePoint={homePoint} isActive={isActive} viewRef={viewRef} />
+          <RoutesMap routes={routes} homePoint={homePoint} isActive={isActive} viewRef={viewRef} flightAreas={flightAreas} />
         </div>
       </div>
     );
@@ -182,6 +183,7 @@ export function ManualTab({ routes, onRoutesChange, homePoint, isActive, viewRef
           homePoint={homePoint}
           isActive={isActive}
           viewRef={viewRef}
+          flightAreas={flightAreas}
           emphasisRouteId={expandedRouteId}
         />
       </div>

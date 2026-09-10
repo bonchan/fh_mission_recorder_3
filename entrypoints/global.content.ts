@@ -28,6 +28,11 @@ export default defineContentScript({
         return true;
       }
 
+      if (action === "GET_FLIGHT_AREAS") {
+        handleGetFlightAreas(sendResponse, orgId, projectId);
+        return true;
+      }
+
       if (action === "GET_FLIGHT_ROUTES") {
         const { searchQuery, page, size } = message;
         handleGetFlightRoutes(sendResponse, orgId, projectId, searchQuery, page, size);
@@ -106,6 +111,12 @@ export default defineContentScript({
       if (!projectId) return sendResponse({ error: "Missing projectId" });
       const annotations = await fhApi.getAnnotations(projectId);
       sendResponse({ annotations, orgId, projectId });
+    }
+
+    async function handleGetFlightAreas(sendResponse: any, orgId: string, projectId: string) {
+      if (!projectId) return sendResponse({ error: "Missing projectId" });
+      const flightAreas = await fhApi.getFlightAreas(projectId);
+      sendResponse({ flightAreas, orgId, projectId });
     }
 
     async function handleGetFlightRoutes(sendResponse: any, orgId: string, projectId: string, searchQuery: string, page: number, size: number) {

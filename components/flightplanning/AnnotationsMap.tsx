@@ -5,11 +5,12 @@ import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
 import '@geoman-io/leaflet-geoman-free';
 import { CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import * as turf from '@turf/turf';
-import { HomePoint, MapView, PlanningAnnotation, PolygonGeometry } from '@/utils/interfaces';
+import { FlightArea, HomePoint, MapView, PlanningAnnotation, PolygonGeometry } from '@/utils/interfaces';
 import { homeIcon } from '@/utils/mapIcons';
 import { parseKmlPolygon } from '@/utils/kml';
 import { createLogger } from '@/utils/logger';
 import { MapViewSync } from '@/components/flightplanning/MapViewSync';
+import { FlightAreaLayer } from '@/components/flightplanning/FlightAreaLayer';
 
 const log = createLogger('AnnotationsMap');
 
@@ -22,6 +23,7 @@ interface AnnotationsMapProps {
   onHomePointChange: (home: HomePoint | null) => void;
   isActive: boolean;
   viewRef: RefObject<MapView | null>;
+  flightAreas: FlightArea[];
 }
 
 // Frames the whole annotation field the first time it loads, then never moves
@@ -148,7 +150,7 @@ function PolygonController({ polygon, onPolygonChange }: { polygon: PolygonGeome
   return null;
 }
 
-export function AnnotationsMap({ annotations, allAnnotations, polygon, onPolygonChange, homePoint, onHomePointChange, isActive, viewRef }: AnnotationsMapProps) {
+export function AnnotationsMap({ annotations, allAnnotations, polygon, onPolygonChange, homePoint, onHomePointChange, isActive, viewRef, flightAreas }: AnnotationsMapProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const defaultCenter: L.LatLngTuple = [0, 0];
   const [placingHome, setPlacingHome] = useState(false);
@@ -225,6 +227,8 @@ export function AnnotationsMap({ annotations, allAnnotations, polygon, onPolygon
         />
 
         <MapViewSync isActive={isActive} viewRef={viewRef} />
+
+        <FlightAreaLayer areas={flightAreas} />
         <InitialFocus annotations={allAnnotations} isActive={isActive} />
         <PolygonController polygon={polygon} onPolygonChange={onPolygonChange} />
         <HomePointPlacer

@@ -1,4 +1,4 @@
-import { Annotation, AnnotationGroupNode, AnnotationGroupRaw, Dock, Drone, FlatDevice, PlanningAnnotation, Waypoint, WaypointMini } from '@/utils/interfaces';
+import { Annotation, AnnotationGroupNode, AnnotationGroupRaw, Dock, Drone, FlatDevice, FlightArea, PlanningAnnotation, Waypoint, WaypointMini } from '@/utils/interfaces';
 import { extractNumber } from '@/utils/utils';
 import { type DjiKmzData } from 'dji-kmz-parser';
 
@@ -180,6 +180,30 @@ export function toPlanningAnnotation(rawElement: any, groupId: string): Planning
         longitude: lon,
         latitude: lat,
         color: properties?.color || '#e74c3c',
+    };
+}
+
+// The payload keeps colour on the GeoJSON feature's properties; hoist it so the
+// map layer doesn't have to dig for it. width/clampToGround aren't used.
+export function toFlightArea(rawArea: any): FlightArea | null {
+    const content = rawArea?.content;
+    const geometry = content?.geometry;
+    if (!geometry?.coordinates) return null;
+
+    return {
+        id: rawArea.id,
+        name: rawArea.name,
+        status: rawArea.status,
+        type: rawArea.type,
+        color: content.properties?.color || '#ff0000',
+        content: {
+            type: content.type,
+            geometry: {
+                type: geometry.type,
+                radius: geometry.radius ?? null,
+                coordinates: geometry.coordinates,
+            },
+        },
     };
 }
 

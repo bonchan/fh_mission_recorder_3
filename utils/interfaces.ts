@@ -173,6 +173,26 @@ export interface AnnotationGroupNode extends AnnotationGroupRaw {
   annotations: PlanningAnnotation[];
 }
 
+export interface FlightArea {
+  id: string;
+  name: string;
+  status: string;
+  type: string;
+  content: FlightAreaContent;
+  color: string;
+}
+
+export interface FlightAreaContent {
+  type: string;
+  geometry: FlightAreaContentGeometry
+}
+
+export interface FlightAreaContentGeometry {
+  type: string;
+  radius: number | null;
+  coordinates: any;
+}
+
 // What the drone actually flies to: a single annotation, or several nearby ones
 // merged and photographed from their shared centroid. A plain point is just a
 // stop with one member, so routing never has to special-case clusters.

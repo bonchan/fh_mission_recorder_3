@@ -127,6 +127,11 @@ export const fhApi = {
         const endpoint = `/wayline/api/v1/workspaces/${projectUUID}/waylines/${waylineId}`
         return this.call('GET', endpoint);
     },
+    
+    async getFlightAreas(projectUUID: string): Promise<any> {
+        const endpoint = `/map/api/v1/workspaces/${projectUUID}/flight-areas?name=&type=&status=`
+        return this.call('GET', endpoint);
+    },
 
     async getStorageUploadCredentials(projectUUID: string): Promise<any> {
         const endpoint = `/storage/api/v1/workspaces/${projectUUID}/sts`;

@@ -4,10 +4,10 @@ import { OptimizationTab } from '@/components/flightplanning/OptimizationTab';
 import Button from '@/components/ui/Button';
 import { useDatabase } from '@/hooks/useDatabase';
 import { useMessage } from '@/hooks/useMessage';
-import { HomePoint, MapView, PlanningAnnotation } from '@/utils/interfaces';
+import { FlightArea, HomePoint, MapView, PlanningAnnotation } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { GeneratedRoute } from '@/utils/routeOptimizer';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './PlanningView.css';
 
 
@@ -24,7 +24,7 @@ export function PlanningView() {
 
   const [activeTab, setActiveTab] = useState<TabId>('annotations');
   const { settings } = useDatabase(orgId, projectId)
-  const { openPage } = useMessage(orgId, projectId)
+  const { openPage, getFlightAreas } = useMessage(orgId, projectId)
 
   // Shared across tabs — both panes stay mounted, so switching tabs never
   // drops the tree, the polygon filter or generated routes.
@@ -34,6 +34,19 @@ export function PlanningView() {
 
   // One viewport for all three maps — a ref, so panning doesn't re-render tabs
   const mapViewRef = useRef<MapView | null>(null);
+
+  // Flight areas are context for every tab, so they're fetched once here and
+  // read fresh each time the view opens — no Dexie, no cache
+  const [flightAreas, setFlightAreas] = useState<FlightArea[]>([]);
+
+  useEffect(() => {
+    if (!projectId) return;
+
+    getFlightAreas(sourceTabId)
+      .then(setFlightAreas)
+      .catch(err => log.error('Failed to load flight areas', err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   return (
     <div className="app-container">
@@ -99,6 +112,7 @@ export function PlanningView() {
             onHomePointChange={setHomePoint}
             isActive={activeTab === 'annotations'}
             viewRef={mapViewRef}
+            flightAreas={flightAreas}
           ></AnnotationsPlanningTab>
         </div>
 
@@ -108,6 +122,7 @@ export function PlanningView() {
             homePoint={homePoint}
             isActive={activeTab === 'optimization'}
             viewRef={mapViewRef}
+            flightAreas={flightAreas}
             routes={routes}
             onRoutesChange={setRoutes}
             settings={settings}
@@ -121,6 +136,7 @@ export function PlanningView() {
             homePoint={homePoint}
             isActive={activeTab === 'manual'}
             viewRef={mapViewRef}
+            flightAreas={flightAreas}
             settings={settings}
           ></ManualTab>
         </div>

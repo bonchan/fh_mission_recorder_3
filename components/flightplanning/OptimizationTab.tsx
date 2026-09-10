@@ -1,7 +1,7 @@
 import React, { RefObject, useState } from 'react';
 import Button from '@/components/ui/Button';
 import { RoutesMap } from '@/components/flightplanning/RoutesMap';
-import { HomePoint, MapView, PlanningAnnotation, AppSettings } from '@/utils/interfaces';
+import { FlightArea, HomePoint, MapView, PlanningAnnotation, AppSettings } from '@/utils/interfaces';
 import {
   GeneratedRoute,
   autoClusterRoutes,
@@ -26,9 +26,10 @@ interface OptimizationTabProps {
   onRoutesChange: (routes: GeneratedRoute[]) => void;
   viewRef: RefObject<MapView | null>;
   settings: AppSettings;
+  flightAreas: FlightArea[];
 }
 
-export function OptimizationTab({ selectedAnnotations, homePoint, isActive, routes, onRoutesChange, viewRef, settings }: OptimizationTabProps) {
+export function OptimizationTab({ selectedAnnotations, homePoint, isActive, routes, onRoutesChange, viewRef, settings, flightAreas }: OptimizationTabProps) {
 
   const [expandedRouteIds, setExpandedRouteIds] = useState<Set<string>>(new Set());
   const [expandedStopIds, setExpandedStopIds] = useState<Set<string>>(new Set());
@@ -248,7 +249,7 @@ export function OptimizationTab({ selectedAnnotations, homePoint, isActive, rout
       </div>
 
       <div className="planning-map">
-        <RoutesMap routes={routes} homePoint={homePoint} isActive={isActive} viewRef={viewRef} />
+        <RoutesMap routes={routes} homePoint={homePoint} isActive={isActive} viewRef={viewRef} flightAreas={flightAreas} />
       </div>
     </div>
   );

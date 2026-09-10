@@ -3,16 +3,18 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import * as turf from '@turf/turf';
 import { MapContainer, Marker, Polyline, TileLayer, Tooltip } from 'react-leaflet';
-import { HomePoint, MapView } from '@/utils/interfaces';
+import { FlightArea, HomePoint, MapView } from '@/utils/interfaces';
 import { GeneratedRoute } from '@/utils/routeOptimizer';
 import { getDirectionArrowIcon, getRoutePointIcon, homeIcon } from '@/utils/mapIcons';
 import { MapViewSync } from '@/components/flightplanning/MapViewSync';
+import { FlightAreaLayer } from '@/components/flightplanning/FlightAreaLayer';
 
 interface RoutesMapProps {
   routes: GeneratedRoute[];
   homePoint: HomePoint | null;
   isActive: boolean;
   viewRef: RefObject<MapView | null>;
+  flightAreas: FlightArea[];
   // When set, everything else on the map fades back so the route being
   // hand-edited stays readable
   emphasisRouteId?: string | null;
@@ -24,7 +26,7 @@ const legsFor = (route: GeneratedRoute, home: HomePoint): L.LatLngTuple[] => [
   [home.latitude, home.longitude],
 ];
 
-export function RoutesMap({ routes, homePoint, isActive, viewRef, emphasisRouteId = null }: RoutesMapProps) {
+export function RoutesMap({ routes, homePoint, isActive, viewRef, flightAreas, emphasisRouteId = null }: RoutesMapProps) {
   const defaultCenter: L.LatLngTuple = homePoint
     ? [homePoint.latitude, homePoint.longitude]
     : [0, 0];
@@ -41,6 +43,8 @@ export function RoutesMap({ routes, homePoint, isActive, viewRef, emphasisRouteI
         />
 
         <MapViewSync isActive={isActive} viewRef={viewRef} />
+
+        <FlightAreaLayer areas={flightAreas} />
 
         {homePoint && routes.map(route => (
           <Polyline

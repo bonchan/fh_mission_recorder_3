@@ -124,7 +124,7 @@ export function generateRoutes(
     const oriented = orientForReturn(current, home);
     routes.push({
       id: `route-${index}`,
-      name: `Route ${String(index).padStart(3, '0')}`,
+      name: `Route ${String(index).padStart(2, '0')}`,
       color: getRouteColor(index - 1),
       points: oriented,
       totalDistanceMeters: routeLength(oriented),

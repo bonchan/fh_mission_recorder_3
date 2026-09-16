@@ -1,10 +1,14 @@
 import { AnnotationsPlanningTab } from '@/components/flightplanning/AnnotationsPlanningTab';
 import { ManualTab } from '@/components/flightplanning/ManualTab';
+import { UploadTab } from '@/components/flightplanning/UploadTab';
 import { OptimizationTab } from '@/components/flightplanning/OptimizationTab';
 import Button from '@/components/ui/Button';
 import { useDatabase } from '@/hooks/useDatabase';
+import { useSync } from '@/hooks/useSync';
 import { useMessage } from '@/hooks/useMessage';
-import { FlightArea, HomePoint, MapView, PlanningAnnotation } from '@/utils/interfaces';
+import { Drone, FlightArea, HomePoint, MapView, PlanningAnnotation } from '@/utils/interfaces';
+import { FUTURE_DOCK } from '@/utils/constants';
+import { toDockDroneList } from '@/utils/mapper';
 import { createLogger } from '@/utils/logger';
 import { GeneratedRoute } from '@/utils/routeOptimizer';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -13,7 +17,7 @@ import './PlanningView.css';
 
 const log = createLogger('PlanningView');
 
-type TabId = 'annotations' | 'optimization' | 'manual';
+type TabId = 'annotations' | 'optimization' | 'manual' | 'upload';
 
 export function PlanningView() {
   const params = new URLSearchParams(window.location.search);
@@ -23,7 +27,8 @@ export function PlanningView() {
   const debugMode = params.get('debugMode') === 'true';
 
   const [activeTab, setActiveTab] = useState<TabId>('annotations');
-  const { settings } = useDatabase(orgId, projectId)
+  const { settings, projectTopologies } = useDatabase(orgId, projectId)
+  const { syncTopologies } = useSync(orgId, projectId, sourceTabId)
   const { openPage, getFlightAreas } = useMessage(orgId, projectId)
 
   // Shared across tabs — both panes stay mounted, so switching tabs never
@@ -43,6 +48,32 @@ export function PlanningView() {
     () => flightAreas.filter(area => area.status === 'enable'),
     [flightAreas]
   );
+
+  // A real dock supplies both the home point and everything the mission file
+  // needs — takeoff reference, drone and payload. FUTURE_DOCK means there's no
+  // dock yet: home is placed by hand and the model is chosen on the Upload tab.
+  const [dockSelection, setDockSelection] = useState<string>(FUTURE_DOCK);
+
+  const devices: Drone[] = useMemo(() => toDockDroneList(projectTopologies) || [], [projectTopologies]);
+
+  const usingFutureDock = dockSelection === FUTURE_DOCK;
+  const selectedDevice = usingFutureDock
+    ? null
+    : devices.find(device => device.deviceSn === dockSelection) || null;
+
+  useEffect(() => {
+    syncTopologies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  // Picking a real dock puts home on it; the manual marker only applies to a
+  // future dock
+  useEffect(() => {
+    if (usingFutureDock) return;
+
+    const dock = devices.find(device => device.deviceSn === dockSelection)?.parent;
+    if (dock) setHomePoint({ latitude: dock.latitude, longitude: dock.longitude });
+  }, [dockSelection, usingFutureDock, devices]);
 
   // NFZ avoidance is switched off: re-running the sweep on every route edit was
   // heavy enough to lock the view up. Zones still draw on the maps, and
@@ -85,6 +116,12 @@ export function PlanningView() {
             >
               Manual Tinkering
             </button>
+            <button
+              className={`tab-button ${activeTab === 'upload' ? 'active' : ''}`}
+              onClick={() => setActiveTab('upload')}
+            >
+              Upload
+            </button>
           </nav>
 
           <Button
@@ -123,6 +160,9 @@ export function PlanningView() {
             isActive={activeTab === 'annotations'}
             viewRef={mapViewRef}
             flightAreas={enabledAreas}
+            devices={devices}
+            dockSelection={dockSelection}
+            onDockChange={setDockSelection}
           ></AnnotationsPlanningTab>
         </div>
 
@@ -149,6 +189,17 @@ export function PlanningView() {
             flightAreas={enabledAreas}
             settings={settings}
           ></ManualTab>
+        </div>
+
+        <div className="tab-pane" hidden={activeTab !== 'upload'}>
+          <UploadTab
+            orgId={orgId}
+            projectId={projectId}
+            routes={routes}
+            device={selectedDevice}
+            usingFutureDock={usingFutureDock}
+            homePoint={homePoint}
+          ></UploadTab>
         </div>
       </main>
     </div>

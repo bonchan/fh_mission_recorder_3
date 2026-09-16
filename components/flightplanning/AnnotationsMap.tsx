@@ -5,7 +5,8 @@ import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
 import '@geoman-io/leaflet-geoman-free';
 import { CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import * as turf from '@turf/turf';
-import { FlightArea, HomePoint, MapView, PlanningAnnotation, PolygonGeometry } from '@/utils/interfaces';
+import { Drone, FlightArea, HomePoint, MapView, PlanningAnnotation, PolygonGeometry } from '@/utils/interfaces';
+import { FUTURE_DOCK } from '@/utils/constants';
 import { homeIcon } from '@/utils/mapIcons';
 import { parseKmlPolygon } from '@/utils/kml';
 import { createLogger } from '@/utils/logger';
@@ -24,7 +25,13 @@ interface AnnotationsMapProps {
   isActive: boolean;
   viewRef: RefObject<MapView | null>;
   flightAreas: FlightArea[];
+  devices: Drone[];
+  dockSelection: string;
+  onDockChange: (value: string) => void;
 }
+
+const dockLabel = (device: Drone): string =>
+  device.parent?.deviceOrganizationCallsign || device.deviceOrganizationCallsign || device.deviceSn;
 
 // Frames the whole annotation field the first time it loads, then never moves
 // the map again — from there the viewport is the user's to control.
@@ -150,7 +157,9 @@ function PolygonController({ polygon, onPolygonChange }: { polygon: PolygonGeome
   return null;
 }
 
-export function AnnotationsMap({ annotations, allAnnotations, polygon, onPolygonChange, homePoint, onHomePointChange, isActive, viewRef, flightAreas }: AnnotationsMapProps) {
+export function AnnotationsMap({ annotations, allAnnotations, polygon, onPolygonChange, homePoint, onHomePointChange, isActive, viewRef, flightAreas, devices, dockSelection, onDockChange }: AnnotationsMapProps) {
+  // Only a future dock leaves the home point up to the user; a real dock sets it
+  const usingFutureDock = dockSelection === FUTURE_DOCK;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const defaultCenter: L.LatLngTuple = [0, 0];
   const [placingHome, setPlacingHome] = useState(false);
@@ -197,20 +206,35 @@ export function AnnotationsMap({ annotations, allAnnotations, polygon, onPolygon
             Clear polygon
           </button>
         )}
+        <select
+          className="map-select"
+          value={dockSelection}
+          onChange={e => onDockChange(e.target.value)}
+          title="A real dock sets the start/end point and the device; a future dock leaves both to you"
+        >
+          <option value={FUTURE_DOCK}>Future dock</option>
+          {devices.map(device => (
+            <option key={device.deviceSn} value={device.deviceSn}>{dockLabel(device)}</option>
+          ))}
+        </select>
+
         <button
+          disabled={!usingFutureDock}
           onClick={() => setPlacingHome(prev => !prev)}
+          title={usingFutureDock ? undefined : 'The selected dock is the start/end point'}
           style={{
             background: placingHome ? '#0066ff' : '#1a1a1a',
             color: '#fff',
             border: '1px solid #444',
             borderRadius: '4px',
             padding: '6px 12px',
-            cursor: 'pointer',
+            cursor: usingFutureDock ? 'pointer' : 'not-allowed',
+            opacity: usingFutureDock ? 1 : 0.45,
           }}
         >
           {placingHome ? 'Click map to place H' : homePoint ? 'Move start/end' : 'Set start/end'}
         </button>
-        {homePoint && (
+        {homePoint && usingFutureDock && (
           <button
             onClick={() => onHomePointChange(null)}
             style={{ background: '#333', color: '#fff', border: '1px solid #444', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer' }}

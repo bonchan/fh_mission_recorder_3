@@ -2,7 +2,7 @@ import React, { RefObject, useEffect, useMemo, useState } from 'react';
 import * as turf from '@turf/turf';
 import { Wells } from '@/components/flightplanning/Wells';
 import { AnnotationsMap } from '@/components/flightplanning/AnnotationsMap';
-import { FlightArea, HomePoint, MapView, PlanningAnnotation, PolygonGeometry } from '@/utils/interfaces';
+import { Drone, FlightArea, HomePoint, MapView, PlanningAnnotation, PolygonGeometry } from '@/utils/interfaces';
 
 interface AnnotationsPlanningTabProps {
   orgId: string;
@@ -15,9 +15,12 @@ interface AnnotationsPlanningTabProps {
   isActive: boolean;
   viewRef: RefObject<MapView | null>;
   flightAreas: FlightArea[];
+  devices: Drone[];
+  dockSelection: string;
+  onDockChange: (value: string) => void;
 }
 
-export function AnnotationsPlanningTab({ orgId, projectId, sourceTabId, debugMode, onSelectionChange, homePoint, onHomePointChange, isActive, viewRef, flightAreas }: AnnotationsPlanningTabProps) {
+export function AnnotationsPlanningTab({ orgId, projectId, sourceTabId, debugMode, onSelectionChange, homePoint, onHomePointChange, isActive, viewRef, flightAreas, devices, dockSelection, onDockChange }: AnnotationsPlanningTabProps) {
   // Annotations from folders currently enabled in the Wells tree
   const [folderAnnotations, setFolderAnnotations] = useState<PlanningAnnotation[]>([]);
   const [allAnnotations, setAllAnnotations] = useState<PlanningAnnotation[]>([]);
@@ -59,6 +62,9 @@ export function AnnotationsPlanningTab({ orgId, projectId, sourceTabId, debugMod
           allAnnotations={allAnnotations}
           viewRef={viewRef}
           flightAreas={flightAreas}
+          devices={devices}
+          dockSelection={dockSelection}
+          onDockChange={onDockChange}
           polygon={polygon}
           onPolygonChange={setPolygon}
           homePoint={homePoint}

@@ -229,21 +229,21 @@ export interface Still {
   dataUrl: string;
 }
 
-export interface FlightArea {
-  id: string;
-  projectId: string;
-  name: string;
-  enabled: boolean;
-  type: string;
-  geometry: Geometry;
-  color: string;
-}
+// export interface FlightArea {
+//   id: string;
+//   projectId: string;
+//   name: string;
+//   enabled: boolean;
+//   type: string;
+//   geometry: Geometry;
+//   color: string;
+// }
 
-export interface Geometry {
-  type: string;
-  coordinates: number[];
-  radius?: number;
-}
+// export interface Geometry {
+//   type: string;
+//   coordinates: number[];
+//   radius?: number;
+// }
 
 export interface LiveDroneData {
   timestamp: number;

@@ -1,4 +1,4 @@
-import { Annotation, AnnotationFlag, AppSettings, Drone, FlightRouteData, FlightRouteHeader, Mission, Still, SyncMetadata } from '@/utils/interfaces';
+import { Annotation, AnnotationFlag, FlightArea, AppSettings, Drone, FlightRouteData, FlightRouteHeader, Mission, Still, SyncMetadata } from '@/utils/interfaces';
 import Dexie, { Table } from 'dexie';
 
 

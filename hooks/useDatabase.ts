@@ -1,7 +1,7 @@
 import { FIVE_MIN_MS } from '@/utils/constants';
 import { db } from '@/utils/db';
 import { get3DDistanceInMeters } from '@/utils/geo';
-import { AnnotationFlag, AppSettings, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint, Still } from '@/utils/interfaces';
+import { AnnotationFlag, FlightArea, AppSettings, FlightRoute, FlightRouteData, FlightRouteHeader, Mission, RouteSafetyStatus, Waypoint, Still } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
 import { toWaypointMini } from '@/utils/mapper';
 import { useLiveQuery } from 'dexie-react-hooks';

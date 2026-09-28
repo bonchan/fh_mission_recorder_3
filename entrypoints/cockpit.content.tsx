@@ -28,51 +28,58 @@ export default defineContentScript({
   }
 });
 
-function findLiveCanvas(deviceSn: string): HTMLCanvasElement | null {
-  const canvasId = `live-canvas-player-${deviceSn}-DronePayload`;
-  const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
-
-  if (!canvas) {
-    log.info(`findLiveCanvas: no element with id "${canvasId}"`);
-    return null;
+// FlightHub has shipped two live player layouts: the newer one wraps the <video> in
+// #volcano-live-source-{sn}-DronePayload, the older one had a canvas #live-canvas-player-{sn}-DronePayload
+// inside a .live-canvas-player wrapper that also held the <video>.
+function findLiveSource(deviceSn: string): HTMLElement | null {
+  const ids = [
+    `volcano-live-source-${deviceSn}-DronePayload`,
+    `live-canvas-player-${deviceSn}-DronePayload`,
+  ];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el) {
+      log.info(`findLiveSource: found "${id}"`);
+      return el;
+    }
   }
-
-  log.info(`findLiveCanvas: found "${canvas.id}" (${canvas.width}x${canvas.height})`);
-  return canvas;
+  log.info(`findLiveSource: no element with any of ids ${ids.map((id) => `"${id}"`).join(', ')}`);
+  return null;
 }
 
-function isCanvasStreaming(canvas: HTMLCanvasElement): boolean {
-  return canvas.offsetParent !== null;
+function isSourceVisible(source: HTMLElement): boolean {
+  return source.offsetParent !== null;
 }
 
-function getOfflineTip(canvas: HTMLCanvasElement): string | null {
-  const wrapper = canvas.closest('.cockpit-drone-live-inner-wrapper');
+function getOfflineTip(source: HTMLElement): string | null {
+  const wrapper = source.closest('.cockpit-drone-live-inner-wrapper, .live-pane');
   const tip = wrapper?.querySelector('.empty-live-tip')?.textContent?.trim();
   return tip || null;
 }
 
-function findLiveVideo(canvas: HTMLCanvasElement): HTMLVideoElement | null {
-  const wrapper = canvas.closest('.live-canvas-player');
-  return wrapper?.querySelector('video') ?? null;
+function findLiveVideo(source: HTMLElement): HTMLVideoElement | null {
+  if (source instanceof HTMLVideoElement) return source;
+  const wrapper = source.closest('.live-canvas-player') ?? source;
+  return wrapper.querySelector('video');
 }
 
 async function captureStill(projectId: string, deviceSn: string): Promise<Still | null> {
   log.info('captureStill: starting', { deviceSn });
-  const canvas = findLiveCanvas(deviceSn);
-  if (!canvas) {
-    log.error('captureStill: no live canvas found (expected a canvas.live-canvas element on the page)');
+  const source = findLiveSource(deviceSn);
+  if (!source) {
+    log.error('captureStill: no live player element found on the page');
     return null;
   }
 
-  if (!isCanvasStreaming(canvas)) {
-    const offlineTip = getOfflineTip(canvas);
-    log.error(`captureStill: live canvas is hidden, stream appears offline${offlineTip ? ` ("${offlineTip}")` : ''} - refusing to capture a blank image`);
+  if (!isSourceVisible(source)) {
+    const offlineTip = getOfflineTip(source);
+    log.error(`captureStill: live player is hidden, stream appears offline${offlineTip ? ` ("${offlineTip}")` : ''} - refusing to capture a blank image`);
     return null;
   }
 
-  const video = findLiveVideo(canvas);
+  const video = findLiveVideo(source);
   if (!video) {
-    log.error('captureStill: no <video> element found alongside the live canvas');
+    log.error('captureStill: no <video> element found in the live player');
     return null;
   }
 
@@ -104,7 +111,7 @@ async function captureStill(projectId: string, deviceSn: string): Promise<Still 
     id: crypto.randomUUID(),
     projectId,
     deviceSn,
-    canvasId: canvas.id,
+    canvasId: source.id,
     capturedAt: Date.now(),
     dataUrl,
   };

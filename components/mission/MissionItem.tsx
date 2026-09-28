@@ -142,6 +142,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
             longitude: currentDroneData.longitude,
             elevation: currentDroneData.elevation || 0,
             height: currentDroneData.height || 0,
+            heading: currentDroneData.heading || 0,
             yaw: currentDroneData.yaw || 0,
             pitch: currentDroneData.pitch || 0,
             zoom: currentDroneData.zoom || 1,
@@ -163,6 +164,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
             longitude: currentDroneData.longitude,
             elevation: currentDroneData.elevation || 0,
             height: currentDroneData.height || 0,
+            heading: currentDroneData.heading || 0,
             yaw: currentDroneData.yaw || 0,
             pitch: currentDroneData.pitch || 0,
             zoom: currentDroneData.zoom || 1,
@@ -277,6 +279,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
     // FIXME move this values to a config file
     let elevation = 100
     let hoverTime = 0
+    let heading = 0
     let yaw = 0
     let pitch = -90
     let zoom = 1
@@ -297,6 +300,7 @@ export function MissionItem({ mission, annotations, isExpanded, sourceTabId, vie
       longitude: annotation.longitude,
       elevation: elevation,
       height: elevation,
+      heading: heading,
       yaw: yaw,
       pitch: pitch,
       zoom: zoom,

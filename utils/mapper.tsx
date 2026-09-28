@@ -1,4 +1,4 @@
-import { Annotation, Dock, Drone, FlatDevice, FlightArea, Geometry, Waypoint, WaypointMini } from '@/utils/interfaces';
+import { Annotation, AnnotationGroupNode, AnnotationGroupRaw, Dock, Drone, FlatDevice, FlightArea, PlanningAnnotation, Waypoint, WaypointMini } from '@/utils/interfaces';
 import { extractNumber } from '@/utils/utils';
 import { type DjiKmzData } from 'dji-kmz-parser';
 
@@ -99,6 +99,7 @@ export function toWaypoint(djiItem: any, hostSn?: string): any | null {
         latitude: device_state.latitude,
         elevation: device_state.elevation,
         height: device_state.height,
+        heading: device_state.attitude_head,
         yaw: device_state[payload_index].gimbal_yaw,
         pitch: device_state[payload_index].gimbal_pitch,
         zoom: device_state.cameras[0].zoom_factor,
@@ -166,25 +167,77 @@ export function toAnnotation(djiItem: any, projectId: string): Annotation | null
     return null
 }
 
-export function toFlaightArea(djiItem: any, projectId: string): FlightArea | null {
-    const djiItemGeometry = djiItem.content.geometry
-    const djiItemProperties = djiItem.content.properties
+export function toPlanningAnnotation(rawElement: any, groupId: string): PlanningAnnotation | null {
+    const geometry = rawElement?.resource?.content?.geometry;
+    const properties = rawElement?.resource?.content?.properties;
+    if (!geometry || geometry.type !== 'Point') return null;
 
-    const geometry: Geometry = {
-        type: djiItemGeometry.type,
-        coordinates: djiItemGeometry.coordinates,
-        radius: djiItemGeometry.radius
-    }
-    const flightArea: FlightArea = {
-        id: djiItem.id,
-        projectId: projectId,
-        name: djiItem.name,
-        enabled: djiItem.status == "enable",
-        type: djiItem.type,
-        geometry: geometry,
-        color: djiItemProperties.color,
-    }
-    return flightArea
+    const [lon, lat] = geometry.coordinates;
+    return {
+        id: rawElement.id,
+        groupId,
+        name: rawElement.name,
+        longitude: lon,
+        latitude: lat,
+        color: properties?.color || '#e74c3c',
+    };
+}
+
+// The payload keeps colour on the GeoJSON feature's properties; hoist it so the
+// map layer doesn't have to dig for it. width/clampToGround aren't used.
+export function toFlightArea(rawArea: any): FlightArea | null {
+    const content = rawArea?.content;
+    const geometry = content?.geometry;
+    if (!geometry?.coordinates) return null;
+
+    return {
+        id: rawArea.id,
+        name: rawArea.name,
+        status: rawArea.status,
+        type: rawArea.type,
+        color: content.properties?.color || '#ff0000',
+        content: {
+            type: content.type,
+            geometry: {
+                type: geometry.type,
+                radius: geometry.radius ?? null,
+                coordinates: geometry.coordinates,
+            },
+        },
+    };
+}
+
+// Reconstructs FlightHub's folder tree from the flat, `pid`-keyed group list.
+export function buildAnnotationTree(rawGroups: AnnotationGroupRaw[]): AnnotationGroupNode[] {
+    const nodeMap = new Map<string, AnnotationGroupNode>();
+
+    rawGroups.forEach(group => {
+        nodeMap.set(group.id, {
+            ...group,
+            children: [],
+            annotations: (group.elements || [])
+                .map(el => toPlanningAnnotation(el, group.id))
+                .filter((a): a is PlanningAnnotation => a !== null),
+        });
+    });
+
+    const roots: AnnotationGroupNode[] = [];
+    nodeMap.forEach(node => {
+        const parent = node.pid ? nodeMap.get(node.pid) : undefined;
+        if (parent) {
+            parent.children.push(node);
+        } else {
+            roots.push(node);
+        }
+    });
+
+    const sortByOrder = (nodes: AnnotationGroupNode[]) => {
+        nodes.sort((a, b) => a.order - b.order);
+        nodes.forEach(n => sortByOrder(n.children));
+    };
+    sortByOrder(roots);
+
+    return roots;
 }
 
 export function toWaypointMini(data: DjiKmzData | undefined | null): WaypointMini[] {

@@ -8,8 +8,8 @@ import Button from '@/components/ui/Button';
 
 const log = createLogger('MissionsContainer');
 
-export function MissionsContainer({ orgId, projectId, sourceTabId, devices, annotations, isFetching, viewContext }:
-  { orgId: string; projectId: string; sourceTabId: number, devices: Drone[]; annotations: Annotation[]; isFetching: boolean; viewContext: ViewContext }) {
+export function MissionsContainer({ orgId, projectId, dockSn, sourceTabId, devices, annotations, isFetching, viewContext }:
+  { orgId: string; projectId: string; dockSn: string | null; sourceTabId: number, devices: Drone[]; annotations: Annotation[]; isFetching: boolean; viewContext: ViewContext }) {
   const { projectMissions, createMission } = useDatabase(orgId, projectId);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -32,8 +32,10 @@ export function MissionsContainer({ orgId, projectId, sourceTabId, devices, anno
     setIsModalOpen(false);
   };
 
+  // TODO complete this with dock name on top
   const allMissions = Object.values(projectMissions)
     .flat()
+    .filter((mission) => !dockSn || mission.device.parent?.deviceSn === dockSn)
     .sort((a, b) => b.createdDate - a.createdDate);
 
   return (

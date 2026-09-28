@@ -1,6 +1,6 @@
-import { Annotation, FlightArea } from '@/utils/interfaces';
+import { Annotation, AnnotationGroupRaw, FlightArea } from '@/utils/interfaces';
 import { createLogger } from '@/utils/logger';
-import { toFlaightArea } from '@/utils/mapper';
+import { toFlightArea } from '@/utils/mapper';
 
 const log = createLogger('useMessage');
 
@@ -110,22 +110,42 @@ export function useMessage(orgId: string, projectId: string) {
     return annotationList;
   };
 
-  // --- FLIGHT AREAS ---
-  const getFlightAreas = async (tabId?: number): Promise<FlightArea[]> => {
+// <<<<<<< HEAD
+//   // --- FLIGHT AREAS ---
+//   const getFlightAreas = async (tabId?: number): Promise<FlightArea[]> => {
+//     const targetTabId = await getTargetTabId(tabId);
+
+//     const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_FLIGHT_AREAS", orgId, projectId });
+//     const flightAreaList: any[] = [];
+
+//     for (const element of res.flightAreas.data.list) {
+//       const flightArea = toFlaightArea(element, projectId);
+//       if (flightArea) flightAreaList.push(flightArea);
+//     }
+
+//     return flightAreaList;
+//   };
+
+// =======
+  // Raw folder tree, for the Flight Planning view — preserves pid/order/type/elements
+  // instead of flattening everything into a single Annotation[] like getAnnotations does.
+  const getAnnotationGroups = async (tabId?: number): Promise<AnnotationGroupRaw[]> => {
     const targetTabId = await getTargetTabId(tabId);
-
-    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_FLIGHT_AREAS", orgId, projectId });
-    const flightAreaList: any[] = [];
-
-    for (const element of res.flightAreas.data.list) {
-      const flightArea = toFlaightArea(element, projectId);
-      if (flightArea) flightAreaList.push(flightArea);
-    }
-
-    return flightAreaList;
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_ANNOTATIONS", orgId, projectId });
+    return res.annotations?.data || [];
   };
 
 
+  // --- FLIGHT AREAS ---
+  const getFlightAreas = async (tabId?: number): Promise<FlightArea[]> => {
+    const targetTabId = await getTargetTabId(tabId);
+    const res = await browser.tabs.sendMessage(targetTabId, { action: "GET_FLIGHT_AREAS", orgId, projectId });
+
+    const rawList: any[] = res.flightAreas?.data?.list || [];
+    return rawList
+      .map(toFlightArea)
+      .filter((area): area is FlightArea => area !== null);
+  };
 
   // --- FLIGHT ROUTES ---
   const getFlightRoutes = async (searchQuery: string, page: number, size: number, tabId?: number) => {
@@ -201,6 +221,7 @@ export function useMessage(orgId: string, projectId: string) {
     getTopologies,
 
     getAnnotations,
+    getAnnotationGroups,
 
     getFlightAreas,
 

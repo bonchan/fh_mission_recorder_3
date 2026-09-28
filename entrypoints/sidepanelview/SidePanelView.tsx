@@ -67,8 +67,11 @@ export default function SidePanelView() {
         ) : (
           <>
             <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-              <Button onClick={() => { openPage('OPEN_ADMIN_DASHBOARD', undefined, sourceTabId) }} variant="warning" isLoading={isFetching} style={{ width: '100%' }}>
+              {/* <Button onClick={() => { openPage('OPEN_ADMIN_DASHBOARD', undefined, sourceTabId) }} variant="warning" isLoading={isFetching} style={{ width: '100%' }}>
                 Admin Dashboard
+              </Button> */}
+              <Button onClick={() => { openPage('OPEN_FLIGT_PLANNING_DASHBOARD', undefined, sourceTabId) }} variant="primary" isLoading={isFetching} style={{ width: '100%' }}>
+                Flight Planning
               </Button>
               <Button onClick={() => { openPage('OPEN_FLIGT_ROUTES_DASHBOARD', undefined, sourceTabId) }} variant="primary" isLoading={isFetching} style={{ width: '100%' }}>
                 Flight Routes
@@ -109,6 +112,7 @@ export default function SidePanelView() {
         <MissionsContainer
           orgId={orgId}
           projectId={projectId}
+          dockSn={dockSn}
           sourceTabId={sourceTabId}
           devices={devices}
           annotations={projectAnnotations}

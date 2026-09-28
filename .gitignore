@@ -29,3 +29,7 @@ web-ext.config.ts
 
 .patches
 .examples
+
+.scripts
+
+.autotag

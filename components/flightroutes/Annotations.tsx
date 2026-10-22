@@ -9,6 +9,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 const log = createLogger('Annotations');
 
+const LIST_HEIGHT = '600px';
+
 interface AnnotationsProps {
   orgId: string;
   projectId: string;
@@ -16,19 +18,76 @@ interface AnnotationsProps {
   debugMode: boolean;
 }
 
+interface PastedName {
+  name: string;
+  count: number;
+}
+
+interface ListPanelProps {
+  title: string;
+  count: number;
+  color?: string;
+  emptyText: string;
+  onClear?: () => void;
+  children: React.ReactNode;
+}
+
+function ListPanel({ title, count, color, emptyText, onClear, children }: ListPanelProps) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, border: '1px solid #333', borderRadius: '6px', background: '#111' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', borderBottom: '1px solid #333' }}>
+        <strong style={{ fontSize: '13px', color: color ?? 'inherit' }}>{title} ({count})</strong>
+        {onClear && count > 0 && (
+          <button
+            onClick={onClear}
+            style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '12px', padding: 0 }}
+          >
+            clear
+          </button>
+        )}
+      </div>
+      <div style={{ height: LIST_HEIGHT, overflowY: 'auto', padding: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        {count === 0 ? <p style={{ color: '#888', fontSize: '12px', margin: '4px' }}>{emptyText}</p> : children}
+      </div>
+    </div>
+  );
+}
+
+const rowStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '3px 6px',
+  background: '#1a1a1a',
+  borderRadius: '4px',
+  fontSize: '13px',
+};
+
+const nameStyle: React.CSSProperties = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
 export function Annotations({ orgId, projectId, sourceTabId, debugMode }: AnnotationsProps) {
   const { projectAnnotations, saveCompromisedAnnotation, deleteCompromisedAnnotation, deleteAllCompromisedAnnotations } = useDatabase(orgId, projectId);
   const { isSyncingAnnotations, syncAnnotations } = useSync(orgId, projectId, sourceTabId)
 
   const compromisedAnnotations = projectAnnotations.filter(a => a.isCompromised);
-  log.info('compromisedAnnotations', compromisedAnnotations)
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Result of the last paste. Page-only, not persisted.
+  const [duplicates, setDuplicates] = useState<PastedName[]>([]);
+  const [notFound, setNotFound] = useState<PastedName[]>([]);
 
   const { showToast } = useToast()
 
   useEffect(() => {
     syncAnnotations();
+    setDuplicates([]);
+    setNotFound([]);
   }, [projectId]);
 
   const searchResults = useMemo(() => {
@@ -54,76 +113,68 @@ export function Annotations({ orgId, projectId, sourceTabId, debugMode }: Annota
     }
 
     const pastedNames = new Set<string>();
-    const duplicateNames = new Set<string>();
-    let emptyCellCount = 0;
+    // Keyed by lowercase name; count = how many times it appeared in total.
+    const duplicateMap = new Map<string, PastedName>();
+    const notFoundMap = new Map<string, PastedName>();
+    let savedCount = 0;
+    let total = 0;          // every non-empty cell pasted
+    let skippedDupes = 0;   // extra occurrences beyond the first
 
-    const rows = pastedText.split('\n').filter(row => row.trim() !== '');
+    const rows = pastedText.split(/\r?\n/).filter(row => row.trim() !== '');
 
     rows.forEach(row => {
-      const cells = row.split('\t');
-
-      cells.forEach((cellText) => {
+      row.split('\t').forEach((cellText) => {
         const trimmedName = cellText.trim();
+        if (!trimmedName) return;
 
-        if (!trimmedName) {
-          emptyCellCount++;
-          return;
-        }
-
+        total++;
         const lowerName = trimmedName.toLowerCase();
 
         if (pastedNames.has(lowerName)) {
-          duplicateNames.add(trimmedName);
+          skippedDupes++;
+          const existing = duplicateMap.get(lowerName);
+          if (existing) existing.count++;
+          else duplicateMap.set(lowerName, { name: trimmedName, count: 2 });
           return;
         }
 
         pastedNames.add(lowerName);
 
         const match = projectAnnotations.find(
-          a => a.name.toLowerCase() === lowerName
+          a => a.name?.toLowerCase() === lowerName
         );
 
         if (match) {
+          savedCount++;
           saveCompromisedAnnotation({
             ...match,
             projectId: projectId,
             isCompromised: true
           });
         } else {
-          saveCompromisedAnnotation({
-            id: `generated-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            name: trimmedName,
-            latitude: 0,
-            longitude: 0,
-            color: 'black',
-            projectId: projectId,
-            isCompromised: true
-          } as any);
+          notFoundMap.set(lowerName, { name: trimmedName, count: 1 });
         }
       });
     });
 
-    if (duplicateNames.size > 0 || emptyCellCount > 0) {
-      let msg = '';
+    const dupList = Array.from(duplicateMap.values());
+    const notFoundList = Array.from(notFoundMap.values());
+    setDuplicates(dupList);
+    setNotFound(notFoundList);
 
-      if (duplicateNames.size > 0) {
-        msg += `\n🚨 Duplicates Skipped (${duplicateNames.size}):\n`;
-      }
-      if (emptyCellCount > 0) {
-        msg += `\n🚨 Duplicates Skipped (${duplicateNames.size}):\n`;
-        msg += Array.from(duplicateNames).map(name => ` - ${name}`).join('\n');
-      }
-      showToast("Paste Complete!", msg, { type: 'warning' });
-    }
+    // saved + skipped duplicates + not found === total
+    const msg = `Saved: ${savedCount} · Duplicates skipped: ${skippedDupes} · Not found: ${notFoundList.length}`;
+    const hasIssues = dupList.length > 0 || notFoundList.length > 0;
+    showToast(`Paste Complete! Total: ${total}`, msg, { type: hasIssues ? 'warning' : 'success' });
+
+    if (hasIssues) log.warn('paste issues', { duplicates: dupList, notFound: notFoundList });
   };
 
   return (
-    <div className="flight-routes-manager" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+    <div className="flight-routes-manager" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
 
-      <section className="saved-list">
-        <h2>Compromised ({compromisedAnnotations.length})</h2>
-
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+      <section className="saved-list" style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
           <input
             id="annotations-input"
             type="text"
@@ -133,7 +184,7 @@ export function Annotations({ orgId, projectId, sourceTabId, debugMode }: Annota
             onChange={() => { }}
             style={{
               flex: 1,
-              padding: '15px',
+              padding: '10px',
               border: '2px dashed #007bff',
               borderRadius: '4px',
               textAlign: 'center',
@@ -146,7 +197,6 @@ export function Annotations({ orgId, projectId, sourceTabId, debugMode }: Annota
             requireConfirm={true}
             confirmText="sure?"
             confirmVariant="danger"
-            // style={{ maxWidth: '25px', padding: '4px 4px' }}
             onClick={deleteAllCompromisedAnnotations}
             style={{
               maxWidth: '150px',
@@ -163,45 +213,61 @@ export function Annotations({ orgId, projectId, sourceTabId, debugMode }: Annota
           </Button>
         </div>
 
-        <div className="list-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {compromisedAnnotations.length === 0 && <p style={{ color: '#888' }}>No active annotations. Add from the right or paste above.</p>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
+          <ListPanel
+            title="Compromised"
+            count={compromisedAnnotations.length}
+            emptyText="None saved. Paste above or mark from the right."
+          >
+            {compromisedAnnotations.map(annotation => (
+              <div key={annotation.id} style={rowStyle}>
+                <span style={nameStyle} title={annotation.name}>{annotation.name}</span>
+                <Button
+                  variant="sad"
+                  requireConfirm={true}
+                  confirmText="?"
+                  confirmVariant="danger"
+                  style={{ maxWidth: '22px', padding: '0 4px', marginBottom: 0, flexShrink: 0 }}
+                  onClick={() => deleteCompromisedAnnotation(annotation.id)}
+                >
+                  X
+                </Button>
+              </div>
+            ))}
+          </ListPanel>
 
-          {compromisedAnnotations.map(annotation => (
-            <div
-              key={annotation.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px',
-                background: '#1a1a1a',
-                borderRadius: '6px',
-                border: '1px solid #333'
-              }}
-            >
-              <span style={{
-                fontWeight: annotation.color === 'black' ? 'bold' : 'normal',
-                color: annotation.color === 'black' ? '#dc3545' : 'inherit'
-              }}>
-                {annotation.name} {annotation.color === 'black' && "(Not Found)"}
-              </span>
+          <ListPanel
+            title="Duplicates"
+            count={duplicates.length}
+            color="#ffc107"
+            emptyText="No duplicates in last paste."
+            onClear={() => setDuplicates([])}
+          >
+            {duplicates.map(d => (
+              <div key={`dup-${d.name}`} style={rowStyle}>
+                <span style={nameStyle} title={d.name}>{d.name}</span>
+                <span style={{ color: '#888', fontSize: '12px', flexShrink: 0 }}>×{d.count}</span>
+              </div>
+            ))}
+          </ListPanel>
 
-              <Button
-                variant="sad"
-                requireConfirm={true}
-                confirmText="?"
-                confirmVariant="danger"
-                style={{ maxWidth: '25px', padding: '4px 4px' }}
-                onClick={() => deleteCompromisedAnnotation(annotation.id)}
-              >
-                X
-              </Button>
-            </div>
-          ))}
+          <ListPanel
+            title="Not found"
+            count={notFound.length}
+            color="#dc3545"
+            emptyText="Everything in last paste was found."
+            onClear={() => setNotFound([])}
+          >
+            {notFound.map(n => (
+              <div key={`nf-${n.name}`} style={rowStyle}>
+                <span style={nameStyle} title={n.name}>{n.name}</span>
+              </div>
+            ))}
+          </ListPanel>
         </div>
       </section>
 
-      <section className="results-list">
+      <section className="results-list" style={{ minWidth: 0 }}>
         <div style={{ marginBottom: '16px' }}>
           <SearchInput
             onSearch={setSearchQuery}
